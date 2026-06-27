@@ -180,7 +180,7 @@ class SessionsControllerTest {
         scope.cancel()
     }
 
-    // --- Split: независимая вторичная сессия внутри вкладки (привычная модель SSH-клиентов) ---
+    // Split: независимая вторичная сессия внутри вкладки (привычная модель SSH-клиентов)
 
     private fun SessionsController.connectSplit(parentId: String, hostId: String?) =
         connectSplit(parentId = parentId, hostId = hostId, title = hostId ?: "", subtitle = "u@h:22", target = target, auth = auth)
@@ -320,7 +320,7 @@ class SessionsControllerTest {
         scope.cancel()
     }
 
-    // --- Пустой таб без сессии + per-tab view + connect-reuse ---
+    // Пустой таб без сессии + per-tab view + connect-reuse
 
     @Test
     fun `openBlank adds an active tab with no connection`() = runTest {
@@ -407,7 +407,7 @@ class SessionsControllerTest {
         scope.cancel()
     }
 
-    // --- Drag-reorder вкладок (привычная модель SSH-клиентов: вкладки можно перетаскивать местами) ---
+    // Drag-reorder вкладок (привычная модель SSH-клиентов: вкладки можно перетаскивать местами)
 
     @Test
     fun `moveTab reorders tabs and keeps the active one`() = runTest {
