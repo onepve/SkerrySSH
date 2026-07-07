@@ -1,89 +1,178 @@
 # Skerry Sync Server
 
-Self-hosted, zero-knowledge E2E-синхронизация для Skerry (модель Vaultwarden). Сервер хранит
-**только шифротекст** (обёрнутый dataKey, зашифрованные записи vault) и метаданные синхронизации.
-Мастер-пароль, `masterKey` и `dataKey` никогда не покидают устройство и серверу недоступны.
+**English** · [Русский](README.ru.md)
 
-> Лицензия: **AGPL-3.0** (см. `LICENSE`). Клиенты Skerry — GPL-3.0.
+Self-hosted, zero-knowledge E2E sync for [Skerry](../README.md) (Vaultwarden model). The
+server stores **ciphertext only** — the wrapped `dataKey` and encrypted vault records — plus
+sync metadata. The master password, `masterKey`, and `dataKey` never leave the device and are
+unavailable to the server.
 
-## Что внутри
+> License: **AGPL-3.0** (see `LICENSE`). The Skerry clients are GPL-3.0.
 
-- **Стек**: Kotlin + Ktor (Netty), Exposed, HikariCP. Аутентификация — SRP-6a (Nimbus) + JWT.
-- **Хранилище**: SQLite по умолчанию (один файл, нулевая настройка); PostgreSQL — сменой `SKERRY_DB_URL`.
-- **Крипто на сервере отсутствует** by design: сервер не умеет расшифровывать пользовательские данные.
+## What's inside
 
-## Быстрый старт
+- **Stack**: Kotlin + Ktor (Netty), Exposed, HikariCP. Auth: SRP-6a (Nimbus) + JWT.
+- **Storage**: SQLite by default (a single file, zero configuration); PostgreSQL by changing
+  `SKERRY_DB_URL`.
+- **No crypto on the server** by design: the server cannot decrypt user data. Registration
+  uploads an SRP salt/verifier and a wrapped `dataKey`; login is an SRP-6a exchange in which
+  the password itself is never transmitted.
 
-### Docker (рекомендуется)
+## Quick start
+
+### Docker (recommended)
 
 ```bash
-# из корня репозитория
+# from the repository root
 export SKERRY_JWT_SECRET="$(openssl rand -base64 48)"
 export SKERRY_ADMIN_TOKEN="$(openssl rand -hex 16)"
 docker compose up -d --build
 ```
 
-Сервер поднимется на `http://localhost:8080`. Данные — в томе `skerry-data` (SQLite).
-Переключение на PostgreSQL — раскомментируйте сервис `db` и postgres-переменные в `docker-compose.yml`.
+The server comes up on `http://localhost:8080`. Data lives in the `skerry-data` volume
+(SQLite). To switch to PostgreSQL, uncomment the `db` service and the postgres variables in
+`docker-compose.yml`.
 
-### Локально (Gradle)
+The container runs as an unprivileged user, exposes a `/healthz` healthcheck, and the image
+builds with `-PserverOnly` — no Android SDK required.
+
+### Local (Gradle)
 
 ```bash
-SKERRY_JWT_SECRET=dev-secret SKERRY_ADMIN_TOKEN=admin ./gradlew :server:run
+SKERRY_JWT_SECRET=dev-secret SKERRY_ADMIN_TOKEN=admin ./gradlew :server:run -PserverOnly
 ```
 
-Конфигурация — переменные окружения, полный список в [`.env.example`](.env.example).
+## Configuration
 
-## Эндпоинты
+Everything is configured through environment variables (single-`.env` model); a commented
+template lives in [`.env.example`](.env.example). All values have sane defaults for local
+runs — production only *requires* a stable `SKERRY_JWT_SECRET`.
 
-| Метод | Путь | Назначение |
+| Variable | Default | Purpose |
 |---|---|---|
-| `GET` | `/healthz` | liveness (для контейнера) |
-| `POST` | `/auth/register` | регистрация: SRP-соль/верификатор + обёртка dataKey → токены |
-| `POST` | `/auth/srp/challenge` → `/auth/srp/verify` | вход по SRP без передачи пароля |
-| `POST` | `/auth/refresh` | ротация access/refresh токенов |
-| `GET` | `/vault/keys` | `wrappedDataKey` для нового устройства |
-| `GET` | `/vault/records?since={cursor}` | дельта зашифрованных записей |
-| `PUT` | `/vault/records` | batch upsert с LWW (version, затем deviceId) |
-| `WS` | `/sync` | push «появились изменения» (только курсор, без содержимого) |
-| `GET/DELETE` | `/devices`, `/devices/{id}` | список устройств и отзыв |
-| `POST` | `/pairing/start` (auth) → `/pairing/claim` | быстрый локальный паринг (вариант B) |
-| `GET` | `/admin/health` | liveness (открыт) |
-| `GET` | `/admin/stats`, `/admin/devices`, `/admin/activity` | агрегаты, список устройств, аудит-лог (под `SKERRY_ADMIN_TOKEN`) |
-| `DELETE` | `/admin/devices/{id}?accountId=` | отзыв устройства из консоли |
+| `SKERRY_HOST` | `0.0.0.0` | Bind interface. Set `127.0.0.1` behind a reverse proxy. |
+| `SKERRY_PORT` | `8080` | Listen port. |
+| `SKERRY_DB_URL` | `jdbc:sqlite:skerry-sync.db` | JDBC URL; `jdbc:postgresql://…` switches the driver to PostgreSQL. |
+| `SKERRY_DB_USER` / `SKERRY_DB_PASSWORD` | *(empty)* | Database credentials (PostgreSQL). |
+| `SKERRY_JWT_SECRET` | `dev-insecure-change-me` | JWT signing secret. **The server refuses to start with the default** unless `SKERRY_DEV=1`. Rotating it invalidates all issued tokens. |
+| `SKERRY_JWT_ISSUER` | `skerry-sync` | JWT `iss` claim. |
+| `SKERRY_ADMIN_TOKEN` | *(empty)* | Admin console token (`/console`, `/admin/*`). Empty ⇒ admin data endpoints are closed. |
+| `SKERRY_ACCESS_TTL` | `900` (15 min) | Access-token lifetime, seconds. |
+| `SKERRY_REFRESH_TTL` | `2592000` (30 days) | Refresh-token lifetime, seconds. |
+| `SKERRY_PAIRING_TTL` | `300` (5 min) | Lifetime of a one-shot QR pairing session. |
+| `SKERRY_TOMBSTONE_DAYS` | `90` | How long deletion tombstones are retained before physical cleanup. |
+| `SKERRY_CORS_HOSTS` | *(empty)* | Comma-separated allowed CORS origins. Empty disables CORS (native clients aren't subject to it). |
+| `SKERRY_MAX_BODY_BYTES` | `4194304` (4 MiB) | Request-body cap (OOM/abuse guard); larger requests get `413`. |
+| `SKERRY_DEV` | *(unset)* | `1` unlocks the default JWT secret for local development only. |
 
-Все шифроблобы (`blob`, `wrappedDataKey`, `encryptedDataKey`) передаются как base64.
+## How sync works
 
-## Админ-консоль
+1. **Register** — the client derives keys locally (Argon2id → `masterKey` →
+   `authKey`/`dataKey`) and uploads an SRP salt/verifier plus the `dataKey` wrapped with the
+   master key. Nothing uploaded is enough to decrypt anything.
+2. **Log in** — SRP-6a challenge/verify; the server learns only that the client knows the
+   password, never the password itself. On success it issues short-lived access + refresh
+   JWTs.
+3. **Push/pull** — clients `PUT` batches of encrypted records; conflicts resolve by
+   last-writer-wins (record `version`, then `deviceId` as tiebreaker). Pulls are deltas by a
+   monotonic cursor (`?since=`).
+4. **Live updates** — the `/sync` WebSocket pushes a "changes available" signal carrying only
+   the new cursor, never content; clients then pull the delta.
+5. **Deletions** — propagate as tombstones and are physically aged out after
+   `SKERRY_TOMBSTONE_DAYS`.
+6. **New device** — either logs in and fetches the wrapped `dataKey` from `/vault/keys`, or
+   uses quick QR pairing (`/pairing/*`, a one-shot session with a short TTL).
 
-Статическая страница на `http://localhost:8080/console` (требует `SKERRY_ADMIN_TOKEN`) — единый
-дашборд: **Overview** (аккаунты, устройства, записи,
-суммарный размер шифроблобов), **Devices** (платформа, последняя синхронизация, версия курсора,
-статус + отзыв), **Privacy boundary** (что сервер видит / не видит) и **Recent activity** (аудит-лог
-событий). Zero-knowledge сохраняется: консоль видит только метаданные — событие, устройство, метку
-платформы, курсоры и размер-агрегат, но не содержимое записей, мастер-пароль или `dataKey`.
+All cipher blobs (`blob`, `wrappedDataKey`, `encryptedDataKey`) travel as base64.
 
-> Шрифты (Space Grotesk, JetBrains Mono) зашиты в сервер (`resources/admin/fonts/*.woff2`), иконки —
-> инлайн-SVG. Консоль полностью работает офлайн, без обращений к внешним CDN.
+## API
 
-> ⚠️ Метаданные содержат `accountId` (это e-mail) и удерживаются в аудит-логе (последние 2000
-> событий). Для single-user self-host оператор и есть субъект данных — приемлемо. Admin-токен
-> ходит в заголовке `X-Admin-Token` открытым текстом: обязательно поставьте TLS-терминатор
-> (см. ниже), иначе токен виден в сети.
+### Health & auth
 
-## Безопасность в проде
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/healthz` | Liveness (open; used by the container healthcheck). |
+| `POST` | `/auth/register` | Registration: SRP salt/verifier + wrapped dataKey → tokens. |
+| `POST` | `/auth/srp/challenge` → `/auth/srp/verify` | SRP-6a login without transmitting the password. |
+| `POST` | `/auth/refresh` | Access/refresh token rotation. |
 
-- Задайте устойчивый `SKERRY_JWT_SECRET` (иначе токены инвалидируются при рестарте) и непустой `SKERRY_ADMIN_TOKEN`.
-- Бэкап = файл SQLite (`/data`) или дамп PostgreSQL; данные зашифрованы, но это ваша точка восстановления.
-- Сам сервер слушает cleartext HTTP — TLS терминируется обратным прокси (ниже). Полезная нагрузка
-  и так E2E-зашифрована (zero-knowledge), SRP безопасен поверх cleartext, но **админ-токен и метаданные
-  (включая `accountId` = e-mail) идут открыто** — без TLS они видны в сети. Для публичного хоста TLS обязателен.
+### Vault & devices (JWT auth)
 
-### TLS-терминатор
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/vault/keys` | Wrapped `dataKey` for a new device. |
+| `GET` | `/vault/records?since={cursor}` | Delta of encrypted records. |
+| `PUT` | `/vault/records` | Batch upsert with LWW (version, then deviceId). |
+| `WS` | `/sync` | "Changes available" push (cursor only, no content). |
+| `GET` / `DELETE` | `/devices`, `/devices/{id}` | Device list and revocation. |
+| `POST` | `/pairing/start` (auth) → `/pairing/claim` | Quick local QR pairing. |
 
-Клиент указывает `https://…` — WebSocket `/sync` автоматически переключается на `wss://` (тот же хост).
+### Teams (JWT auth)
 
-**Caddy** (автоматический Let's Encrypt, проще всего):
+E2E-encrypted sharing: team records are ciphertext to the server, membership is granted via
+sealed-envelope invitations against members' public keys.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `PUT` | `/account/key` | Publish the account's public key. |
+| `GET` | `/account/keys/{accountId}` | Fetch a member's public key (for envelopes). |
+| `POST` / `GET` / `DELETE` | `/teams`, `/teams/{id}` | Create, list, delete a team. |
+| `GET` / `POST` | `/teams/{id}/members` | Member list; invite (sealed envelope). |
+| `PUT` | `/teams/{id}/members/{accountId}/role` | Change role (owner/member). |
+| `DELETE` | `/teams/{id}/members/{accountId}` | Remove a member / revoke access. |
+| `POST` | `/teams/{id}/accept` | Accept an invitation. |
+| `GET` / `PUT` | `/teams/{id}/records` | Pull/push encrypted shared records. |
+| `GET` | `/teams/{id}/activity` | Team activity feed. |
+
+### Admin (under `SKERRY_ADMIN_TOKEN`, header `X-Admin-Token`)
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/admin/health` | Liveness (open). |
+| `GET` | `/admin/stats` | Aggregates: accounts, devices, records, blob sizes. |
+| `GET` | `/admin/devices` | All devices with platform, cursor, last sync. |
+| `GET` | `/admin/activity` | Audit log (last 2000 events). |
+| `GET` | `/admin/accounts`, `/admin/accounts/{id}/records` | Account list, per-account record metadata. |
+| `DELETE` | `/admin/devices/{id}?accountId=` | Revoke a device from the console. |
+| `DELETE` | `/admin/accounts/{id}/tombstones` | Purge an account's tombstones early. |
+| `DELETE` | `/admin/accounts/{id}` | Delete an account with all its data. |
+
+## Admin console
+
+A static page at `http://localhost:8080/console` (requires `SKERRY_ADMIN_TOKEN`) — a single
+dashboard: **Overview** (accounts, devices, records, total ciphertext size), **Devices**
+(platform, last sync, cursor version, status + revocation), **Privacy boundary** (what the
+server can and cannot see), and **Recent activity** (audit log). Zero-knowledge holds: the
+console sees only metadata — event, device, platform label, cursors, and size aggregates —
+never record contents, the master password, or the `dataKey`.
+
+> Fonts (Space Grotesk, JetBrains Mono) are bundled into the server
+> (`resources/admin/fonts/*.woff2`), icons are inline SVG. The console works fully offline,
+> with no external CDN requests.
+
+> ⚠️ Metadata includes `accountId` (an e-mail) and is retained in the audit log (last 2000
+> events). For a single-user self-host the operator *is* the data subject — acceptable. The
+> admin token travels in the `X-Admin-Token` header in cleartext: put a TLS terminator in
+> front (below), otherwise the token is visible on the wire.
+
+## Production security
+
+- Set a stable `SKERRY_JWT_SECRET` (otherwise a restart invalidates every token) and a
+  non-empty `SKERRY_ADMIN_TOKEN`.
+- Backup = the SQLite file (`/data`) or a PostgreSQL dump; the data is encrypted, but it is
+  your only restore point.
+- The server itself listens on cleartext HTTP — TLS is terminated by a reverse proxy (below).
+  The payload is E2E-encrypted anyway (zero-knowledge) and SRP is safe over cleartext, but
+  **the admin token and metadata (including `accountId` = e-mail) travel in the clear** —
+  without TLS they are visible on the network. TLS is mandatory for a publicly reachable
+  host.
+
+### TLS termination
+
+Point the client at `https://…` — the `/sync` WebSocket switches to `wss://` automatically
+(same host).
+
+**Caddy** (automatic Let's Encrypt, the simplest option):
 
 ```caddy
 sync.example.com {
@@ -91,7 +180,7 @@ sync.example.com {
 }
 ```
 
-**nginx** (сертификат свой/Certbot; важно пробросить апгрейд WebSocket для `/sync`):
+**nginx** (your own cert or Certbot; the WebSocket upgrade for `/sync` must be forwarded):
 
 ```nginx
 server {
@@ -105,25 +194,27 @@ server {
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        # WebSocket /sync (live-pull): без этих двух заголовков realtime-уведомления не работают.
+        # WebSocket /sync (live pull): realtime notifications break without these two headers.
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_read_timeout 1h; # /sync — долгоживущее соединение, не рвать по таймауту
+        proxy_read_timeout 1h; # /sync is a long-lived connection; don't cut it on timeout
     }
 }
 ```
 
-Привяжите сервер к loopback (`SKERRY_HOST=127.0.0.1`), чтобы 8080 не торчал в сеть в обход прокси.
+Bind the server to loopback (`SKERRY_HOST=127.0.0.1`) so port 8080 isn't reachable around the
+proxy.
 
-> **Self-host в локальной сети без TLS** допустим осознанно: трафик E2E-зашифрован, метаданные
-> остаются в доверенной LAN. Android-клиент разрешает cleartext (`network_security_config.xml`).
-> Как только хост доступен извне — ставьте TLS.
+> **Self-hosting on a trusted LAN without TLS** is an acceptable, deliberate choice: the
+> traffic is E2E-encrypted and the metadata stays inside the LAN. The Android client allows
+> cleartext (`network_security_config.xml`). The moment the host becomes reachable from
+> outside — add TLS.
 
-## Тесты
+## Tests
 
 ```bash
 ./gradlew :server:test
 ```
 
-Покрывают LWW-конфликты, SRP-роундтрип, JWT, и полный HTTP-флоу (register → вход → push/pull →
-devices → pairing → admin).
+They cover LWW conflicts, the SRP round-trip, JWT, team roles/ACL, and the full HTTP flow
+(register → login → push/pull → devices → pairing → admin).

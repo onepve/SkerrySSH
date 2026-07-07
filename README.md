@@ -2,11 +2,15 @@
 
 **English** · [Русский](README.ru.md)
 
+[![CI](https://github.com/SeCherkasov/Skerry/actions/workflows/ci.yml/badge.svg)](https://github.com/SeCherkasov/Skerry/actions/workflows/ci.yml)
+[![Clients: GPL-3.0](https://img.shields.io/badge/clients-GPL--3.0-blue)](LICENSE)
+[![Server: AGPL-3.0](https://img.shields.io/badge/server-AGPL--3.0-blue)](server/LICENSE)
+
 An open-source, cross-platform SSH client with a single core: Kotlin Multiplatform under the
-hood and a Compose Multiplatform UI. One core codebase and one UI across
+hood, Compose Multiplatform UI on top. One core codebase and one UI across
 **Desktop (Linux, Windows)** and **Android**, with feature parity between platforms.
 
-Version — `0.1.0` (pre first release).
+Current version — `0.1.0` (pre first release).
 
 ## Status
 
@@ -15,7 +19,7 @@ are planned.
 
 ## Screenshots
 
-![Terminal with host manager, session tabs, and a live metrics panel](docs/screenshots/desktop-terminal.png)
+![Terminal with host manager, session tabs, and live metrics panel](docs/screenshots/desktop-terminal.png)
 
 ![Dual-pane SFTP commander](docs/screenshots/desktop-sftp.png)
 
@@ -29,53 +33,49 @@ are planned.
 |---|---|
 | ![Host list with groups and tags](docs/screenshots/mobile-hosts.png) | ![Mobile terminal](docs/screenshots/mobile-terminal.png) |
 
-Screenshots are rendered from the live UI by an offscreen harness (`scripts/gen-screenshots.sh`),
-with no network and no master password. Re-run to refresh: `scripts/gen-screenshots.sh`.
-
 ## Features
 
-**SSH and connections**
+**Connections**
 - SSH (sshj + BouncyCastle), SSH certificates
 - SFTP (dual-pane commander)
 - Port forwarding: local (`-L`), remote (`-R`), dynamic/SOCKS (`-D`)
-- Telnet (custom IAC-negotiation codec), serial (desktop jSerialComm; Android USB-OTG:
+- Telnet (custom IAC-negotiation codec), serial (jSerialComm on desktop; USB-OTG on Android:
   CDC/FTDI/CP210x/CH34x)
 
 **Terminal**
-- Custom grid emulation, VT conformance: line-drawing, Unicode/combining, SGR,
-  OSC 8/4/52/104, bracketed-paste, mouse
-- Tabs, split view (independent second session), auto-reconnect for SSH, drag-reorder tabs
-- Live status bar (cipher, server version, throughput, RTT)
-- Font switcher (JetBrains Mono / Hack), a set of color themes (incl. Catppuccin Mocha,
-  Dracula, Tokyo Day), autocomplete with command history, Ctrl-R reverse-search, cycling
-  through alternatives
+- Custom grid emulation: VT line-drawing, Unicode/combining characters, SGR,
+  OSC 8/4/52/104, bracketed paste
+- Session tabs with split view, SSH auto-reconnect, drag-to-reorder, live host metrics (RTT)
+- JetBrains Mono rendering, scrollback reverse-search
 
-**Storage and security**
-- Local encrypted vault: Argon2id → XChaCha20-Poly1305 (libsodium), zero-knowledge
-- Master password + biometrics (Android BiometricPrompt + Keystore), reset/recovery
-- Targeted FLAG_SECURE on sensitive screens
-- Host, group, and tag manager; keychain + identities (username + credential)
+**Vault**
+- XChaCha20-Poly1305, zero-knowledge: the master password never leaves the device
+- Biometric unlock (BiometricPrompt) with reset/recovery flow, `FLAG_SECURE` on Android
+- Keys, passwords, identities, certificates
 
 **Sync (self-hosted, optional)**
-- Zero-knowledge E2E synchronization: Argon2id → masterKey → authKey/dataKey, XChaCha20-Poly1305
-- SRP-6a authentication (the server stores only the verifier), JWT sessions
-- Live-sync push-on-change over WebSocket, tombstone propagation, cursor persistence,
+- Zero-knowledge sync: authKey/dataKey split, XChaCha20-Poly1305 payloads,
+  SRP-6a authentication (server stores a verifier, never the password), JWT sessions
+- Live sync: push-on-change over WebSocket, tombstone propagation, cursor persistence,
   selective sync by record type
-- Device pairing via QR (ZXing + CameraX + ML Kit on-device), admin console
+- Device pairing via QR (ZXing + CameraX + ML Kit, on-device), admin console
+- See [Sync server](#sync-server) below
 
 **Teams (sharing, optional)**
 - E2E zero-knowledge sharing of hosts and snippets within a team, on top of sealed-envelope
   invitations; owner/member roles, ACL revocation
 
-**Snippets and AI**
+**Snippets & AI**
 - Command library with snippet type-ahead in the terminal
-- AI assistant (BYOK OpenAI, per-host policies Strict/Balanced/Permissive/Off) with SSE streaming
+- AI assistant (BYOK OpenAI, per-host policies Strict/Balanced/Permissive/Off) with SSE
+  streaming
 - On-device local AI: the app downloads GGUF models itself and runs them via llama.cpp
-  (catalog: Qwen3, Phi-4 Mini) — the Strict policy works offline
+  (catalog: Qwen3, Phi-4 Mini) — the Strict policy works fully offline
 
 **Localization**
-- Strings in compose-resources (`composeApp/src/commonMain/composeResources/values*`);
-  a language switcher (`LocalAppLocale`) for the UI and for the AI assistant's reply language (INFO/ASK)
+- Strings live in compose-resources (`composeApp/src/commonMain/composeResources/values*`);
+  a language switcher (`LocalAppLocale`) drives both the UI and the AI assistant's reply
+  language (INFO/ASK)
 
 ## Tech stack
 
@@ -85,66 +85,85 @@ with no network and no master password. Re-run to refresh: `scripts/gen-screensh
 - **Android**: minSdk 26 (Android 8.0), compileSdk/targetSdk 36
 - **Core**: sshj 0.40.0, BouncyCastle 1.80.2, libsodium (ionspin KMP), okio, atomicfu
 - **Serial**: jSerialComm 2.11.0 (desktop), usb-serial-for-android 3.9.0 (Android, jitpack)
-- **Sync**: Ktor 3.4.3 (client+server), Exposed 0.58.0, SQLite/PostgreSQL, HikariCP, Nimbus SRP-6a
+- **Sync**: Ktor 3.4.3 (client+server), Exposed 0.58.0, SQLite/PostgreSQL, HikariCP,
+  Nimbus SRP-6a
 
 ## Repository layout
 
 ```
-shared/       # KMP core: ssh/, sftp/, vault/, sync/, team/, terminal/, ai/ (+ai/local — on-device LLM),
+shared/       # KMP core: ssh/, sftp/, vault/, sync/, team/, terminal/, ai/ (+ai/local),
               # telnet/, serial/, tunnel/, snippet/, host/, files/
-              # commonMain + jvmSharedMain (shared JVM for desktop+Android) + desktopMain + androidMain
 composeApp/   # UI (Compose Multiplatform): commonMain + androidMain + desktopMain
 androidApp/   # Android app (MainActivity, manifest); applicationId app.skerry
 server/       # self-hosted sync server (Ktor, AGPL-3.0)
-docs/         # HTML design prototypes (source of truth for UX) under docs/design/
+sync-wire/    # wire contract shared by client and server
+docs/         # HTML prototypes (source of truth for UX) and design documents
 ```
 
-The prototypes in `docs/design/` (`Skerry Tablet.html`, plus `Skerry Logo.html` for the brand
-mark) open in a browser and are the source of truth for the design — the UI is implemented 1:1.
+HTML prototypes in `docs/design/` (`Skerry Tablet.html`, `Skerry Logo.html`) are the source
+of truth for the UI, built 1:1.
 
-## Build and run
+## Building
 
-Requires **JDK 21**. `foojay-resolver` will fetch a JDK if needed.
-Android requires the Android SDK (`ANDROID_HOME`).
+Requires **JDK 21** (`foojay-resolver` fetches one if needed). Android additionally needs
+the Android SDK (`ANDROID_HOME`).
 
 Desktop:
 
-```
-./gradlew :composeApp:run
-./gradlew :composeApp:packageDistributionForCurrentOS   # .deb / .rpm / .msi / .dmg
+```bash
+./gradlew :composeApp:run                                # run
+./gradlew :composeApp:packageDistributionForCurrentOS    # .deb / .rpm / .msi / .dmg
 ```
 
-ProGuard/minification for the desktop release is configured in `composeApp/build.gradle.kts`.
+ProGuard/minification is intentionally disabled for the desktop release — it broke the crypto
+stack; see the comment in `composeApp/build.gradle.kts`.
 
-Android (requires `ANDROID_HOME`):
+Android:
 
-```
+```bash
 ANDROID_HOME=$HOME/Android/Sdk ./gradlew :androidApp:installDebug
 ```
 
 Tests (JUnit 5):
 
-```
+```bash
 ./gradlew test
 ```
 
-### Sync server
+Releases: pushing a `v*` tag runs the release workflow, which builds `.deb`/`.rpm`/`.msi`,
+a signed `.apk`, and `SHA256SUMS`, and publishes them as a draft GitHub Release.
 
-Self-hosted, SQLite by default:
+## Sync server
 
-```
+Skerry is local-first — the app is fully functional without any server. When you want your
+vault on more than one device, you run your **own** sync server; there is no vendor cloud.
+
+The server is zero-knowledge by design: it stores only ciphertext (the wrapped `dataKey`,
+encrypted vault records) and sync metadata. It authenticates clients with SRP-6a — the
+password itself is never transmitted — and cannot decrypt anything you store.
+
+Quick start (single container, SQLite in a named volume — zero configuration):
+
+```bash
+export SKERRY_JWT_SECRET="$(openssl rand -base64 48)"    # required: server refuses the default
+export SKERRY_ADMIN_TOKEN="$(openssl rand -hex 16)"      # optional: enables the /console dashboard
 docker compose up -d --build
 ```
 
-A server-only build uses `-PserverOnly` (no Android SDK), the `eclipse-temurin:21` image, and a
-`/healthz` healthcheck. Set `SKERRY_JWT_SECRET`. For PostgreSQL, see the `db` service and the
-postgres variables in [docker-compose.yml](docker-compose.yml).
+The server listens on `http://localhost:8080` and ships a built-in, fully offline admin
+console at `/console`. For PostgreSQL, uncomment the `db` service and the postgres variables
+in [docker-compose.yml](docker-compose.yml). A server-only Gradle build needs no Android SDK:
+`./gradlew :server:run -PserverOnly`.
+
+The full deployment guide — configuration reference, API endpoints, TLS termination
+(Caddy/nginx), backups, and the privacy model — lives in
+**[server/README.md](server/README.md)**.
 
 ## Principles
 
 - **Local-first** — everything works without a server.
 - **Zero-knowledge** — the master password never leaves the device.
-- **AI under policy** — model output is treated as untrusted; actions only after confirmation.
+- **AI under policy** — model output is treated as untrusted; actions require confirmation.
 - **Platform parity** — a feature isn't done until it works everywhere.
 
 ## Licenses
