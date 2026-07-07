@@ -175,11 +175,16 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: dist
-          merge-multiple: true
+          path: artifacts
 
-      - name: Generate checksums
-        run: cd dist && sha256sum * > SHA256SUMS.txt
+      - name: Flatten + checksum
+        # skerry-linux keeps deb/ and rpm/ subdirs, so flatten every artifact into one
+        # directory of files (extensions are unique — no name collisions) before hashing
+        # and releasing. `sha256sum *` and `gh release create` both need plain files.
+        run: |
+          mkdir -p dist
+          find artifacts -type f -exec cp {} dist/ \;
+          cd dist && sha256sum * > SHA256SUMS.txt
 
       - name: Create draft release
         env:
