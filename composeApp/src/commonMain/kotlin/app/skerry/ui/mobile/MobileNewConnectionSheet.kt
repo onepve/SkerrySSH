@@ -91,6 +91,7 @@ import app.skerry.ui.generated.resources.conn_title_edit
 import app.skerry.ui.generated.resources.conn_title_new
 import org.jetbrains.compose.resources.stringResource
 import app.skerry.ui.app.AiPolicy
+import app.skerry.ui.ai.shortLabel
 import app.skerry.ui.design.AnchoredDropdown
 import app.skerry.ui.design.D
 import app.skerry.ui.design.HLine
@@ -545,7 +546,7 @@ private fun AiPolicyPills(form: NewConnectionFormState) {
                 contentAlignment = Alignment.Center,
             ) {
                 Txt(
-                    policy.name,
+                    policy.shortLabel(),
                     color = if (on) D.cyanBright else D.dim,
                     size = 11.sp,
                     weight = if (on) FontWeight.SemiBold else FontWeight.Normal,

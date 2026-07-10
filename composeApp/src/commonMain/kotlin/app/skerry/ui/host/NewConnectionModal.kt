@@ -775,9 +775,9 @@ private fun PolicyRow(opt: PolicyOption, selected: Boolean, onClick: () -> Unit)
         Column {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Sym(opt.icon, size = 14.sp, color = D.dim)
-                Txt(opt.title, color = D.text, size = 13.sp, weight = FontWeight.Medium)
+                Txt(stringResource(opt.title), color = D.text, size = 13.sp, weight = FontWeight.Medium)
             }
-            Txt(opt.desc, color = D.dim, size = 11.5.sp, lineHeight = 16.sp, modifier = Modifier.padding(top = 2.dp))
+            Txt(stringResource(opt.desc), color = D.dim, size = 11.5.sp, lineHeight = 16.sp, modifier = Modifier.padding(top = 2.dp))
         }
     }
 }

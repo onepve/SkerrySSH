@@ -1,9 +1,35 @@
 package app.skerry.ui.ai
 
+import androidx.compose.runtime.Composable
 import app.skerry.shared.ai.AiPolicy
+import app.skerry.ui.generated.resources.Res
+import app.skerry.ui.generated.resources.conn_policy_balanced_desc
+import app.skerry.ui.generated.resources.conn_policy_balanced_short
+import app.skerry.ui.generated.resources.conn_policy_balanced_title
+import app.skerry.ui.generated.resources.conn_policy_off_desc
+import app.skerry.ui.generated.resources.conn_policy_off_short
+import app.skerry.ui.generated.resources.conn_policy_off_title
+import app.skerry.ui.generated.resources.conn_policy_permissive_desc
+import app.skerry.ui.generated.resources.conn_policy_permissive_short
+import app.skerry.ui.generated.resources.conn_policy_permissive_title
+import app.skerry.ui.generated.resources.conn_policy_strict_desc
+import app.skerry.ui.generated.resources.conn_policy_strict_short
+import app.skerry.ui.generated.resources.conn_policy_strict_title
+import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.stringResource
 
-/** A per-host AI policy option for pickers (connection form, settings). */
-data class PolicyOption(val policy: AiPolicy, val icon: String, val title: String, val desc: String)
+/**
+ * A per-host AI policy option for pickers (connection form, settings). [title]/[desc]/[shortLabel]
+ * are localized string resources, resolved with `stringResource` at the call site, so pickers follow
+ * the selected UI language ([app.skerry.ui.i18n.UiLanguage]).
+ */
+data class PolicyOption(
+    val policy: AiPolicy,
+    val icon: String,
+    val title: StringResource,
+    val desc: StringResource,
+    val shortLabel: StringResource,
+)
 
 /**
  * Whether an AI provider endpoint uses plain http:// (excluding localhost/127.0.0.1) — the key and
@@ -17,8 +43,15 @@ fun isInsecureAiEndpoint(url: String): Boolean {
 }
 
 val POLICY_OPTIONS = listOf(
-    PolicyOption(AiPolicy.Strict, "shield_lock", "Strict — production safety", "Cloud AI is off for this host; nothing is sent to a provider. (Local AI is planned.)"),
-    PolicyOption(AiPolicy.Balanced, "tune", "Balanced — cloud allowed", "Cloud AI enabled. Secrets are stripped from every prompt before it is sent."),
-    PolicyOption(AiPolicy.Permissive, "science", "Permissive — dev / homelab", "Cloud AI enabled. Prompts are sent as-is, without stripping secrets."),
-    PolicyOption(AiPolicy.Off, "block", "Off — no AI", "Disable AI features for this connection."),
+    PolicyOption(AiPolicy.Strict, "shield_lock", Res.string.conn_policy_strict_title, Res.string.conn_policy_strict_desc, Res.string.conn_policy_strict_short),
+    PolicyOption(AiPolicy.Balanced, "tune", Res.string.conn_policy_balanced_title, Res.string.conn_policy_balanced_desc, Res.string.conn_policy_balanced_short),
+    PolicyOption(AiPolicy.Permissive, "science", Res.string.conn_policy_permissive_title, Res.string.conn_policy_permissive_desc, Res.string.conn_policy_permissive_short),
+    PolicyOption(AiPolicy.Off, "block", Res.string.conn_policy_off_title, Res.string.conn_policy_off_desc, Res.string.conn_policy_off_short),
 )
+
+/** Localized short label for [AiPolicy] (mobile policy pills). */
+@Composable
+fun AiPolicy.shortLabel(): String {
+    val policy = this
+    return stringResource(POLICY_OPTIONS.first { it.policy == policy }.shortLabel)
+}
