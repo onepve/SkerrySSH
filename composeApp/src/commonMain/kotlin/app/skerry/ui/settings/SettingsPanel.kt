@@ -107,7 +107,7 @@ fun SettingsPanel(state: DesktopDesignState) {
                 }
             }
         }
-        // Close button: overlay in the top-right corner of the card (duplicates scrim click/Esc).
+        // Close button: overlay in the top-right corner of the card (the only pointer way to close).
         Box(
             Modifier
                 .align(Alignment.TopEnd)

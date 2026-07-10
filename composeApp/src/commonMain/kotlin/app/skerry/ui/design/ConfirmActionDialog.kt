@@ -27,7 +27,7 @@ import org.jetbrains.compose.resources.stringResource
  * Confirmation dialog for a destructive action (disconnect session, close split panel, delete
  * tunnel): scrim + card, title + message + Cancel/[confirmLabel]. Same visual language as
  * [DesktopDeleteHostDialog]/[DesktopPasswordDialog]; confirm button defaults to [D.sunset].
- * [onDismiss] also fires on click outside the card.
+ * [onDismiss] fires on Cancel or Esc (not on a click outside the card).
  */
 @Composable
 fun ConfirmActionDialog(
