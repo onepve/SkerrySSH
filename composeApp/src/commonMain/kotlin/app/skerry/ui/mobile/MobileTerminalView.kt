@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import app.skerry.shared.ai.AiPolicyDecision
 import app.skerry.shared.ai.CommandRisk
 import app.skerry.shared.host.Host
+import app.skerry.ui.ai.AiNotice
 import app.skerry.ui.ai.TerminalAiController
 import app.skerry.ui.ai.aiBlockedMessage
 import app.skerry.ui.connection.ConnectionController
@@ -200,7 +201,7 @@ fun MobileTerminalScreen(state: MobileDesignState) {
         if (paletteOpen && snippets != null && activeTerminal != null) {
             MobileSnippetRunSheet(
                 manager = snippets,
-                onRun = { entry -> snippets.run(entry.id) { text -> activeTerminal.send(text) }; paletteOpen = false },
+                onRun = { entry -> snippets.run(entry.id) { text -> activeTerminal.sendUserInput(text) }; paletteOpen = false },
                 onDismiss = { paletteOpen = false },
             )
         }
@@ -273,9 +274,12 @@ private fun MobileAiBarInput(controller: TerminalAiController, terminal: Termina
                         }
                     }
                     controller.busy -> Txt(stringResource(Res.string.term_ai_thinking), color = D.dim, size = 13.sp)
-                    controller.blocked != null -> Txt(aiBlockedMessage(controller.blocked!!), color = D.amber, size = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    controller.rejected -> Txt(stringResource(Res.string.term_ai_not_a_command), color = D.amber, size = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    controller.error != null -> Txt(controller.error!!, color = D.sunset, size = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    controller.notice != null -> when (val notice = controller.notice!!) {
+                        is AiNotice.Blocked -> Txt(aiBlockedMessage(notice.reason), color = D.amber, size = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        is AiNotice.Ask -> Txt(notice.question, color = D.amber, size = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        AiNotice.Rejected -> Txt(stringResource(Res.string.term_ai_not_a_command), color = D.amber, size = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        is AiNotice.Error -> Txt(notice.message, color = D.sunset, size = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
                     else -> {
                         if (prompt.isEmpty()) Txt(stringResource(Res.string.term_ai_ask_short), color = D.dim, size = 13.sp)
                         BasicTextField(
@@ -295,11 +299,11 @@ private fun MobileAiBarInput(controller: TerminalAiController, terminal: Termina
                 pending != null -> {
                     MobileAiChip(when { !danger -> stringResource(Res.string.term_ai_run); !armed -> stringResource(Res.string.term_ai_run_anyway); else -> stringResource(Res.string.term_ai_confirm) }, accent) {
                         if (danger && !armed) armed = true
-                        else controller.confirm()?.let { terminal.send(it + "\r") }
+                        else controller.confirm()?.let { terminal.sendUserInput(it + "\r") }
                     }
                     MobileAiChip(stringResource(Res.string.term_ai_dismiss), D.faint) { controller.dismiss() }
                 }
-                controller.blocked != null || controller.error != null || controller.rejected ->
+                controller.notice != null ->
                     MobileAiChip(stringResource(Res.string.term_ai_dismiss), D.faint) { controller.dismiss() }
                 else -> {
                     Txt(controller.policy.name.uppercase(), color = D.faint, size = 10.sp, font = mono)
@@ -445,7 +449,8 @@ private fun MobileTerminalNotice(icon: String, title: String, subtitle: String, 
 
 /**
  * Special-key panel (`#0E1A24`, horizontal scroll) — the core of the mobile SSH UX: esc, tab, ctrl
- * (sticky modifier), /, |, -, ~, arrows. Control sequences go to the PTY via [TerminalScreenState.send].
+ * (sticky modifier), /, |, -, ~, arrows. Control sequences go to the PTY via
+ * [TerminalScreenState.sendUserInput], so a viewport scrolled into history snaps back to the live screen.
  * `ctrl` is armed by a tap (cyan highlight): [ctrlArmed] is lifted to [MobileTerminalScreen], so it
  * applies to both the panel's character keys ([controlByte]) and soft-keyboard input ([applyStickyCtrl]
  * in the IME path). Arrows are encoded per the session's DECCKM mode ([arrowSequence]): CSI normally,
@@ -457,13 +462,13 @@ private fun MobileKeybar(
     ctrlArmed: Boolean,
     onCtrlArmedChange: (Boolean) -> Unit,
 ) {
-    val plain = { seq: String -> terminal.send(seq); onCtrlArmedChange(false) }
+    val plain = { seq: String -> terminal.sendUserInput(seq); onCtrlArmedChange(false) }
     val char = { c: String ->
         if (ctrlArmed && c.length == 1) {
-            terminal.send(controlByte(c[0]))
+            terminal.sendUserInput(controlByte(c[0]))
             onCtrlArmedChange(false)
         } else {
-            terminal.send(c)
+            terminal.sendUserInput(c)
         }
     }
     val arrow = { key: ArrowKey -> plain(arrowSequence(key, terminal.applicationCursorKeys)) }

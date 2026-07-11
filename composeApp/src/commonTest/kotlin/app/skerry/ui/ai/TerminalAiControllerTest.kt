@@ -14,6 +14,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -55,7 +56,7 @@ class TerminalAiControllerTest {
 
         assertFalse(p.built)
         assertNull(c.pending)
-        assertNull(c.blocked)
+        assertNull(c.notice)
     }
 
     @Test
@@ -68,7 +69,7 @@ class TerminalAiControllerTest {
         c.ask("list files")
         advanceUntilIdle()
 
-        assertEquals(app.skerry.shared.ai.AiRoute.Reason.AI_DISABLED, c.blocked)
+        assertEquals(AiNotice.Blocked(app.skerry.shared.ai.AiRoute.Reason.AI_DISABLED), c.notice)
         assertFalse(p.built)
         assertNull(c.pending)
     }
@@ -81,7 +82,7 @@ class TerminalAiControllerTest {
         c.ask("list files")
         advanceUntilIdle()
 
-        assertEquals(app.skerry.shared.ai.AiRoute.Reason.STRICT_NEEDS_DEVICE, c.blocked)
+        assertEquals(AiNotice.Blocked(app.skerry.shared.ai.AiRoute.Reason.STRICT_NEEDS_DEVICE), c.notice)
         assertFalse(p.built)
         assertNull(c.pending)
     }
@@ -94,7 +95,7 @@ class TerminalAiControllerTest {
         c.ask("list files")
         advanceUntilIdle()
 
-        assertEquals(app.skerry.shared.ai.AiRoute.Reason.CLOUD_NOT_CONFIGURED, c.blocked)
+        assertEquals(AiNotice.Blocked(app.skerry.shared.ai.AiRoute.Reason.CLOUD_NOT_CONFIGURED), c.notice)
         assertFalse(p.built)
     }
 
@@ -109,7 +110,7 @@ class TerminalAiControllerTest {
         assertEquals("find /var/log -size +100M", c.pending)
         assertFalse(c.busy)
         assertNull(c.streaming)
-        assertNull(c.blocked)
+        assertNull(c.notice)
     }
 
     @Test
@@ -162,9 +163,9 @@ class TerminalAiControllerTest {
     }
 
     @Test
-    fun `an ASK clarification is rejected, not offered as a runnable command`() = runTest {
-        // The bar only runs commands; a clarification is shown as a fixed "not a command" message
-        // (the UI localizes it), never as the model's own text.
+    fun `an ASK clarification surfaces the model's question, never a runnable command`() = runTest {
+        // ASK is the protocol-level reply the system prompt itself requests for ambiguous tasks:
+        // the question must be shown, or the user can never learn what clarification is needed.
         val p = CapturingProvider(deltas = listOf("ASK: Which directory should I search?"))
         val c = controller(AiPolicy.Balanced, AiSettings(apiKey = "sk-x"), p, this)
 
@@ -172,8 +173,19 @@ class TerminalAiControllerTest {
         advanceUntilIdle()
 
         assertNull(c.pending)
-        assertTrue(c.rejected)
-        assertNull(c.error)
+        assertEquals(AiNotice.Ask("Which directory should I search?"), c.notice)
+    }
+
+    @Test
+    fun `an ASK without a question falls back to the fixed rejected message`() = runTest {
+        val p = CapturingProvider(deltas = listOf("#"))
+        val c = controller(AiPolicy.Balanced, AiSettings(apiKey = "sk-x"), p, this)
+
+        c.ask("find the thing")
+        advanceUntilIdle()
+
+        assertNull(c.pending)
+        assertEquals(AiNotice.Rejected, c.notice)
     }
 
     @Test
@@ -186,7 +198,7 @@ class TerminalAiControllerTest {
         advanceUntilIdle()
 
         assertNull(c.pending)
-        assertTrue(c.rejected)
+        assertEquals(AiNotice.Rejected, c.notice)
     }
 
     @Test
@@ -213,7 +225,7 @@ class TerminalAiControllerTest {
     }
 
     @Test
-    fun `treats a hash-prefixed refusal as rejected not a runnable command`() = runTest {
+    fun `treats a hash-prefixed refusal as a notice not a runnable command`() = runTest {
         val p = CapturingProvider(deltas = listOf("# I cannot do that safely"))
         val c = controller(AiPolicy.Balanced, AiSettings(apiKey = "sk-x"), p, this)
 
@@ -221,7 +233,7 @@ class TerminalAiControllerTest {
         advanceUntilIdle()
 
         assertNull(c.pending)
-        assertTrue(c.rejected)
+        assertEquals(AiNotice.Ask("I cannot do that safely"), c.notice)
     }
 
     @Test
@@ -317,7 +329,7 @@ class TerminalAiControllerTest {
 
         assertTrue(endpoint is app.skerry.shared.ai.AiEndpoint.Device, "Strict must route on-device, got $endpoint")
         assertEquals("uptime", c.pending)
-        assertNull(c.blocked)
+        assertNull(c.notice)
     }
 
     @Test
@@ -353,7 +365,7 @@ class TerminalAiControllerTest {
         c.ask("list files")
         advanceUntilIdle()
 
-        assertEquals(app.skerry.shared.ai.AiRoute.Reason.DEVICE_NOT_READY, c.blocked)
+        assertEquals(AiNotice.Blocked(app.skerry.shared.ai.AiRoute.Reason.DEVICE_NOT_READY), c.notice)
         assertFalse(p.built)
     }
 
@@ -365,7 +377,7 @@ class TerminalAiControllerTest {
         c.ask("list files")
         advanceUntilIdle()
 
-        assertNotNull(c.error)
+        assertIs<AiNotice.Error>(c.notice)
         assertNull(c.pending)
         assertFalse(c.busy)
     }

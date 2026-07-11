@@ -29,13 +29,28 @@ import kotlinx.coroutines.Job
  *   (is inserted into terminal input) only via explicit [confirm]. No auto-run under any policy;
  *   model output (including local) is untrusted.
  * - Policy + settings select the endpoint via [AiRouter]: [AiPolicy.Off] hides the bar;
- *   [AiPolicy.Strict] uses the local model only (absent it → [blocked]); Balanced/Permissive use
+ *   [AiPolicy.Strict] uses the local model only (absent it → [AiNotice.Blocked]); Balanced/Permissive use
  *   the configured provider, differing by prompt secret redaction ([SecretRedactor]).
  * - Model reply parsing/sanitization is in [AiReplyParser].
  *
  * Independent of Vault: settings supplied via [settings] lambda; [localInstalled] reports whether
  * the local model is downloaded on this device.
  */
+/** Non-command outcome shown in the AI bar; at most one at a time (see [TerminalAiController.notice]). */
+sealed interface AiNotice {
+    /** The request was not sent (policy/not configured); typed so the UI localizes it (`aiBlockedMessage`). */
+    data class Blocked(val reason: AiRoute.Reason) : AiNotice
+
+    /** The model asked for clarification; [question] is shown so the user knows what to add. */
+    data class Ask(val question: String) : AiNotice
+
+    /** The reply was prose or nothing usable; the UI shows a fixed localized "not a command" message. */
+    data object Rejected : AiNotice
+
+    /** Provider/transport error text. */
+    data class Error(val message: String) : AiNotice
+}
+
 class TerminalAiController(
     val policy: AiPolicy,
     private val settings: () -> AiSettings,
@@ -68,20 +83,13 @@ class TerminalAiController(
     /** Partial reply while streaming; `null` when not generating. */
     var streaming by mutableStateOf<String?>(null); private set
     var busy by mutableStateOf(false); private set
-    var error by mutableStateOf<String?>(null); private set
 
     /**
-     * The reply was not a runnable command (a clarification, prose, or nothing usable). The bar shows
-     * one fixed, localized "not a command" message — the model's own text is untrusted and often
-     * off-topic, so it is never surfaced. The UI supplies the localized string.
+     * The non-command outcome shown in the bar, at most one at a time; cleared by [dismiss] and by
+     * the next [ask]. A sealed type instead of parallel flags, so a new kind of notice cannot be
+     * left showing alongside another.
      */
-    var rejected by mutableStateOf(false); private set
-
-    /**
-     * Why the request was not sent (policy/not configured); `null` if not blocked. Typed so the UI
-     * localizes it (see `aiBlockedMessage`) instead of the controller hardcoding an English string.
-     */
-    var blocked by mutableStateOf<AiRoute.Reason?>(null); private set
+    var notice by mutableStateOf<AiNotice?>(null); private set
 
     private var job: Job? = null
     // Generation of the active request. cancel()/a new ask() increments it; the finally block resets
@@ -93,9 +101,7 @@ class TerminalAiController(
     fun ask(prompt: String) {
         val text = prompt.trim()
         if (busy || text.isEmpty() || !decision.aiEnabled) return
-        error = null
-        blocked = null
-        rejected = false
+        notice = null
         pending = null
         pendingRisk = null
         pendingInfo = null
@@ -103,7 +109,7 @@ class TerminalAiController(
         val device = LocalModelCatalog.resolve(current.localModelId)
         val route = AiRouter.route(decision, current, device, localInstalled(device))
         if (route !is AiRoute.Use) {
-            blocked = (route as AiRoute.Blocked).reason
+            notice = AiNotice.Blocked((route as AiRoute.Blocked).reason)
             return
         }
         val outbound = if (decision.sanitizeSecrets) SecretRedactor.redact(text) else text
@@ -117,7 +123,7 @@ class TerminalAiController(
             messages = messages,
             onDelta = { streaming = it },
             onComplete = { applyReply(it) },
-            onError = { error = it },
+            onError = { notice = AiNotice.Error(it) },
             onFinally = {
                 if (gen == generation) {
                     streaming = null
@@ -141,16 +147,18 @@ class TerminalAiController(
     }
 
     /**
-     * Dispatch a parsed [AiReplyParser.parse] reply. Only a command is surfaced; anything else — a
-     * clarification, prose, or nothing usable — is a single [rejected] state. We deliberately drop
-     * the model's own text: small local models routinely answer greetings and small talk with
-     * off-topic prose, so a fixed "not a command" message is clearer than echoing that back.
+     * Dispatch a parsed [AiReplyParser.parse] reply. Only a command is surfaced as [pending]. An
+     * ASK is the protocol-level clarification the system prompt itself requests for ambiguous
+     * tasks: its question is shown ([AiNotice.Ask]), or the user could never learn what to add.
+     * Prose and empty replies stay a fixed "not a command" notice — small local models routinely
+     * answer greetings with off-topic prose, and echoing that back is noise.
      */
     private fun applyReply(raw: String) {
         when (val reply = AiReplyParser.parse(raw)) {
             is AiReplyParser.Reply.Command -> setPending(reply.command, reply.info)
-            is AiReplyParser.Reply.Ask, is AiReplyParser.Reply.Prose, AiReplyParser.Reply.NoCommand ->
-                rejected = true
+            is AiReplyParser.Reply.Ask ->
+                notice = reply.text?.let { AiNotice.Ask(it) } ?: AiNotice.Rejected
+            is AiReplyParser.Reply.Prose, AiReplyParser.Reply.NoCommand -> notice = AiNotice.Rejected
         }
     }
 
@@ -165,9 +173,7 @@ class TerminalAiController(
         pending = null
         pendingRisk = null
         pendingInfo = null
-        error = null
-        blocked = null
-        rejected = false
+        notice = null
     }
 
     /** Cancel the active request, if any. */

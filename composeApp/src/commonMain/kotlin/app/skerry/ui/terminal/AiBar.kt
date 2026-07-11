@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.skerry.shared.ai.CommandRisk
+import app.skerry.ui.ai.AiNotice
 import app.skerry.ui.ai.TerminalAiController
 import app.skerry.ui.ai.aiBlockedMessage
 import app.skerry.ui.app.LocalAi
@@ -147,9 +148,12 @@ internal fun AiBarInput(
                         }
                     }
                     controller.busy -> Txt(stringResource(Res.string.term_ai_thinking), color = D.dim, size = 13.sp)
-                    controller.blocked != null -> Txt(aiBlockedMessage(controller.blocked!!), color = D.amber, size = 12.5.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    controller.rejected -> Txt(stringResource(Res.string.term_ai_not_a_command), color = D.amber, size = 12.5.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    controller.error != null -> Txt(controller.error!!, color = D.sunset, size = 12.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    controller.notice != null -> when (val notice = controller.notice!!) {
+                        is AiNotice.Blocked -> Txt(aiBlockedMessage(notice.reason), color = D.amber, size = 12.5.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        is AiNotice.Ask -> Txt(notice.question, color = D.amber, size = 12.5.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        AiNotice.Rejected -> Txt(stringResource(Res.string.term_ai_not_a_command), color = D.amber, size = 12.5.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        is AiNotice.Error -> Txt(notice.message, color = D.sunset, size = 12.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
                     else -> {
                         if (prompt.isEmpty()) Txt(stringResource(Res.string.term_ai_ask_placeholder), color = D.dim, size = 13.sp)
                         BasicTextField(
@@ -173,12 +177,12 @@ internal fun AiBarInput(
                         enabled = terminal != null,
                         onClick = {
                             if (danger && !armed) armed = true
-                            else controller.confirm()?.let { terminal?.send(it + "\r") }
+                            else controller.confirm()?.let { terminal?.sendUserInput(it + "\r") }
                         },
                     )
                     AiActionChip(stringResource(Res.string.term_ai_dismiss), D.faint, onClick = { controller.dismiss() })
                 }
-                controller.blocked != null || controller.error != null || controller.rejected ->
+                controller.notice != null ->
                     AiActionChip(stringResource(Res.string.term_ai_dismiss), D.faint, onClick = { controller.dismiss() })
                 else -> {
                     AiBarTag("verified_user", controller.policy.name.uppercase(), mono)
