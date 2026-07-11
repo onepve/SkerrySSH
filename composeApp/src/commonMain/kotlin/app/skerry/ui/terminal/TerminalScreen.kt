@@ -54,6 +54,7 @@ import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.areAnyPressed
 import androidx.compose.ui.input.pointer.isAltPressed
@@ -62,6 +63,7 @@ import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.isTertiaryPressed
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -204,6 +206,12 @@ fun TerminalScreen(
     // hidden field is a no-op (focus remains after hiding, so the keyboard would not reappear).
     val keyboard = LocalSoftwareKeyboardController.current
     var layoutCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
+
+    // Ctrl+hover over a link shows the hand cursor (VS Code style). hoverPos is the last cell the
+    // pointer was over (null when it left the terminal); linkHover drives the cursor icon and is
+    // recomputed both on pointer move and on Ctrl press/release so the cursor toggles without moving.
+    var hoverPos by remember { mutableStateOf<TerminalPos?>(null) }
+    var linkHover by remember { mutableStateOf(false) }
 
     // Mouse click counting for double (word) / triple (line) selection: tracks time and position of
     // the previous click; a repeat in the same cell within the threshold increments the count.
@@ -399,6 +407,14 @@ fun TerminalScreen(
         return TerminalPos(row, p.col.coerceIn(0, snap[row].size))
     }
 
+    // Is there an openable link (OSC 8 or bare text URL) under this cell? Mirrors the Ctrl+click
+    // resolution so the hand cursor appears exactly where a click would open something.
+    fun linkUnderPos(pos: TerminalPos): Boolean {
+        val row = state.screen.getOrNull(pos.row) ?: return false
+        val uri = row.getOrNull(pos.col)?.hyperlink ?: linkAt(row, pos.col)
+        return uri != null && isSafeLinkUri(uri)
+    }
+
     // Mouse report to the application by pointer coordinates. Pixels come from the same content
     // coordinate system as posAt (after verticalScroll/padding) and are passed separately — encodeMouseReport
     // uses them only in SGR-Pixels (1016); in cell modes they're ignored.
@@ -584,6 +600,18 @@ fun TerminalScreen(
                           drawCellUnderline(LINK_UNDERLINE_STYLE, runStart * cw, top, (k - runStart) * cw, chh, palette, underlineEffects, termTheme)
                       }
                   }
+                  // 5) Plain-text URLs (no OSC 8) — http(s)/ftp printed as bare text (MOTD, curl output)
+                  // are underlined like hyperlinks so Ctrl+click can open them; skip cells already
+                  // carrying an OSC 8 URI (pass 4) or an app underline (pass 3) to avoid a double line.
+                  for (link in rowLinkSpans(row)) {
+                      var k = link.start
+                      while (k < link.endExclusive) {
+                          if (row[k].hyperlink != null || row[k].style.underline) { k++; continue }
+                          val runStart = k
+                          while (k < link.endExclusive && row[k].hyperlink == null && !row[k].style.underline) k++
+                          drawCellUnderline(LINK_UNDERLINE_STYLE, runStart * cw, top, (k - runStart) * cw, chh, palette, underlineEffects, termTheme)
+                      }
+                  }
               }
           }
       }
@@ -603,6 +631,9 @@ fun TerminalScreen(
             // Focus reporting (DEC 1004): vim/tmux get ESC[I/ESC[O on terminal window focus.
             .onFocusChanged { state.notifyFocus(it.isFocused) }
             .onPreviewKeyEvent { event ->
+                // Toggle the link (hand) cursor as Ctrl is pressed/released without moving the mouse.
+                // Runs before the KeyDown guard so a Ctrl KeyUp also clears it. Never consumes the event.
+                hoverPos?.let { linkHover = event.isCtrlPressed && linkUnderPos(it) }
                 if (event.type != KeyEventType.KeyDown || closed) return@onPreviewKeyEvent false
                 // --- Reverse history search (Ctrl-R): while the overlay is open, keys drive it, not the PTY ---
                 if (state.reverseSearchQuery != null) {
@@ -722,6 +753,28 @@ fun TerminalScreen(
                     }
                 }
             }
+            // Link (hand) cursor on Ctrl+hover: track the hovered cell and whether an openable link sits
+            // under it. Independent of mouse-tracking mode — a local UI affordance, nothing is sent to
+            // the app. Ctrl press/release is handled in onPreviewKeyEvent using the tracked hoverPos.
+            .pointerInput(state, closed, metrics) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        when (event.type) {
+                            PointerEventType.Exit -> { hoverPos = null; linkHover = false }
+                            PointerEventType.Move, PointerEventType.Enter -> {
+                                if (event.buttons.areAnyPressed) { linkHover = false; continue }
+                                val change = event.changes.firstOrNull() ?: continue
+                                val pos = posAt(change.position.x, change.position.y)
+                                hoverPos = pos
+                                linkHover = event.keyboardModifiers.isCtrlPressed && linkUnderPos(pos)
+                            }
+                            else -> {}
+                        }
+                    }
+                }
+            }
+            .pointerHoverIcon(if (linkHover) PointerIcon.Hand else PointerIcon.Default)
             // Middle/right mouse buttons: awaitFirstDown (in the gesture below) reacts only to the primary
             // (left) button, so middle/right clicks are caught here on raw events. With active mouse
             // tracking — report press/release to the app; otherwise middle = paste (X11 PRIMARY selection
@@ -827,11 +880,14 @@ fun TerminalScreen(
                         }
                         // Local selection. Click counter: 1 — drag selection, 2 — word, 3 — row.
                         val pos = posAt(down.position.x, down.position.y)
-                        // Ctrl+click on a cell with an OSC 8 hyperlink — open the URI (don't start a selection).
-                        // The URI comes from an untrusted server — open only safe web schemes, blocking
-                        // file:/javascript:/anything else that could harm locally.
+                        // Ctrl+click on a link — open the URI (don't start a selection). An OSC 8
+                        // hyperlink wins; otherwise fall back to a bare http(s)/ftp URL detected in the
+                        // row text. The URI comes from an untrusted server — open only safe web schemes,
+                        // blocking file:/javascript:/anything else that could harm locally.
                         if (mods.isCtrlPressed) {
-                            val uri = state.screen.getOrNull(pos.row)?.getOrNull(pos.col)?.hyperlink
+                            val cellRow = state.screen.getOrNull(pos.row)
+                            val uri = cellRow?.getOrNull(pos.col)?.hyperlink
+                                ?: cellRow?.let { linkAt(it, pos.col) }
                             if (uri != null && isSafeLinkUri(uri)) {
                                 runCatching { uriHandler.openUri(uri) }
                                 down.consume()
