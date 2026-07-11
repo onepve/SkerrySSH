@@ -69,6 +69,22 @@ class PingControllerTest {
     }
 
     @Test
+    fun measurement_landing_after_stop_is_discarded() = runTest {
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        // Single-threaded stand-in for the cross-thread race: on a multi-threaded scope stop() can
+        // run after measure() returned but before the loop stored the value; the stale store would
+        // survive into a restarted cycle.
+        var controller: PingController? = null
+        val c = PingController(measure = { controller!!.stop(); 42L }, scope = scope)
+        controller = c
+
+        c.start()
+        assertNull(c.rttMs)
+
+        scope.cancel()
+    }
+
+    @Test
     fun start_is_idempotent() = runTest {
         val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
         var calls = 0
