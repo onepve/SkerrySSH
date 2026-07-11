@@ -50,11 +50,9 @@ import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -66,6 +64,7 @@ import app.skerry.ui.connection.ConnectionController
 import app.skerry.ui.connection.ConnectionUiState
 import app.skerry.ui.files.FilePaneController
 import app.skerry.ui.files.FilePaneState
+import app.skerry.ui.files.PathJumpField
 import app.skerry.ui.files.TransferCoordinator
 import app.skerry.ui.files.TransferState
 import app.skerry.ui.files.platformLocalBrowser
@@ -690,51 +689,30 @@ private fun PathField(
         )
         return
     }
-    // Prefill with the current path, fully selected so typing replaces it outright.
-    var draft by remember { mutableStateOf(TextFieldValue(pane.path, TextRange(0, pane.path.length))) }
-    val fieldFocus = remember { FocusRequester() }
-    // Close once and restore keyboard focus to the panes (Enter/Esc/blur all route here).
+    // The editor itself (prefill/selection/focus/blur-cancel) is the shared [PathJumpField]; this
+    // wrapper owns the display↔edit toggle and the screen's key-handler standdown protocol.
     val close = {
         editing = false
         onEditingPath(false)
         restoreFocus()
     }
-    LaunchedEffect(Unit) {
-        onEditingPath(true)
-        fieldFocus.requestFocus()
+    LaunchedEffect(Unit) { onEditingPath(true) }
+    PathJumpField(
+        path = pane.path,
+        mono = mono,
+        textSize = 11.5.sp,
+        onCommit = { pane.goToPath(it); close() },
+        onCancel = close,
+        modifier = modifier,
+    ) { inner ->
+        Box(
+            Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .background(D.bg)
+                .border(1.dp, D.lineStrong, RoundedCornerShape(6.dp))
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+        ) { inner() }
     }
-    // Guard against the initial unfocused frame before requestFocus lands, then close on any real blur
-    // (clicking away/switching panes) so a stale editor is never left open.
-    var everFocused by remember { mutableStateOf(false) }
-    BasicTextField(
-        value = draft,
-        onValueChange = { draft = it },
-        singleLine = true,
-        textStyle = TextStyle(color = D.text, fontSize = 11.5.sp, fontFamily = mono),
-        cursorBrush = SolidColor(D.cyan),
-        modifier = modifier
-            .focusRequester(fieldFocus)
-            .onFocusChanged {
-                if (it.isFocused) everFocused = true else if (everFocused) close()
-            }
-            .onPreviewKeyEvent { event ->
-                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                when (event.key) {
-                    Key.Enter, Key.NumPadEnter -> { pane.goToPath(draft.text); close(); true }
-                    Key.Escape -> { close(); true }
-                    else -> false
-                }
-            },
-        decorationBox = { inner ->
-            Box(
-                Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(D.bg)
-                    .border(1.dp, D.lineStrong, RoundedCornerShape(6.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-            ) { inner() }
-        },
-    )
 }
 
 @Composable

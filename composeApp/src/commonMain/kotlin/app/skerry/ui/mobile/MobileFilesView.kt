@@ -18,9 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,18 +30,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,6 +42,7 @@ import app.skerry.ui.connection.ConnectionController
 import app.skerry.ui.connection.ConnectionUiState
 import app.skerry.ui.files.FilePaneController
 import app.skerry.ui.files.FilePaneState
+import app.skerry.ui.files.PathJumpField
 import app.skerry.ui.files.TransferCoordinator
 import app.skerry.ui.files.TransferState
 import app.skerry.ui.files.platformLocalBrowser
@@ -504,13 +493,23 @@ private fun MobileFilesBreadcrumbRow(
     ) {
         Sym("dns", size = 16.sp, color = D.moss)
         if (editing && onGoToPath != null) {
-            MobileBreadcrumbPathField(
+            PathJumpField(
                 path = path,
                 mono = mono,
-                onGo = { onGoToPath(it); editing = false },
+                textSize = 12.sp,
+                onCommit = { onGoToPath(it); editing = false },
                 onCancel = { editing = false },
                 modifier = Modifier.weight(1f),
-            )
+            ) { inner ->
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(D.bg)
+                        .border(1.dp, D.cyan14, RoundedCornerShape(8.dp))
+                        .padding(horizontal = 10.dp, vertical = 7.dp),
+                ) { inner() }
+            }
         } else {
             Txt(
                 mobileFilesBreadcrumb(label, path),
@@ -530,48 +529,6 @@ private fun MobileFilesBreadcrumbRow(
             )
         }
     }
-}
-
-/**
- * Compact path input inside the breadcrumb (type-to-jump). Prefilled with the current [path], fully
- * selected so typing replaces it; IME "Go" commits via [onGo], losing focus (tapping away) calls
- * [onCancel]. A [KeyboardType.Uri] keyboard keeps "/" handy and turns autocorrect off.
- */
-@Composable
-private fun MobileBreadcrumbPathField(
-    path: String,
-    mono: FontFamily,
-    onGo: (String) -> Unit,
-    onCancel: () -> Unit,
-    modifier: Modifier,
-) {
-    var draft by remember { mutableStateOf(TextFieldValue(path, TextRange(0, path.length))) }
-    val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focus.requestFocus() }
-    // Ignore the initial unfocused frame before requestFocus lands, then cancel on any real blur.
-    var everFocused by remember { mutableStateOf(false) }
-    BasicTextField(
-        value = draft,
-        onValueChange = { draft = it },
-        singleLine = true,
-        textStyle = TextStyle(color = D.text, fontSize = 12.sp, fontFamily = mono),
-        cursorBrush = SolidColor(D.cyan),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
-        keyboardActions = KeyboardActions(onGo = { onGo(draft.text) }),
-        modifier = modifier
-            .focusRequester(focus)
-            .onFocusChanged { if (it.isFocused) everFocused = true else if (everFocused) onCancel() },
-        decorationBox = { inner ->
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(D.bg)
-                    .border(1.dp, D.cyan14, RoundedCornerShape(8.dp))
-                    .padding(horizontal = 10.dp, vertical = 7.dp),
-            ) { inner() }
-        },
-    )
 }
 
 /** Round "+" FAB for Files — the shared [MobileFabButton]; when expanded, [open] shows "x" to collapse. */
