@@ -176,4 +176,9 @@
     <string name="settings_about_documentation">Documentation</string>
     <string name="settings_about_licenses">Open-source licenses</string>
     <string name="settings_about_footer">Built on the open seas · © 2026 Skerry</string>
+    <string name="settings_about_check_updates">Check for updates</string>
+    <string name="settings_about_check_updates_desc">Once a day Skerry asks the GitHub Releases API for the latest version. Nothing else is sent.</string>
+    <string name="settings_about_update_available">Version %1$s is available</string>
+    <string name="settings_about_update_open">Open release page</string>
+    <string name="settings_update_status">Update %1$s</string>
 </resources>

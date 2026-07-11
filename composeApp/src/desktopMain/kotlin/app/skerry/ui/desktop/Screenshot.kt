@@ -140,6 +140,9 @@ fun main() {
     }
     val knownHosts = if (live) seededKnownHosts() else null
     val ai = if (live) seededAi() else null
+    // Built once outside the content lambda: recomposition must not recreate the controller
+    // (a fresh instance would restart its async check and the notice would never settle).
+    val updates = if (live) seededUpdates() else null
 
     // Stub window chrome (-Dskerry.screenshot.windowChrome=true): draws the custom window buttons
     // in the titlebar (as in the real undecorated window); drag/minimize/maximize are no-ops offscreen.
@@ -156,7 +159,7 @@ fun main() {
         "unlock" -> { { GateScreenPreview { LockWindowChrome(windowChrome) { DesktopUnlockScreen(error = null, canUseBiometric = true, onUnlock = {}, onBiometric = {}, onForgotPassword = {}) } } } }
         "corrupted" -> { { GateScreenPreview { LockWindowChrome(windowChrome) { DesktopCorruptedScreen(onReset = {}) } } } }
         "reset" -> { { GateScreenPreview { LockWindowChrome(windowChrome) { DesktopResetScreen(onConfirm = {}, onCancel = {}) } } } }
-        else -> { { DesktopDesignApp(state = state, hosts = hosts, sessions = sessions, knownHosts = knownHosts, credentials = credentials, keyGenerator = keyGenerator, certificateInspector = certificateInspector, ai = ai, windowChrome = windowChrome) } }
+        else -> { { DesktopDesignApp(state = state, hosts = hosts, sessions = sessions, knownHosts = knownHosts, credentials = credentials, keyGenerator = keyGenerator, certificateInspector = certificateInspector, ai = ai, updates = updates, windowChrome = windowChrome) } }
     }
 
     val scene = ImageComposeScene(width = 1280, height = 820, density = Density(1f)) {
@@ -189,6 +192,8 @@ private fun renderMobile(out: String, viewName: String, overlay: String, live: B
     // Live AI controller (fake provider) so the More -> AI & privacy screen renders its real form
     // instead of an empty header (without a controller the screen draws only the header).
     val ai = if (live) seededAi() else null
+    // Same hoisting as the desktop path: the controller must survive recomposition.
+    val updates = if (live) seededUpdates() else null
     // Known-hosts manager is seeded only in live mode; otherwise the Known screen uses a built-in mock.
     val knownHosts = if (live) seededKnownHosts() else null
     // Keychain is seeded for the sheet overlay (live) so the auth picker shows saved secrets.
@@ -220,7 +225,7 @@ private fun renderMobile(out: String, viewName: String, overlay: String, live: B
     if (overlay == "sheet") state.openNewConn() // New connection sheet over the current tab
     // Scene width/height are in pixels: 780x1688 at density 2 = logical 390x844dp (phone).
     val scene = ImageComposeScene(width = 780, height = 1688, density = Density(2f)) {
-        SkerryTheme { MobileDesignApp(deps = deps, state = state, sessions = sessions, aiOverride = ai) }
+        SkerryTheme { MobileDesignApp(deps = deps, state = state, sessions = sessions, aiOverride = ai, updatesOverride = updates) }
     }
     var img = scene.render(0)
     for (i in 1..80) {
@@ -404,6 +409,32 @@ private fun seededKnownHosts(): KnownHostsController {
  * quick-chat seeded with one exchange. Provider is set via `-Dskerry.screenshot.aiProvider`
  * (CLOUD/DEVICE/OFF, default CLOUD); OFF renders the "AI disabled" state.
  */
+/**
+ * Live update-notice controller for offscreen renders: the "check for updates" toggle is on, and
+ * `-Dskerry.screenshot.updateAvailable=true` makes the canned newer release visible (status-bar
+ * item, About notice, More-row subtitle); without the flag the check finds nothing.
+ */
+private fun seededUpdates(): app.skerry.ui.update.UpdateNoticeController {
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val available = System.getProperty("skerry.screenshot.updateAvailable", "false").toBoolean()
+    var settings = app.skerry.shared.update.UpdateSettings()
+    val controller = app.skerry.ui.update.UpdateNoticeController(
+        initialSettings = settings,
+        persist = { settings = it },
+        check = {
+            if (available) {
+                app.skerry.shared.update.AvailableUpdate("0.2.0", "https://github.com/SeCherkasov/SkerrySSH/releases/tag/v0.2.0")
+            } else {
+                null
+            }
+        },
+        scope = scope,
+        reload = { settings },
+    )
+    controller.refresh()
+    return controller
+}
+
 private fun seededAi(): app.skerry.ui.ai.AiAssistantController {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val kind = runCatching {

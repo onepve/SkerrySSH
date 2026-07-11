@@ -49,6 +49,7 @@ import app.skerry.ui.generated.resources.appearance_line_height
 import app.skerry.ui.generated.resources.appearance_section_interface
 import app.skerry.ui.generated.resources.appearance_section_terminal
 import app.skerry.ui.generated.resources.appearance_title
+import app.skerry.ui.generated.resources.more_about
 import app.skerry.ui.generated.resources.more_ai_privacy
 import app.skerry.ui.generated.resources.more_ai_subtitle_byok
 import app.skerry.ui.generated.resources.more_ai_subtitle_off
@@ -94,6 +95,7 @@ import app.skerry.ui.generated.resources.settings_security_master_password
 import app.skerry.ui.generated.resources.settings_security_no_events
 import app.skerry.ui.generated.resources.settings_security_subtitle
 import app.skerry.ui.generated.resources.settings_security_title
+import app.skerry.ui.generated.resources.settings_update_status
 import app.skerry.ui.generated.resources.settings_security_touch_id
 import app.skerry.ui.generated.resources.settings_security_touch_id_desc
 import kotlin.math.roundToInt
@@ -105,7 +107,9 @@ import app.skerry.ui.design.AnchoredDropdown
 import app.skerry.ui.design.Badge
 import app.skerry.ui.settings.ChangeMasterPasswordDialog
 import app.skerry.ui.design.D
+import app.skerry.ui.app.AppVersion
 import app.skerry.ui.app.LocalAi
+import app.skerry.ui.app.LocalUpdates
 import app.skerry.ui.design.LocalFonts
 import app.skerry.ui.app.LocalKnownHosts
 import app.skerry.ui.app.LocalSecurityLog
@@ -167,6 +171,15 @@ fun MobileMoreScreen(state: MobileDesignState, onLock: (() -> Unit)?) {
             // "Security" section: master password, biometrics, auto-lock, event log. Live path is
             // behind the gate (vault present); in preview the row is inert (nothing to configure without a vault).
             MoreRow("shield_lock", D.cyanBright, stringResource(Res.string.settings_security_title), null, D.dim, onClick = if (preview) null else { -> state.push(MobileRoute.Security) })
+            // About: subtitle is the current version, or an amber "Update x.y.z" when a newer
+            // release is known (the passive mobile counterpart of the desktop status-bar notice).
+            val updateVersion = LocalUpdates.current?.available?.versionLabel
+            MoreRow(
+                "info", D.cyanBright, stringResource(Res.string.more_about),
+                updateVersion?.let { stringResource(Res.string.settings_update_status, it) } ?: AppVersion.VERSION,
+                if (updateVersion != null) D.amber else D.dim,
+                onClick = { state.push(MobileRoute.About) },
+            )
             MoreRow("lock", D.sunset, stringResource(Res.string.more_lock), null, D.dim, labelColor = D.sunset, divider = false, onClick = onLock)
         }
         Spacer(Modifier.height(96.dp))

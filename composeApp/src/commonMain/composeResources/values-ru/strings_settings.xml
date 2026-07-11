@@ -176,4 +176,9 @@
     <string name="settings_about_documentation">Документация</string>
     <string name="settings_about_licenses">Лицензии открытого ПО</string>
     <string name="settings_about_footer">Построено на открытых морях · © 2026 Skerry</string>
+    <string name="settings_about_check_updates">Проверять обновления</string>
+    <string name="settings_about_check_updates_desc">Раз в день Skerry запрашивает у GitHub Releases API номер последней версии. Больше ничего не отправляется.</string>
+    <string name="settings_about_update_available">Доступна версия %1$s</string>
+    <string name="settings_about_update_open">Открыть страницу релиза</string>
+    <string name="settings_update_status">Обновление %1$s</string>
 </resources>

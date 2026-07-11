@@ -155,6 +155,7 @@ import app.skerry.ui.app.LocalSync
 import app.skerry.ui.app.LocalTeams
 import app.skerry.ui.app.LocalTestTransport
 import app.skerry.ui.app.LocalTunnels
+import app.skerry.ui.app.LocalUpdates
 import app.skerry.ui.app.LocalVault
 import app.skerry.ui.app.LocalVaultBiometrics
 import app.skerry.ui.vault.LockScreen
@@ -283,6 +284,9 @@ fun DesktopDesignApp(
     // AI assistant controller (BYOK, external OpenAI-compatible provider). `null` — AI not connected: the
     // "AI" settings tab draws a static mock. Supplied behind the vault gate (the key is stored in the vault).
     ai: app.skerry.ui.ai.AiAssistantController? = null,
+    // Update notice (GitHub Releases check + the About toggle). `null` — mock/preview: no notice,
+    // the About section hides the toggle.
+    updates: app.skerry.ui.update.UpdateNoticeController? = null,
     features: FeatureFlags = FeatureFlags(),
     // Called once after vault unlock, before list reload — a hook for data migration (collapsing the
     // two-level model → a host references a keychain secret). No-op in mock/preview.
@@ -404,6 +408,7 @@ fun DesktopDesignApp(
         LocalSync provides sync,
         LocalTeams provides teams,
         LocalAi provides ai,
+        LocalUpdates provides updates,
     ) {
         if (vault != null) {
             VaultGate(
@@ -1121,6 +1126,8 @@ private fun StatusBar() {
             StatusItem("arrow_downward", if (live) (downRate?.let { humanRate(it) } ?: "—") else "8.4 KB/s", mono = mono)
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            // Update notice (undismissed newer release): click opens the GitHub release page.
+            app.skerry.ui.update.UpdateStatusItem()
             // Server version — live ident of the active session (before connect / if the transport is silent — "—").
             StatusItem("memory", if (live) (sessions.active?.controller?.serverVersion ?: "—") else "SSH-2.0-OpenSSH_8.9p1", mono = mono)
             Txt(stringResource(Res.string.shell_status_encoding), color = D.faint, size = 10.5.sp, font = mono)

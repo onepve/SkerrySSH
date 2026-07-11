@@ -138,6 +138,7 @@ private class DesktopGraph(
     val probeTransport: SshTransport,
     val workspaceLayout: WorkspaceLayoutStore,
     val ai: AiAssistantController,
+    val updates: app.skerry.ui.update.UpdateNoticeController,
     val onVaultUnlocked: () -> Unit,
     val onVaultReset: (ResetScope) -> Unit,
 )
@@ -281,6 +282,9 @@ private fun buildDesktopGraph(dir: Path, prefs: FilePrefs): DesktopGraph {
         localInstalled = localAi::installed,
         models = localAi.modelsController(tunnelScope),
     )
+    // Update notice: the "check for updates" toggle is a synced SETTINGS record in the vault; the
+    // daily GitHub Releases check starts only after unlock (updates.refresh() in reloadManagers).
+    val updates = app.skerry.ui.update.updateNoticeController(vault, tunnelScope)
     // Secret migration into the vault (IDENTITY -> CREDENTIAL, host -> direct credentialId) on
     // unlock is idempotent. Afterward, managers are reloaded and the sync session is silently
     // restored. There is no more migration of the old local workspace (hosts/snippets/tunnels.json):
@@ -295,6 +299,9 @@ private fun buildDesktopGraph(dir: Path, prefs: FilePrefs): DesktopGraph {
         // an edit that arrives via live sync from another device (onSynced calls reloadManagers)
         // reflects in the UI immediately instead of only after a re-login.
         ai.refresh()
+        // Same story for the update-check toggle (also a synced SETTINGS record); refresh() only
+        // reconciles the loop, it does not re-run the check on every synced change.
+        updates.refresh()
     }
     val onVaultUnlocked: () -> Unit = {
         // Migration is idempotent and safely retried on the next unlock, but a failure shouldn't
@@ -358,6 +365,7 @@ private fun buildDesktopGraph(dir: Path, prefs: FilePrefs): DesktopGraph {
         probeTransport = probeTransport,
         workspaceLayout = workspaceLayout,
         ai = ai,
+        updates = updates,
         onVaultUnlocked = onVaultUnlocked,
         onVaultReset = onVaultReset,
     )
@@ -458,6 +466,7 @@ fun main() {
                     sync = deps.sync,
                     teams = deps.teams,
                     ai = graph.ai,
+                    updates = graph.updates,
                     onVaultUnlocked = graph.onVaultUnlocked,
                     onVaultReset = graph.onVaultReset,
                     windowChrome = windowChrome,

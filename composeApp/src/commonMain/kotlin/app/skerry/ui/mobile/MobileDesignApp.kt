@@ -66,6 +66,7 @@ import app.skerry.ui.app.LocalSshKeyGenerator
 import app.skerry.ui.app.LocalSync
 import app.skerry.ui.app.LocalTeams
 import app.skerry.ui.app.LocalTunnels
+import app.skerry.ui.app.LocalUpdates
 import app.skerry.ui.app.LocalVault
 import app.skerry.ui.app.LocalVaultBiometrics
 import app.skerry.ui.app.MobileBackAction
@@ -95,6 +96,9 @@ fun MobileDesignApp(
     // AI controller supplied externally (offscreen render of the AI screen with a fake provider);
     // null builds it from deps.vault below, as usual.
     aiOverride: AiAssistantController? = null,
+    // Update-notice controller override for offscreen renders (like [aiOverride]); null builds one
+    // from the vault when present.
+    updatesOverride: app.skerry.ui.update.UpdateNoticeController? = null,
     // Data migration hook on vault unlock (parity with desktop `main`/`DesktopDesignApp`).
     // No-op in preview/offscreen; the Android entry point wires up VaultMigration when it lands.
     onVaultUnlocked: () -> Unit = {},
@@ -149,6 +153,15 @@ fun MobileDesignApp(
         }
     }
     val ai = aiOverride ?: builtAi
+    // Update notice, parity with desktop `main`: the toggle is a synced SETTINGS record in the
+    // vault; the daily GitHub Releases check starts only after unlock (refresh() in MobileChrome).
+    val builtUpdates = remember(deps.vault, scope) {
+        deps.vault?.let { app.skerry.ui.update.updateNoticeController(it, scope) }
+    }
+    // If the keys ever change, remember drops the old controller silently — stop its check loop
+    // instead of leaving it running on the still-alive scope.
+    DisposableEffect(builtUpdates) { onDispose { builtUpdates?.stop() } }
+    val updates = updatesOverride ?: builtUpdates
     // AI settings live as a SETTINGS record in the (synced) vault. The controller must be reloaded
     // when sync pulls records from the server, otherwise a BYOK key configured on another device
     // won't show up in the mobile UI without a re-login. Vault unlock is handled SEPARATELY, in
@@ -157,7 +170,12 @@ fun MobileDesignApp(
     // once and never changes, so the effect would fire exactly once at locked startup and reset to defaults.
     val syncStatus = deps.sync?.status?.collectAsState()?.value
     LaunchedEffect(syncStatus) {
-        if (syncStatus is SyncStatus.Online && syncStatus.lastPulled > 0) ai?.refresh()
+        if (syncStatus is SyncStatus.Online && syncStatus.lastPulled > 0) {
+            ai?.refresh()
+            // The update-check toggle is also a synced SETTINGS record; refresh() only reconciles
+            // the loop, it does not re-run the check on every pull.
+            updates?.refresh()
+        }
     }
     // Terminal AI response language follows the UI language (see DesktopDesignApp): the provider
     // reads the applied locale tag and resets when the language changes.
@@ -177,6 +195,8 @@ fun MobileDesignApp(
         LocalFeatures provides features,
         // AI assistant (BYOK): More→AI settings tab, per-host policies, terminal AI bar.
         LocalAi provides ai,
+        // Update notice: More → About push screen (toggle + release link).
+        LocalUpdates provides updates,
         // SSH key inspector/generator + certificate inspector — Vault tab: fingerprints, generation, cert parsing.
         LocalSshKeyGenerator provides deps.keyGenerator,
         LocalSshCertificateInspector provides deps.certificateInspector,
@@ -217,9 +237,9 @@ fun MobileDesignApp(
                     // Connecting here accepts the account's dataKey, so biometrics wraps the final key.
                     offerSyncForm = deps.sync?.let { s -> { onDone -> SyncOnboardingScreen(s, onDone) } },
                     offerBiometricForm = { inFlight, onEnable, onSkip -> MobileBiometricOfferScreen(inFlight, onEnable, onSkip) },
-                ) { onLock -> MobileChrome(state, onLock, liveSessions, deps.credentials, onVaultUnlocked, ai) }
+                ) { onLock -> MobileChrome(state, onLock, liveSessions, deps.credentials, onVaultUnlocked, ai, updates) }
             } else {
-                MobileChrome(state, onLock = null, sessions = liveSessions, credentials = deps.credentials, onVaultUnlocked = onVaultUnlocked, ai = ai)
+                MobileChrome(state, onLock = null, sessions = liveSessions, credentials = deps.credentials, onVaultUnlocked = onVaultUnlocked, ai = ai, updates = updates)
             }
         }
     }
@@ -238,6 +258,7 @@ private fun MobileChrome(
     credentials: CredentialManagerController?,
     onVaultUnlocked: () -> Unit,
     ai: AiAssistantController?,
+    updates: app.skerry.ui.update.UpdateNoticeController?,
 ) {
     // Keychain secrets live in the open vault — behind the master password gate, first run the data
     // migration ([onVaultUnlocked]), then reload. [MobileChrome] composes only behind the gate and
@@ -248,6 +269,9 @@ private fun MobileChrome(
         onVaultUnlocked()
         credentials?.reload()
         ai?.refresh()
+        // Reload the update-check toggle from the now-open vault and start the daily check loop
+        // (no network happens before this point).
+        updates?.refresh()
     }
 
     // Host with no bound secret → ask for a password via a sheet before connecting. Along with the
@@ -412,6 +436,7 @@ private fun MobileRoutePane(state: MobileDesignState, route: MobileRoute) {
         MobileRoute.Sync -> MobileSyncScreen(state)
         MobileRoute.Ai -> MobileAiScreen(state)
         MobileRoute.Security -> MobileSecurityScreen(state)
+        MobileRoute.About -> MobileAboutScreen(state)
     }
 }
 

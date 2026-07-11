@@ -18,6 +18,7 @@ import app.skerry.ui.session.SessionsController
 import app.skerry.ui.snippet.SnippetManager
 import app.skerry.ui.sync.SyncCoordinator
 import app.skerry.ui.tunnel.TunnelManager
+import app.skerry.ui.update.UpdateNoticeController
 
 /**
  * Feature flags for the design layer. Supplied via [DesktopDesignApp] and available to any
@@ -191,3 +192,10 @@ val LocalTeams: ProvidableCompositionLocal<app.skerry.ui.teams.TeamsCoordinator?
  * vault).
  */
 val LocalAi: ProvidableCompositionLocal<AiAssistantController?> = staticCompositionLocalOf { null }
+
+/**
+ * Update-notice controller (GitHub Releases check + the "check for updates" toggle). `null` — mock
+ * path/preview: the About section hides the toggle and no notice is shown. Supplied behind the
+ * vault gate (the toggle is a synced SETTINGS record in the vault).
+ */
+val LocalUpdates: ProvidableCompositionLocal<UpdateNoticeController?> = staticCompositionLocalOf { null }
