@@ -11,8 +11,12 @@ command: skerry
 
 finish-args:
   - --share=network            # SSH/SFTP/telnet/serial-over-IP, self-hosted sync, AI providers
-  - --socket=wayland
-  - --socket=fallback-x11
+  - --socket=x11               # Compose Desktop renders through AWT/Skiko, which is X11-only (no
+                               # native Wayland toolkit in OpenJDK yet) — so it runs via XWayland on
+                               # Wayland sessions, exactly like the deb/AppImage builds. Must be an
+                               # unconditional x11 grant: fallback-x11 self-disables under Wayland and
+                               # leaves the JVM headless.
+  - --share=ipc               # MIT-SHM for AWT/X11 — without it the renderer crashes natively
   - --device=dri               # GPU for Skia/Compose rendering
   - --filesystem=host          # SFTP transfers to/from anywhere + importing SSH keys/configs (an SSH
                                # client is expected to reach the whole filesystem, not just ~)
