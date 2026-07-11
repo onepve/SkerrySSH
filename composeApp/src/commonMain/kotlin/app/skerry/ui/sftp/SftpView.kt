@@ -59,6 +59,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import app.skerry.shared.files.FileItem
 import app.skerry.shared.files.FileItemType
 import app.skerry.ui.connection.ConnectionController
@@ -1194,7 +1195,9 @@ private fun SftpDialogFrame(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Dialog(onDismissRequest = onDismiss) {
+    // App-wide dismiss policy (see [app.skerry.ui.design.ModalScrim]): a stray click outside must
+    // not discard a half-typed name — only Esc/Back or an explicit control closes a dialog.
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(dismissOnClickOutside = false)) {
         Column(
             Modifier
                 .width(340.dp)
