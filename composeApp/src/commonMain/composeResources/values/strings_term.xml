@@ -30,10 +30,13 @@
     <string name="term_info_address">Address</string>
     <string name="term_info_user">User</string>
     <string name="term_info_auth">Auth</string>
+    <string name="term_info_jump">Jump host</string>
     <string name="term_info_cipher">Cipher</string>
     <string name="term_info_uptime">Uptime</string>
-    <string name="term_auth_identity">identity</string>
+    <string name="term_auth_identity">key</string>
     <string name="term_auth_password">password</string>
+    <string name="term_auth_certificate">certificate</string>
+    <string name="term_auth_ask">ask on connect</string>
     <string name="term_live_metrics">LIVE METRICS</string>
     <string name="term_metric_cpu">CPU</string>
     <string name="term_metric_memory">Memory</string>

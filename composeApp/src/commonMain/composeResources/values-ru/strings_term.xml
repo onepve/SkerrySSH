@@ -30,10 +30,13 @@
     <string name="term_info_address">Адрес</string>
     <string name="term_info_user">Пользователь</string>
     <string name="term_info_auth">Аутентификация</string>
+    <string name="term_info_jump">Прыжковый хост</string>
     <string name="term_info_cipher">Шифр</string>
     <string name="term_info_uptime">Аптайм</string>
     <string name="term_auth_identity">ключ</string>
     <string name="term_auth_password">пароль</string>
+    <string name="term_auth_certificate">сертификат</string>
+    <string name="term_auth_ask">запрос при подключении</string>
     <string name="term_live_metrics">ЖИВЫЕ МЕТРИКИ</string>
     <string name="term_metric_cpu">CPU</string>
     <string name="term_metric_memory">Память</string>

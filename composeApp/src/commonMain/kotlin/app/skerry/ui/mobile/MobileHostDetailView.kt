@@ -33,8 +33,10 @@ import app.skerry.ui.generated.resources.shtail_host_address
 import app.skerry.ui.generated.resources.shtail_host_ask_on_connect
 import app.skerry.ui.generated.resources.shtail_host_auth
 import app.skerry.ui.generated.resources.shtail_host_group
+import app.skerry.ui.generated.resources.shtail_host_jump
 import app.skerry.ui.generated.resources.shtail_host_port
 import app.skerry.ui.generated.resources.shtail_host_saved_credential
+import app.skerry.ui.connection.jumpRouteLabel
 import app.skerry.ui.host.ungroupedLabel
 import app.skerry.ui.generated.resources.shell_host
 import app.skerry.ui.generated.resources.shell_host_not_found
@@ -66,12 +68,13 @@ private val DetailCoralBorder = Color(0x40E07A5F)
 data class HostDetailRow(val label: String, val value: String, val mono: Boolean)
 
 /**
- * Reduces a [Host] profile to Details card rows: Address, Port, Auth, Group. Auth reflects whether
- * a keychain secret is bound (`Saved credential` / `Ask on connect`); Group falls back to
- * "Ungrouped". AI policy and online status are not in the model.
+ * Reduces a [Host] profile to Details card rows: Address, Port, Auth, jump route (only when the
+ * profile has one — [jumpRouteLabel] over [findHost]), Group. Auth reflects whether a keychain
+ * secret is bound (`Saved credential` / `Ask on connect`); Group falls back to "Ungrouped". AI
+ * policy and online status are not in the model.
  */
 @Composable
-fun mobileHostDetailRows(host: Host): List<HostDetailRow> = listOf(
+fun mobileHostDetailRows(host: Host, findHost: (String) -> Host? = { null }): List<HostDetailRow> = listOfNotNull(
     HostDetailRow(stringResource(Res.string.shtail_host_address), host.address, mono = true),
     HostDetailRow(stringResource(Res.string.shtail_host_port), host.port.toString(), mono = true),
     HostDetailRow(
@@ -79,6 +82,7 @@ fun mobileHostDetailRows(host: Host): List<HostDetailRow> = listOf(
         if (host.credentialId != null) stringResource(Res.string.shtail_host_saved_credential) else stringResource(Res.string.shtail_host_ask_on_connect),
         mono = false,
     ),
+    jumpRouteLabel(host, findHost)?.let { HostDetailRow(stringResource(Res.string.shtail_host_jump), it, mono = false) },
     HostDetailRow(stringResource(Res.string.shtail_host_group), host.group?.takeIf { it.isNotBlank() } ?: ungroupedLabel(), mono = false),
 )
 
@@ -174,7 +178,7 @@ fun MobileHostDetailScreen(state: MobileDesignState) {
                 .background(D.card)
                 .border(1.dp, D.cyan.copy(alpha = 0.07f), RoundedCornerShape(13.dp)),
         ) {
-            val rows = mobileHostDetailRows(host)
+            val rows = mobileHostDetailRows(host) { jumpId -> controller?.find(jumpId) }
             rows.forEachIndexed { i, row ->
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),

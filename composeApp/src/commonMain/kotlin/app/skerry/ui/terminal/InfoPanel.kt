@@ -19,9 +19,12 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.skerry.shared.vault.CredentialSecret
+import app.skerry.ui.app.LocalCredentials
 import app.skerry.ui.app.LocalHosts
 import app.skerry.ui.app.LocalSessions
 import app.skerry.ui.connection.ConnectionUiState
+import app.skerry.ui.connection.jumpRouteLabel
 import app.skerry.ui.connection.shortCipher
 import app.skerry.ui.design.D
 import app.skerry.ui.design.Dot
@@ -30,6 +33,8 @@ import app.skerry.ui.design.LocalFonts
 import app.skerry.ui.design.MeterBar
 import app.skerry.ui.design.Txt
 import app.skerry.ui.generated.resources.Res
+import app.skerry.ui.generated.resources.term_auth_ask
+import app.skerry.ui.generated.resources.term_auth_certificate
 import app.skerry.ui.generated.resources.term_auth_identity
 import app.skerry.ui.generated.resources.term_auth_password
 import app.skerry.ui.generated.resources.term_info_address
@@ -37,6 +42,7 @@ import app.skerry.ui.generated.resources.term_info_auth
 import app.skerry.ui.generated.resources.term_info_cipher
 import app.skerry.ui.generated.resources.term_info_connection
 import app.skerry.ui.generated.resources.term_info_host
+import app.skerry.ui.generated.resources.term_info_jump
 import app.skerry.ui.generated.resources.term_info_live
 import app.skerry.ui.generated.resources.term_info_system
 import app.skerry.ui.generated.resources.term_info_uptime
@@ -59,6 +65,7 @@ internal fun InfoPanel() {
     // Live context of the active session (if any): host profile from the catalog + connection state.
     val sessions = LocalSessions.current
     val hosts = LocalHosts.current
+    val credentials = LocalCredentials.current
     val active = sessions?.active
     val host = active?.hostId?.let { id -> hosts?.find(id) }
     val live = sessions != null
@@ -88,12 +95,28 @@ internal fun InfoPanel() {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
             // Host/Address/User come from the active session's live profile; cipher from the transport,
             // uptime from live metrics ("…" until the first poll); mock mode uses static values.
-            val authIdentity = stringResource(Res.string.term_auth_identity)
-            val authPassword = stringResource(Res.string.term_auth_password)
             InfoRow(stringResource(Res.string.term_info_host), if (live) (host?.label ?: active?.title ?: "—") else "prod-web-01", mono)
             InfoRow(stringResource(Res.string.term_info_address), if (live) (host?.let { "${it.address}:${it.port}" } ?: "—") else "192.168.1.45:22", mono)
             InfoRow(stringResource(Res.string.term_info_user), if (live) (host?.username ?: "—") else "root", mono)
-            InfoRow(stringResource(Res.string.term_info_auth), if (live) (host?.identityId?.let { authIdentity } ?: authPassword) else "id_ed25519", mono)
+            // ProxyJump route (entry hop first) — only when the profile actually routes through
+            // one, so a direct connection's panel stays as in the prototype.
+            val jumpRoute = if (live) host?.let { h -> jumpRouteLabel(h) { id -> hosts?.find(id) } } else null
+            if (jumpRoute != null) InfoRow(stringResource(Res.string.term_info_jump), jumpRoute, mono)
+            // Auth = the actual kind of the bound keychain secret (password/key/certificate), or
+            // "ask on connect" for a profile with no binding. (host.identityId is the legacy
+            // pre-migration pointer — never written by current code, so it can't drive this row.)
+            // No active session ⇒ "—" like the other rows, not "ask on connect".
+            val authValue = when {
+                !live -> "id_ed25519"
+                host == null -> "—"
+                else -> when (host.credentialId?.let { id -> credentials?.find(id) }?.secret) {
+                    is CredentialSecret.Password -> stringResource(Res.string.term_auth_password)
+                    is CredentialSecret.PrivateKey -> stringResource(Res.string.term_auth_identity)
+                    is CredentialSecret.Certificate -> stringResource(Res.string.term_auth_certificate)
+                    null -> stringResource(Res.string.term_auth_ask)
+                }
+            }
+            InfoRow(stringResource(Res.string.term_info_auth), authValue, mono)
             InfoRow(stringResource(Res.string.term_info_cipher), if (live) (shortCipher(active?.controller?.cipher) ?: "…") else "aes256-gcm", mono)
             InfoRow(stringResource(Res.string.term_info_uptime), if (live) (liveMetrics?.uptimeSeconds?.let { formatUptime(it) } ?: "…") else "04:12:45", mono)
         }
