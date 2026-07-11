@@ -165,4 +165,6 @@ tasks.register<JavaExec>("screenshotDesign") {
     providers.systemProperty("skerry.screenshot.settingsTab").orNull?.let { systemProperty("skerry.screenshot.settingsTab", it) }
     providers.systemProperty("skerry.screenshot.termTheme").orNull?.let { systemProperty("skerry.screenshot.termTheme", it) }
     providers.systemProperty("skerry.screenshot.aiProvider").orNull?.let { systemProperty("skerry.screenshot.aiProvider", it) }
+    // Stub window chrome: draws the custom window buttons of the undecorated window in the titlebar.
+    systemProperty("skerry.screenshot.windowChrome", providers.systemProperty("skerry.screenshot.windowChrome").getOrElse("false"))
 }

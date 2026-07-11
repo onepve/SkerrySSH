@@ -141,12 +141,22 @@ fun main() {
     val knownHosts = if (live) seededKnownHosts() else null
     val ai = if (live) seededAi() else null
 
+    // Stub window chrome (-Dskerry.screenshot.windowChrome=true): draws the custom window buttons
+    // in the titlebar (as in the real undecorated window); drag/minimize/maximize are no-ops offscreen.
+    val windowChrome = if (System.getProperty("skerry.screenshot.windowChrome", "false").toBoolean()) {
+        WindowChrome(
+            isMaximized = { false },
+            onMinimize = {}, onToggleMaximize = {}, onClose = {},
+            dragArea = { content -> content() },
+        )
+    } else null
+
     val content: @Composable () -> Unit = when (overlay) {
-        "create" -> { { GateScreenPreview { DesktopCreateScreen(error = null, onCreate = { _, _ -> }) } } }
-        "unlock" -> { { GateScreenPreview { DesktopUnlockScreen(error = null, canUseBiometric = true, onUnlock = {}, onBiometric = {}, onForgotPassword = {}) } } }
-        "corrupted" -> { { GateScreenPreview { DesktopCorruptedScreen(onReset = {}) } } }
-        "reset" -> { { GateScreenPreview { DesktopResetScreen(onConfirm = {}, onCancel = {}) } } }
-        else -> { { DesktopDesignApp(state = state, hosts = hosts, sessions = sessions, knownHosts = knownHosts, credentials = credentials, keyGenerator = keyGenerator, certificateInspector = certificateInspector, ai = ai) } }
+        "create" -> { { GateScreenPreview { LockWindowChrome(windowChrome) { DesktopCreateScreen(error = null, onCreate = { _, _ -> }) } } } }
+        "unlock" -> { { GateScreenPreview { LockWindowChrome(windowChrome) { DesktopUnlockScreen(error = null, canUseBiometric = true, onUnlock = {}, onBiometric = {}, onForgotPassword = {}) } } } }
+        "corrupted" -> { { GateScreenPreview { LockWindowChrome(windowChrome) { DesktopCorruptedScreen(onReset = {}) } } } }
+        "reset" -> { { GateScreenPreview { LockWindowChrome(windowChrome) { DesktopResetScreen(onConfirm = {}, onCancel = {}) } } } }
+        else -> { { DesktopDesignApp(state = state, hosts = hosts, sessions = sessions, knownHosts = knownHosts, credentials = credentials, keyGenerator = keyGenerator, certificateInspector = certificateInspector, ai = ai, windowChrome = windowChrome) } }
     }
 
     val scene = ImageComposeScene(width = 1280, height = 820, density = Density(1f)) {

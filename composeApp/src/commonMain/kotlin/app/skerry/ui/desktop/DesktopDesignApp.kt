@@ -293,6 +293,9 @@ fun DesktopDesignApp(
     // External cleanup on vault reset (hosts/known_hosts/settings per [ResetScope]). Called after the
     // vault file is erased; the real implementation is supplied by desktop `main`. No-op in mock/preview.
     onVaultReset: (ResetScope) -> Unit = {},
+    // Custom chrome of the undecorated desktop window (drag + minimize/maximize/close). `null` —
+    // a decorated window (offscreen render/preview): no window buttons are drawn.
+    windowChrome: WindowChrome? = null,
 ) {
     val fonts = DesignFonts(
         ui = rememberSpaceGrotesk(),
@@ -413,20 +416,22 @@ fun DesktopDesignApp(
                 onReset = onVaultReset,
                 // onPairingComplete != null (sync is present) — the create screen offers "I have a code":
                 // the coordinator creates the vault under the chosen password itself and accepts the account key.
+                // Gate screens are full-window (no titlebar), so each is wrapped in
+                // [LockWindowChrome]: the undecorated window stays movable and closable while locked.
                 createForm = { error, onCreate, onPairingComplete ->
-                    DesktopCreateScreen(error, onCreate, sync, onPairingComplete)
+                    LockWindowChrome(windowChrome) { DesktopCreateScreen(error, onCreate, sync, onPairingComplete) }
                 },
                 unlockForm = { error, canBio, onUnlock, onBio, onForgot ->
-                    DesktopUnlockScreen(error, canBio, onUnlock, onBio, onForgot)
+                    LockWindowChrome(windowChrome) { DesktopUnlockScreen(error, canBio, onUnlock, onBio, onForgot) }
                 },
-                corruptedForm = { onReset -> DesktopCorruptedScreen(onReset) },
-                resetForm = { onConfirm, onCancel -> DesktopResetScreen(onConfirm, onCancel) },
+                corruptedForm = { onReset -> LockWindowChrome(windowChrome) { DesktopCorruptedScreen(onReset) } },
+                resetForm = { onConfirm, onCancel -> LockWindowChrome(windowChrome) { DesktopResetScreen(onConfirm, onCancel) } },
                 // Sync onboarding step (parity with mobile): connect sync and pull data right after
                 // creating the vault. Only if sync was wired into the graph.
-                offerSyncForm = sync?.let { s -> { onDone -> SyncOnboardingScreen(s, onDone) } },
-            ) { onLock -> DesktopChrome(state, onLock, liveSessions, credentials, onVaultUnlocked, customGroupsProvider) }
+                offerSyncForm = sync?.let { s -> { onDone -> LockWindowChrome(windowChrome) { SyncOnboardingScreen(s, onDone) } } },
+            ) { onLock -> DesktopChrome(state, onLock, liveSessions, credentials, onVaultUnlocked, customGroupsProvider, windowChrome) }
         } else {
-            DesktopChrome(state, onLock = null, sessions = liveSessions, credentials = credentials, onVaultUnlocked = onVaultUnlocked, customGroupsProvider = customGroupsProvider)
+            DesktopChrome(state, onLock = null, sessions = liveSessions, credentials = credentials, onVaultUnlocked = onVaultUnlocked, customGroupsProvider = customGroupsProvider, windowChrome = windowChrome)
         }
     }
 }
@@ -444,6 +449,7 @@ private fun DesktopChrome(
     credentials: CredentialManagerController?,
     onVaultUnlocked: () -> Unit,
     customGroupsProvider: () -> List<String>,
+    windowChrome: WindowChrome? = null,
 ) {
     // Keychain secrets live in the open vault — behind the master-password gate we first run the
     // data migration ([onVaultUnlocked]), then reload (secrets + synced empty folders).
@@ -559,7 +565,7 @@ private fun DesktopChrome(
         }
         Box(Modifier.fillMaxSize().background(D.bg).onPreviewKeyEvent(onRootKey)) {
             Column(Modifier.fillMaxSize()) {
-                TitleBar(state, onLockWithTunnels)
+                TitleBar(state, onLockWithTunnels, windowChrome)
                 HLine()
                 Row(Modifier.weight(1f).fillMaxWidth()) {
                     IconRail(state)
@@ -790,13 +796,20 @@ private fun openSplitSession(sessions: SessionsController?, state: DesktopDesign
 }
 
 @Composable
-private fun TitleBar(state: DesktopDesignState, onLock: (() -> Unit)?) {
+private fun TitleBar(state: DesktopDesignState, onLock: (() -> Unit)?, windowChrome: WindowChrome? = null) {
+    // With custom chrome, the titlebar doubles as the window-drag area (the OS titlebar is gone).
+    if (windowChrome != null) windowChrome.dragArea { TitleBarRow(state, onLock, windowChrome) }
+    else TitleBarRow(state, onLock, windowChrome = null)
+}
+
+@Composable
+private fun TitleBarRow(state: DesktopDesignState, onLock: (() -> Unit)?, windowChrome: WindowChrome?) {
     Row(
         Modifier
             .fillMaxWidth()
             .height(44.dp)
             .background(Brush.verticalGradient(listOf(D.titleTop, D.titleBottom)))
-            .padding(start = 14.dp, end = 12.dp),
+            .padding(start = 14.dp, end = if (windowChrome != null) 8.dp else 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -880,6 +893,7 @@ private fun TitleBar(state: DesktopDesignState, onLock: (() -> Unit)?) {
                 Sym("lock_open", size = 14.sp, color = D.cyan)
                 Txt(stringResource(Res.string.shell_unlocked), color = D.cyan, size = 11.sp, weight = FontWeight.Medium)
             }
+            if (windowChrome != null) WindowButtons(windowChrome, Modifier.padding(start = 8.dp))
         }
     }
 }

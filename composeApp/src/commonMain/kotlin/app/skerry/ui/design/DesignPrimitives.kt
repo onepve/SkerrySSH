@@ -206,7 +206,11 @@ fun Dot(color: Color, size: Int = 6, modifier: Modifier = Modifier) {
     Box(modifier.size(size.dp).clip(CircleShape).background(color))
 }
 
-/** Titlebar/toolbar icon button: rounded [box]dp square. Material Symbols icon sized [icon], tinted [tint]. */
+/**
+ * Titlebar/toolbar icon button: rounded [box]dp square. Material Symbols icon sized [icon], tinted
+ * [tint]; [hoverTint] recolors the icon on hover (e.g. the window close cross turning white over
+ * its red hover background), `null` keeps [tint].
+ */
 @Composable
 fun IconBtn(
     name: String,
@@ -216,6 +220,7 @@ fun IconBtn(
     icon: TextUnit = 18.sp,
     tint: Color = D.dim,
     hoverBg: Color = Color(0x1FFFFFFF),
+    hoverTint: Color? = null,
 ) {
     // Custom light hover background (dark theme): clickable's default indication gives a dark
     // ripple that's barely visible on a dark background, so we highlight with a light overlay instead.
@@ -229,7 +234,7 @@ fun IconBtn(
             .clickable(interactionSource = interaction, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Sym(name, size = icon, color = tint)
+        Sym(name, size = icon, color = if (hovered && hoverTint != null) hoverTint else tint)
     }
 }
 

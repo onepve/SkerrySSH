@@ -12,7 +12,9 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import app.skerry.ui.desktop.SkerryWindowFrame
 import app.skerry.ui.desktop.optimalWindowSize
+import app.skerry.ui.desktop.rememberSkerryWindowChrome
 import java.awt.GraphicsEnvironment
 import app.skerry.shared.host.VaultHostStore
 import app.skerry.shared.io.PrivateConfig
@@ -392,7 +394,12 @@ fun main() {
             state = windowState,
             title = "Skerry",
             icon = appIcon,
+            // The OS titlebar looks different on every system and never matches the app palette:
+            // the app draws its own chrome (drag/buttons — WindowChrome, resize — SkerryWindowFrame).
+            undecorated = true,
         ) {
+          val windowChrome = rememberSkerryWindowChrome(windowState, ::exitApplication)
+          SkerryWindowFrame(windowState) {
             // Live vault + hosts + sessions + known-hosts are wired up: chrome is behind the master
             // password gate, clicking a host opens a live SSH terminal in a tab (transport+identities
             // from `deps`), and the known-hosts manager runs over its own stores (knownHosts from `deps`).
@@ -453,9 +460,11 @@ fun main() {
                     ai = graph.ai,
                     onVaultUnlocked = graph.onVaultUnlocked,
                     onVaultReset = graph.onVaultReset,
+                    windowChrome = windowChrome,
                 )
               }
             }
+          }
         }
     }
 }
