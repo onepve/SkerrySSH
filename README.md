@@ -10,7 +10,7 @@ An open-source, cross-platform SSH client with a single core: Kotlin Multiplatfo
 hood, Compose Multiplatform UI on top. One core codebase and one UI across
 **Desktop (Linux, Windows)** and **Android**, with feature parity between platforms.
 
-Current version — `0.1.0` (pre first release).
+Current version — `0.1.11`.
 
 ## Status
 
@@ -136,8 +136,9 @@ Tests (JUnit 5):
 ./gradlew test
 ```
 
-Releases: pushing a `v*` tag runs the release workflow, which builds `.deb`/`.rpm`/`.msi`,
-a signed `.apk`, and `SHA256SUMS`, and publishes them as a draft GitHub Release.
+Releases: pushing a `v*` tag runs the release workflow, which builds `.deb`/`.rpm`/`.AppImage`
+(x64 + arm64), a Flatpak bundle, `.msi`, `.dmg` (arm64 + x64, unsigned), a signed `.apk`,
+and `SHA256SUMS`, and publishes them as a draft GitHub Release.
 
 ## Sync server
 

@@ -10,7 +10,7 @@
 Compose Multiplatform UI сверху. Один код ядра и один UI на **Desktop (Linux, Windows)**
 и **Android**, паритет фич между платформами.
 
-Версия — `0.1.0` (до первого релиза).
+Версия — `0.1.11`.
 
 ## Статус
 
@@ -128,8 +128,9 @@ ANDROID_HOME=$HOME/Android/Sdk ./gradlew :androidApp:installDebug
 ./gradlew test
 ```
 
-Релизы: пуш тега `v*` запускает release-workflow, который собирает `.deb`/`.rpm`/`.msi`,
-подписанный `.apk` и `SHA256SUMS` и публикует их как draft GitHub Release.
+Релизы: пуш тега `v*` запускает release-workflow, который собирает `.deb`/`.rpm`/`.AppImage`
+(x64 + arm64), Flatpak-бандл, `.msi`, `.dmg` (arm64 + x64, без подписи), подписанный `.apk`
+и `SHA256SUMS` и публикует их как draft GitHub Release.
 
 ## Sync-сервер
 
