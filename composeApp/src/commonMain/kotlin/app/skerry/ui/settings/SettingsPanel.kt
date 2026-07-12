@@ -44,7 +44,6 @@ import app.skerry.ui.design.consumeClicks
 import app.skerry.ui.generated.resources.Res
 import app.skerry.ui.generated.resources.settings_nav_header
 import app.skerry.ui.generated.resources.shtail_nav_about
-import app.skerry.ui.generated.resources.shtail_nav_account
 import app.skerry.ui.generated.resources.shtail_nav_ai
 import app.skerry.ui.generated.resources.shtail_nav_appearance
 import app.skerry.ui.generated.resources.shtail_nav_keyboard
@@ -54,7 +53,7 @@ import app.skerry.ui.generated.resources.shtail_nav_terminal
 import app.skerry.ui.vault.VaultGateController
 import org.jetbrains.compose.resources.stringResource
 
-/** Settings panel (760x560 modal): 200dp nav + content with 8 sections (AI/Appearance/.../About). */
+/** Settings panel (760x560 modal): 200dp nav + content with 7 sections (AI/Sync/.../About). */
 @Composable
 fun SettingsPanel(state: DesktopDesignState) {
     // Live security controller over shared vault/biometrics/log: password change, biometrics
@@ -77,10 +76,10 @@ fun SettingsPanel(state: DesktopDesignState) {
         Row(Modifier.fillMaxSize()) {
             // AI tab is visible when the AI feature flag is on or a live assistant controller is
             // connected (a real BYOK provider behind the vault gate). Otherwise the tab is hidden and
-            // the default selection (state.settingsTab = AI) falls back to Account.
+            // the default selection (state.settingsTab = AI) falls back to Sync.
             val features = LocalFeatures.current
             val aiVisible = features.ai || LocalAi.current != null
-            val effectiveTab = if (state.settingsTab == SettingsTab.AI && !aiVisible) SettingsTab.Account else state.settingsTab
+            val effectiveTab = if (state.settingsTab == SettingsTab.AI && !aiVisible) SettingsTab.Sync else state.settingsTab
             Column(Modifier.width(200.dp).fillMaxHeight().background(Color(0x33000000)).padding(horizontal = 8.dp, vertical = 16.dp)) {
                 Txt(stringResource(Res.string.settings_nav_header), color = D.faint, size = 11.sp, weight = FontWeight.SemiBold, letterSpacing = 0.6.sp, modifier = Modifier.padding(start = 10.dp, bottom = 10.dp))
                 SETTINGS_NAV.filter { aiVisible || it.tab != SettingsTab.AI }.forEach { item ->
@@ -93,7 +92,6 @@ fun SettingsPanel(state: DesktopDesignState) {
                     SettingsTab.AI -> AiSection(state)
                     SettingsTab.Appearance -> AppearanceSection(state)
                     SettingsTab.Terminal -> TerminalSection(state)
-                    SettingsTab.Account -> AccountSection(state)
                     SettingsTab.Sync -> SyncSection(state)
                     SettingsTab.Security -> SecuritySection(
                         state = state,
@@ -161,7 +159,6 @@ private fun NavRow(item: SettingsNavItem, active: Boolean, onClick: () -> Unit) 
 /** Localized label for a settings navigation item. */
 @Composable
 private fun SettingsTab.navLabel(): String = when (this) {
-    SettingsTab.Account -> stringResource(Res.string.shtail_nav_account)
     SettingsTab.AI -> stringResource(Res.string.shtail_nav_ai)
     SettingsTab.Sync -> stringResource(Res.string.shtail_nav_sync)
     SettingsTab.Security -> stringResource(Res.string.shtail_nav_security)

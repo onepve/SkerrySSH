@@ -73,9 +73,7 @@
     <string name="settings_terminal_show_title">Show terminal title on tabs</string>
     <string name="settings_terminal_show_title_desc">Let the connected shell rename a tab (e.g. the running program). Off — tabs always show the saved host name.</string>
 
-    <!-- Account section -->
-    <string name="settings_account_title">Account</string>
-    <string name="settings_account_subtitle">Your Skerry account and the devices linked to it.</string>
+    <!-- Sync section (also covers the account card and linked devices — merged from the former Account tab) -->
     <string name="settings_disconnect">Disconnect</string>
     <string name="settings_reconnect">Reconnect</string>
     <string name="settings_set_up_sync">Set up sync</string>
@@ -87,26 +85,17 @@
     <string name="settings_device_sub_other">linked device</string>
     <string name="settings_this_device">● this device</string>
     <string name="settings_link_device">Link a device</string>
-
-    <!-- Sync section -->
     <string name="settings_sync_title">Sync</string>
     <string name="settings_sync_subtitle">End-to-end encrypted sync across your devices. Skerry never sees your data in plaintext.</string>
-    <string name="settings_sync_synced_ago">Synced 2 minutes ago</string>
-    <string name="settings_sync_summary_mock">9 hosts · 4 snippets · 3 keys · 2 vaults</string>
     <string name="settings_sync_now">Sync now</string>
     <string name="settings_what_syncs">WHAT SYNCS</string>
     <string name="settings_hosts_groups">Hosts &amp; groups</string>
     <string name="settings_snippets">Snippets</string>
-    <string name="settings_sync_connected">Connected · %1$s</string>
+    <string name="settings_sync_connected">Connected</string>
     <string name="settings_sync_pushed_pulled">Pushed %1$d · pulled %2$d this session</string>
     <string name="settings_sync_syncing">Syncing…</string>
     <string name="settings_sync_syncing_desc">Talking to your sync server.</string>
-    <string name="settings_sync_linked">Linked · %1$s</string>
-    <string name="settings_sync_linked_desc">Reconnect from Account to resume syncing.</string>
-    <string name="settings_open_account">Open Account</string>
     <string name="settings_sync_error">Sync error</string>
-    <string name="settings_sync_not_connected">Not connected</string>
-    <string name="settings_sync_not_connected_desc">Connect your account to sync across devices.</string>
 
     <!-- Security section -->
     <string name="settings_security_title">Security</string>

@@ -53,7 +53,7 @@
 
     <!-- Связывание по коду (join) -->
     <string name="sync_join_title">Link with a code</string>
-    <string name="sync_join_desc">On a device that's already signed in, open Settings → Account → Link a device, then scan its QR or paste the code here. The password you choose below encrypts this device's vault and can't be recovered — if you lose it, you'll re-link from scratch.</string>
+    <string name="sync_join_desc">On a device that's already signed in, open Settings → Sync → Link a device, then scan its QR or paste the code here. The password you choose below encrypts this device's vault and can't be recovered — if you lose it, you'll re-link from scratch.</string>
     <string name="sync_field_pairing_code">PAIRING CODE</string>
     <string name="sync_placeholder_pairing_code">Paste code (sk1.…)</string>
     <string name="sync_scan_qr">Scan QR code</string>
@@ -115,8 +115,8 @@
     <string name="sync_fail_sync">Sync failed</string>
     <string name="sync_fail_revoke">Couldn't revoke the device</string>
 
-    <!-- Идентификаторы аккаунта для Teams-приглашений (Settings → Account / mobile Sync) -->
+    <!-- Идентификаторы аккаунта для Teams-приглашений (Settings → Sync / mobile Sync) -->
     <string name="sync_account_id_label">Account ID</string>
     <string name="sync_sharing_fingerprint_label">Sharing key fingerprint</string>
-    <string name="sync_identity_hint">Share these with a team owner to get invited — no need to look them up on the sync server.</string>
+    <string name="sync_identity_hint">A team owner needs these identifiers to invite you to a team.</string>
 </resources>

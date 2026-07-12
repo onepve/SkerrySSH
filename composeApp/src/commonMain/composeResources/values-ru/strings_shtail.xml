@@ -1,6 +1,5 @@
 <resources>
     <!-- Settings nav labels (SettingsPanel.kt · SettingsTab.navLabel) -->
-    <string name="shtail_nav_account">Аккаунт</string>
     <string name="shtail_nav_ai">AI</string>
     <string name="shtail_nav_sync">Синхронизация</string>
     <string name="shtail_nav_security">Безопасность</string>

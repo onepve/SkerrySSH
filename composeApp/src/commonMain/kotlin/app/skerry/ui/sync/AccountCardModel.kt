@@ -12,7 +12,7 @@ import app.skerry.ui.generated.resources.stail_sync_error
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Testable projection of sync state onto the profile/account card (desktop Settings → Account,
+ * Testable projection of sync state onto the profile/account card (desktop Settings → Sync,
  * mobile More). Not configured → local vault with a "set up sync" prompt; linked but locked →
  * "linked, locked" (offer reconnect); active session → accountId + server host.
  */

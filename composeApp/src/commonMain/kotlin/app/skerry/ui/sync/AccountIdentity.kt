@@ -38,7 +38,7 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * Account identifiers for Teams invites: accountId and the own sharing-key fingerprint (X25519).
- * Shown in account settings (desktop Settings → Account, mobile More → Sync) so they can be copied
+ * Shown in account settings (desktop Settings → Sync, mobile More → Sync) so they can be copied
  * and sent to a team owner. Both are public — copied via the normal clipboard, not marked sensitive.
  */
 @Composable

@@ -73,9 +73,7 @@
     <string name="settings_terminal_show_title">Показывать заголовок терминала на вкладках</string>
     <string name="settings_terminal_show_title_desc">Разрешить подключённому шеллу переименовывать вкладку (например, по запущенной программе). Выкл — вкладки всегда показывают сохранённое имя хоста.</string>
 
-    <!-- Раздел Account -->
-    <string name="settings_account_title">Аккаунт</string>
-    <string name="settings_account_subtitle">Ваш аккаунт Skerry и привязанные к нему устройства.</string>
+    <!-- Раздел Sync (включая карточку аккаунта и устройства — бывшая вкладка Account влита сюда) -->
     <string name="settings_disconnect">Отключить</string>
     <string name="settings_reconnect">Переподключить</string>
     <string name="settings_set_up_sync">Настроить синхронизацию</string>
@@ -87,26 +85,17 @@
     <string name="settings_device_sub_other">привязанное устройство</string>
     <string name="settings_this_device">● это устройство</string>
     <string name="settings_link_device">Привязать устройство</string>
-
-    <!-- Раздел Sync -->
     <string name="settings_sync_title">Синхронизация</string>
     <string name="settings_sync_subtitle">Сквозное шифрование синхронизации между устройствами. Skerry никогда не видит ваши данные в открытом виде.</string>
-    <string name="settings_sync_synced_ago">Синхронизировано 2 минуты назад</string>
-    <string name="settings_sync_summary_mock">9 хостов · 4 сниппета · 3 ключа · 2 хранилища</string>
     <string name="settings_sync_now">Синхронизировать</string>
     <string name="settings_what_syncs">ЧТО СИНХРОНИЗИРУЕТСЯ</string>
     <string name="settings_hosts_groups">Хосты и группы</string>
     <string name="settings_snippets">Сниппеты</string>
-    <string name="settings_sync_connected">Подключено · %1$s</string>
+    <string name="settings_sync_connected">Подключено</string>
     <string name="settings_sync_pushed_pulled">Отправлено %1$d · получено %2$d за сессию</string>
     <string name="settings_sync_syncing">Синхронизация…</string>
     <string name="settings_sync_syncing_desc">Идёт обмен с вашим сервером синхронизации.</string>
-    <string name="settings_sync_linked">Привязано · %1$s</string>
-    <string name="settings_sync_linked_desc">Переподключитесь из раздела «Аккаунт», чтобы возобновить синхронизацию.</string>
-    <string name="settings_open_account">Открыть аккаунт</string>
     <string name="settings_sync_error">Ошибка синхронизации</string>
-    <string name="settings_sync_not_connected">Не подключено</string>
-    <string name="settings_sync_not_connected_desc">Подключите аккаунт, чтобы синхронизировать между устройствами.</string>
 
     <!-- Раздел Security -->
     <string name="settings_security_title">Безопасность</string>
