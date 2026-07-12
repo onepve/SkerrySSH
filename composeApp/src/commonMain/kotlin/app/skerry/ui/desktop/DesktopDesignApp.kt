@@ -3,6 +3,8 @@ package app.skerry.ui.desktop
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -38,6 +40,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
@@ -843,7 +846,14 @@ private fun TitleBarRow(state: DesktopDesignState, onLock: (() -> Unit)?, window
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+        Row(
+            // Consume presses so the titlebar's double-click-to-maximize (and window drag) treats
+            // the brand mark like a button, not empty titlebar space — clicking the logo must not
+            // toggle maximize.
+            Modifier.pointerInput(Unit) { awaitEachGesture { awaitFirstDown().consume() } },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(9.dp),
+        ) {
             BrandMark(size = 28.dp)
             Txt("Skerry", color = D.text, size = 14.5.sp, weight = FontWeight.Bold, letterSpacing = (-0.2).sp)
         }
@@ -1020,6 +1030,12 @@ private fun IconRail(state: DesktopDesignState) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
+        // Collapse/expand toggle for the terminal's hosts sidebar: lives on the rail (not in the
+        // sidebar header) and only while the terminal view is on screen. Deliberately shorter than
+        // the 38dp view buttons — an auxiliary control, not a view.
+        if (state.appOverlay == null && currentSessionView == DesktopView.Terminal) {
+            SidebarToggle(state)
+        }
         RAIL.forEach { item ->
             val active = if (state.appOverlay != null) item.view == state.appOverlay
             else item.view == currentSessionView
@@ -1041,6 +1057,25 @@ private fun IconRail(state: DesktopDesignState) {
         }
         Spacer(Modifier.weight(1f))
         RailButton(icon = "settings", label = stringResource(Res.string.shell_settings), active = false, onClick = state::openSettings)
+    }
+}
+
+/** Short rail button that hides/restores the terminal's hosts sidebar (chevron flips with state). */
+@Composable
+private fun SidebarToggle(state: DesktopDesignState) {
+    val interaction = remember { MutableInteractionSource() }
+    val hovered by interaction.collectIsHoveredAsState()
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(22.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .hoverable(interaction)
+            .background(if (hovered) D.cyan.copy(alpha = 0.06f) else Color.Transparent)
+            .clickable(onClick = state::toggleSidebar),
+        contentAlignment = Alignment.Center,
+    ) {
+        Sym(if (state.sidebarHidden) "chevron_right" else "chevron_left", size = 17.sp, color = if (hovered) D.dim else D.faint)
     }
 }
 

@@ -107,7 +107,7 @@ import app.skerry.ui.generated.resources.conn_tag_add_placeholder
 import app.skerry.ui.generated.resources.conn_test
 import app.skerry.ui.generated.resources.conn_test_checking
 import app.skerry.ui.generated.resources.conn_test_connected
-import app.skerry.ui.generated.resources.conn_test_connected_ms
+import app.skerry.ui.generated.resources.conn_test_rtt_ms
 import app.skerry.ui.generated.resources.conn_title_edit
 import app.skerry.ui.generated.resources.conn_title_new
 import org.jetbrains.compose.resources.stringResource
@@ -755,10 +755,14 @@ private fun TestStatusLabel(status: ConnectionTestStatus) {
         }
         is ConnectionTestStatus.Success -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Sym("check_circle", size = 14.sp, color = D.moss)
-            Txt(
-                status.roundTripMillis?.let { stringResource(Res.string.conn_test_connected_ms, it) } ?: stringResource(Res.string.conn_test_connected),
-                color = D.moss, size = 11.5.sp,
-            )
+            // RTT goes on its own line: the footer slot is narrow and a single "Connected · N ms"
+            // string used to wrap mid-unit.
+            Column {
+                Txt(stringResource(Res.string.conn_test_connected), color = D.moss, size = 11.5.sp)
+                status.roundTripMillis?.let {
+                    Txt(stringResource(Res.string.conn_test_rtt_ms, it), color = D.moss.copy(alpha = 0.75f), size = 10.5.sp)
+                }
+            }
         }
         is ConnectionTestStatus.Failure -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Sym("error", size = 14.sp, color = D.storm)

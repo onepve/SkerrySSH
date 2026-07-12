@@ -189,7 +189,7 @@ class DesktopDesignState(
     var pairingOpen: Boolean by mutableStateOf(false); private set
     var settingsTab: SettingsTab by mutableStateOf(SettingsTab.AI); private set
     var split: Boolean by mutableStateOf(false); private set
-    /** Whether the left host sidebar is collapsed into a thin rail with an expand button. */
+    /** Whether the terminal's left host sidebar is hidden (toggled from the icon rail). */
     var sidebarHidden: Boolean by mutableStateOf(false); private set
     var infoPanel: Boolean by mutableStateOf(initialInfoPanel); private set
 

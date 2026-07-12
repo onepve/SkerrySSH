@@ -78,5 +78,5 @@
 
     <string name="conn_test_checking">Проверка подключения…</string>
     <string name="conn_test_connected">Подключено</string>
-    <string name="conn_test_connected_ms">Подключено · %1$d мс</string>
+    <string name="conn_test_rtt_ms">%1$d мс</string>
 </resources>

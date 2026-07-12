@@ -78,5 +78,5 @@
 
     <string name="conn_test_checking">Testing connection…</string>
     <string name="conn_test_connected">Connected</string>
-    <string name="conn_test_connected_ms">Connected · %1$d ms</string>
+    <string name="conn_test_rtt_ms">%1$d ms</string>
 </resources>

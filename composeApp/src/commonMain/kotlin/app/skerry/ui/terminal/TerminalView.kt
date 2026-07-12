@@ -74,26 +74,12 @@ import org.jetbrains.compose.resources.stringResource
 /** Shared pane header height (primary and split) so both titles align. */
 private val PANE_HEADER_HEIGHT = 40.dp
 
-/**
- * Collapsed sidebar: thin left rail with a single button to restore the hosts panel.
- * Keeps the panel's space reserved so content doesn't jump to full width when hidden.
- */
-@Composable
-private fun CollapsedSidebarRail(state: DesktopDesignState) {
-    Column(
-        // start=12, top=12, box=34 match the expanded sidebar header button exactly, so it
-        // doesn't jump when collapsing/expanding.
-        Modifier.width(58.dp).fillMaxHeight().background(D.surface2).padding(start = 12.dp, top = 12.dp),
-    ) {
-        IconBtn("chevron_right", onClick = state::toggleSidebar, box = 34, tint = D.dim)
-    }
-}
-
 /** Terminal view: hosts sidebar + main (toolbar, panes, AI bar) + info panel. */
 @Composable
 fun TerminalView(state: DesktopDesignState) {
     Row(Modifier.fillMaxSize()) {
-        if (state.sidebarHidden) CollapsedSidebarRail(state) else HostsSidebar(state)
+        // Hidden entirely when collapsed; the expand/collapse toggle sits on the icon rail (SidebarToggle).
+        if (!state.sidebarHidden) HostsSidebar(state)
         Column(Modifier.weight(1f).fillMaxHeight()) {
             // Shared live AI bar controller (or null): one instance for the overlay layer and
             // input row; key() recreates it when the active host/policy changes. Off/mock -> null

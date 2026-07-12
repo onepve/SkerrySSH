@@ -113,15 +113,9 @@ internal fun HostsSidebar(state: DesktopDesignState) {
     val effectiveChip = if (activeChip in chips) activeChip else ALL_HOSTS_CHIP
     Column(Modifier.width(262.dp).fillMaxHeight().background(D.surface2)) {
         Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 8.dp)) {
-            // Collapse-sidebar button (left) plus search. Expansion uses the same button on a thin rail;
-            // both use box=34 with the same top padding so height doesn't jump when toggling.
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                IconBtn("chevron_left", onClick = state::toggleSidebar, box = 34, tint = D.dim)
-                Box(Modifier.weight(1f)) { HostSearchField(state) }
-            }
+            // The collapse-sidebar toggle lives on the icon rail (SidebarToggle), so search gets the
+            // full header width.
+            HostSearchField(state)
             // The filter-tag row overflows the narrow sidebar, so it scrolls horizontally. Desktop's
             // vertical mouse wheel doesn't translate to horizontal on its own, so Scroll events are
             // caught and [chipScroll] is driven manually (delta.y, or delta.x on a horizontal axis);
