@@ -182,12 +182,24 @@ private fun BiometricReenrollCard(sync: SyncCoordinator) {
 @Composable
 private fun SyncBody(sync: SyncCoordinator) {
     BiometricReenrollCard(sync)
-    when (val status = sync.status.collectAsState().value) {
-        is SyncStatus.Online -> {
-            SyncStatusNotice("cloud_done", D.moss, stringResource(Res.string.sync_connected_title, status.accountId), stringResource(Res.string.sync_session_stats, status.lastPushed, status.lastPulled))
+    val status = sync.status.collectAsState().value
+    // Busy is transient (a connect attempt or one sync cycle) and used to replace the whole body,
+    // which destroyed the setup form's remember state — a failed connect against a down server
+    // wiped the typed server/account. Render the last stable status underneath instead (the form
+    // stays composed, submit disabled) with the busy notice on top.
+    val busy = status == SyncStatus.Busy
+    var stable by remember { mutableStateOf<SyncStatus?>(if (busy) null else status) }
+    if (!busy) stable = status
+    if (busy) SyncStatusNotice("sync", D.cyanBright, stringResource(Res.string.sync_syncing), stringResource(Res.string.sync_connecting_sub))
+    when (val s = stable) {
+        // Opened mid-operation (e.g. session restore right after unlock): nothing stable to show
+        // yet besides the notice above. Busy itself never lands in [stable].
+        null, SyncStatus.Busy -> {}
+        is SyncStatus.Online -> if (!busy) {
+            SyncStatusNotice("cloud_done", D.moss, stringResource(Res.string.sync_connected_title, s.accountId), stringResource(Res.string.sync_session_stats, s.lastPushed, s.lastPulled))
             // Identifiers for Teams invites (accountId + share-key fingerprint) - mobile merges
             // Account+Sync into one screen, so this block lives here (desktop has a separate Account tab).
-            AccountIdentityBlock(status.accountId, Modifier.padding(top = 12.dp))
+            AccountIdentityBlock(s.accountId, Modifier.padding(top = 12.dp))
             // Same style as desktop (ghost, not filled primary) for platform parity.
             // Mobile merges the desktop Account+Sync tabs into one screen, so Sync now and
             // Disconnect sit next to each other (separated by tabs on desktop).
@@ -199,14 +211,20 @@ private fun SyncBody(sync: SyncCoordinator) {
             MobileWhatSyncs(sync)
             MobileLinkedDevices(sync)
         }
-        SyncStatus.Busy -> SyncStatusNotice("sync", D.cyanBright, stringResource(Res.string.sync_syncing), stringResource(Res.string.sync_connecting_sub))
-        is SyncStatus.Configured -> {
-            SyncStatusNotice("cloud_off", D.amber, stringResource(Res.string.sync_linked_title, status.accountId), stringResource(Res.string.sync_reconnect_password))
-            Spacer(Modifier.height(16.dp))
-            SyncSetupBody(sync, errorMessage = null)
+        // One shared SyncSetupBody call site for all form states: separate when-branches would be
+        // separate composition slots, and a Disabled → Failed transition would still reset the
+        // typed fields even though the form never visually left the screen.
+        is SyncStatus.Configured, is SyncStatus.Failed, SyncStatus.Disabled -> {
+            if (s is SyncStatus.Configured) {
+                SyncStatusNotice("cloud_off", D.amber, stringResource(Res.string.sync_linked_title, s.accountId), stringResource(Res.string.sync_reconnect_password))
+                Spacer(Modifier.height(16.dp))
+            }
+            SyncSetupBody(
+                sync,
+                errorMessage = if (s is SyncStatus.Failed && !busy) syncFailureText(s) else null,
+                busy = busy,
+            )
         }
-        is SyncStatus.Failed -> SyncSetupBody(sync, errorMessage = syncFailureText(status))
-        SyncStatus.Disabled -> SyncSetupBody(sync, errorMessage = null)
     }
 }
 

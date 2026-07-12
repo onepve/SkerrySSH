@@ -405,9 +405,19 @@ class KtorSyncClient(
     private fun RemoteRecord.toWire() = RecordDto(id, type, version, updatedAt, deviceId, deleted, blob.b64())
 
     companion object {
+        /**
+         * Ping period for the `/sync` live-pull socket. CIO exempts WebSockets from its request
+         * timeout, so without pings a connection that died with no FIN/RST (Wi-Fi switch, suspend,
+         * NAT idle timeout) never errors: [changes] hangs on a dead socket while the status stays
+         * Online and live-pull is silently gone. The pinger detects the dead peer (no pong within
+         * ~2× the interval), fails the session, and the coordinator's watch loop reconnects with
+         * backoff. 30s also keeps NAT/proxy idle timeouts (typically ≥60s) from dropping the mapping.
+         */
+        const val WS_PING_INTERVAL_MS = 30_000L
+
         fun defaultHttpClient(): HttpClient = HttpClient(CIO) {
             install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
-            install(WebSockets)
+            install(WebSockets) { pingIntervalMillis = WS_PING_INTERVAL_MS }
         }
     }
 }

@@ -149,14 +149,20 @@ fun SyncOnboardingScreen(sync: SyncCoordinator, onDone: () -> Unit) {
                     color = D.dim, size = 13.sp, lineHeight = 19.sp, modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
                 )
 
-                when (val s = status) {
-                    SyncStatus.Busy -> {
-                        Spacer(Modifier.height(8.dp))
-                        SyncStatusNotice("sync", D.cyanBright, stringResource(Res.string.sync_connecting), stringResource(Res.string.sync_connecting_sub))
-                    }
-                    is SyncStatus.Failed -> SyncSetupBody(sync, errorMessage = syncFailureText(s))
-                    else -> SyncSetupBody(sync, errorMessage = null)
+                // The form stays composed in every status. The Busy branch used to replace it,
+                // which destroyed its remember state: after a failed connect (server down, typo
+                // in the URL) the typed server/account came back blank. Busy now only adds the
+                // notice on top and disables submit — same pattern as SyncSetupDialog.
+                val busy = status == SyncStatus.Busy
+                if (busy) {
+                    Spacer(Modifier.height(8.dp))
+                    SyncStatusNotice("sync", D.cyanBright, stringResource(Res.string.sync_connecting), stringResource(Res.string.sync_connecting_sub))
                 }
+                SyncSetupBody(
+                    sync,
+                    errorMessage = (status as? SyncStatus.Failed)?.let { syncFailureText(it) },
+                    busy = busy,
+                )
             }
         }
     }
@@ -236,11 +242,14 @@ private fun SyncChoiceCard(
 /**
  * Sync server connection form (server + accountId + master password + keep connected). Shared by
  * onboarding and the Sync screen: the password goes to [SyncCoordinator] as a CharArray and is wiped there.
+ * [busy] — a connect is in flight: submit is disabled (fields stay editable, like [SyncSetupDialog]).
+ * Callers must keep the form composed during Busy — leaving composition wipes the typed fields.
  */
 @Composable
 internal fun SyncSetupBody(
     sync: SyncCoordinator,
     errorMessage: String?,
+    busy: Boolean = false,
 ) {
     // Prefill from the saved link (Configured after restart): only the password is needed.
     val saved = remember { sync.savedConfig }
@@ -250,7 +259,7 @@ internal fun SyncSetupBody(
     var keepConnected by remember { mutableStateOf(saved?.keepConnected ?: true) }
 
     val form = SyncSetupForm(serverUrl, account)
-    val canSubmit = form.canSubmit(password.length)
+    val canSubmit = form.canSubmit(password.length) && !busy
 
     SyncFieldLabel(stringResource(Res.string.sync_field_server_url))
     SyncTextField(serverUrl, stringResource(Res.string.sync_placeholder_server_url), KeyboardType.Uri, icon = "dns") { serverUrl = it }
@@ -301,9 +310,9 @@ internal fun SyncSetupBody(
             password = ""
             val url = form.normalizedServerUrl
             val acc = form.normalizedAccountId
-            // The coordinator owns the launch (its own scope) — the form leaves composition on Busy, so
-            // a coroutine can't be tied to it (else it cancels mid-flight). One call: the coordinator
-            // decides register vs login.
+            // The coordinator owns the launch (its own scope) — a coroutine tied to this composable
+            // would cancel mid-flight if the form leaves composition (navigation away). One call:
+            // the coordinator decides register vs login.
             sync.connect(url, acc, pw, keepConnected)
         },
         modifier = Modifier.padding(top = 18.dp),
