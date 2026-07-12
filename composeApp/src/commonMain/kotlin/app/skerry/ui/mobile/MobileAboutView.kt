@@ -34,13 +34,15 @@ import app.skerry.ui.generated.resources.settings_about_check_updates_desc
 import app.skerry.ui.generated.resources.settings_about_footer
 import app.skerry.ui.generated.resources.settings_about_tagline
 import app.skerry.ui.generated.resources.settings_about_version
+import app.skerry.ui.settings.AboutLinkButtons
 import app.skerry.ui.update.UpdateAvailableBlock
 import org.jetbrains.compose.resources.stringResource
 
 /**
  * More → About push screen (parity with the desktop [app.skerry.ui.settings.AboutSection]): brand,
- * version, the update notice with a link to the GitHub release page, and the "check for updates"
- * toggle. Without a live controller (preview) the update rows are simply absent.
+ * version, the update notice with a link to the GitHub release page, the project link buttons, and
+ * the "check for updates" toggle. Without a live controller (preview) the update rows are simply
+ * absent.
  */
 @Composable
 fun MobileAboutScreen(state: MobileDesignState) {
@@ -59,6 +61,7 @@ fun MobileAboutScreen(state: MobileDesignState) {
                 Txt(stringResource(Res.string.settings_about_version, AppVersion.VERSION, AppVersion.BUILD), color = D.dim, size = 12.sp, modifier = Modifier.padding(top = 4.dp))
                 UpdateAvailableBlock()
                 Txt(stringResource(Res.string.settings_about_tagline), color = D.dim, size = 12.5.sp, lineHeight = 18.sp, modifier = Modifier.padding(top = 12.dp))
+                AboutLinkButtons(Modifier.padding(top = 18.dp))
                 if (updates != null) {
                     Row(
                         Modifier.fillMaxWidth().padding(top = 18.dp),
