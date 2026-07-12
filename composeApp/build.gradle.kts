@@ -115,7 +115,11 @@ compose.desktop {
             includeAllModules = true
             packageName = "Skerry"
             // Version from the single source (gradle.properties); the release workflow overrides it.
-            packageVersion = providers.gradleProperty("skerry.versionName").orNull ?: "0.1.0"
+            val appVersion = providers.gradleProperty("skerry.versionName").orNull ?: "0.1.0"
+            packageVersion = appVersion
+            // CFBundleVersion for macOS: force a >=1 major (jpackage rejects a zero major there).
+            val macBuildVersion = if (appVersion.substringBefore('.') == "0" && appVersion.contains('.'))
+                "1${appVersion.substring(appVersion.indexOf('.'))}" else appVersion
             // App icons per platform, rasterized from icons/skerry.svg (canonical mark, docs/design/Skerry Logo.html).
             linux { iconFile.set(project.file("icons/skerry.png")) }
             windows {
@@ -126,7 +130,13 @@ compose.desktop {
                 menu = true
                 shortcut = true
             }
-            macOS { iconFile.set(project.file("icons/skerry.icns")) }
+            macOS {
+                iconFile.set(project.file("icons/skerry.icns"))
+                // jpackage rejects a CFBundleVersion whose major component is 0 (macOS-only
+                // check). Keep the visible short version (0.x) but give the opaque build
+                // version a >=1 major so the dmg packages instead of failing in jpackage.
+                packageBuildVersion = macBuildVersion
+            }
         }
 
         // ProGuard is DISABLED for release on purpose. For the crypto stack of this SSH client
