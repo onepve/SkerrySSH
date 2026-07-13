@@ -282,7 +282,8 @@ fun TerminalScreen(
     }
 
     // OSC 52: the app (tmux/vim) requests writing text to the system clipboard; done on the UI thread.
-    // (The emulator does not forward server clipboard-read requests, so no user clipboard leak.)
+    // Emissions arrive only when the clipboard-write gate is on (default off, enforced in the
+    // emulator); the emulator never forwards server clipboard-read requests, so no user clipboard leak.
     LaunchedEffect(state) {
         // try/catch per write: one failed copy (clipboard unavailable) must not kill collect, or OSC
         // 52 would stop working for the rest of the session. Coroutine cancellation is rethrown.

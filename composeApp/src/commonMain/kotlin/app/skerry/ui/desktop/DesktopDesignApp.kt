@@ -240,6 +240,9 @@ fun DesktopDesignApp(
     onTerminalCursorStyleChange: (TerminalCursorStyle) -> Unit = {},
     initialShowTerminalTitleOnTabs: Boolean = false,
     onShowTerminalTitleOnTabsChange: (Boolean) -> Unit = {},
+    // OSC 52 server clipboard-write gate (Settings → Terminal) — persisted externally (desktop main).
+    initialAllowServerClipboardWrite: Boolean = false,
+    onAllowServerClipboardWriteChange: (Boolean) -> Unit = {},
     // Terminal color theme (Appearance → theme cards) — persisted externally (desktop main).
     initialTerminalTheme: TerminalTheme = TerminalThemes.DEFAULT,
     onTerminalThemeChange: (TerminalTheme) -> Unit = {},
@@ -261,6 +264,7 @@ fun DesktopDesignApp(
             initialTerminalScrollback, onTerminalScrollbackChange,
             initialTerminalCursorStyle, onTerminalCursorStyleChange,
             initialShowTerminalTitleOnTabs, onShowTerminalTitleOnTabsChange,
+            initialAllowServerClipboardWrite, onAllowServerClipboardWriteChange,
             initialTerminalTheme, onTerminalThemeChange,
             initialAutoLock, onAutoLockChange,
             initialShowRecent, onShowRecentChange,
@@ -344,7 +348,13 @@ fun DesktopDesignApp(
                         t, scope, history = termHistory,
                         // Read terminal settings at connect time — new sessions pick up the current
                         // scrollback/cursor choice, already-open ones keep their emulator's.
-                        terminalPrefs = { TerminalSessionPrefs(state.terminalScrollback, state.terminalCursorStyle) },
+                        terminalPrefs = {
+                            TerminalSessionPrefs(
+                                state.terminalScrollback,
+                                state.terminalCursorStyle,
+                                clipboardWriteEnabled = state.allowServerClipboardWrite,
+                            )
+                        },
                     )
                 },
             )
@@ -376,6 +386,17 @@ fun DesktopDesignApp(
         manager.sessions.forEach { s ->
             s.liveTerminal?.applyScrollback(scrollbackLines)
             s.splitSession?.liveTerminal?.applyScrollback(scrollbackLines)
+        }
+    }
+    // Toggling the OSC 52 clipboard-write gate applies to ALREADY open sessions live: turning it off
+    // stops honoring server clipboard writes immediately, turning it on lets them through. New
+    // sessions pick up the value at connect via terminalPrefs.
+    val allowClipboardWrite = state.allowServerClipboardWrite
+    LaunchedEffect(allowClipboardWrite, liveSessions) {
+        val manager = liveSessions ?: return@LaunchedEffect
+        manager.sessions.forEach { s ->
+            s.liveTerminal?.applyClipboardWriteEnabled(allowClipboardWrite)
+            s.splitSession?.liveTerminal?.applyClipboardWriteEnabled(allowClipboardWrite)
         }
     }
     // Memoized: LocalTerminalAppearance is staticCompositionLocalOf (reference comparison), and

@@ -238,6 +238,7 @@ class ConnectionController(
                 scrollback = prefs.effectiveScrollback,
                 cursorShape = prefs.cursorStyle.shape,
                 cursorBlink = prefs.cursorStyle.blink,
+                clipboardWriteEnabled = prefs.clipboardWriteEnabled,
                 onHistoryChanged = history?.let { store ->
                     // Moves the write off the UI thread onto the controller's scope (Default):
                     // commands are infrequent and the write is small.

@@ -121,6 +121,10 @@ val TERMINAL_SCROLLBACK_OPTIONS: List<Int> = listOf(1_000, 5_000, 10_000, 50_000
 data class TerminalSessionPrefs(
     val scrollback: Int = DEFAULT_TERMINAL_SCROLLBACK,
     val cursorStyle: TerminalCursorStyle = TerminalCursorStyle.DEFAULT,
+    // Whether the server may write the system clipboard via OSC 52 (Terminal → "Allow server
+    // clipboard write"). Off by default (like xterm/kitty): an untrusted host can't silently
+    // overwrite the clipboard until the user opts in.
+    val clipboardWriteEnabled: Boolean = false,
 ) {
     /** Effective scrollback depth: validated preset, else the emulator default (safety net). */
     val effectiveScrollback: Int get() = scrollback.takeIf { it > 0 } ?: DEFAULT_MAX_SCROLLBACK

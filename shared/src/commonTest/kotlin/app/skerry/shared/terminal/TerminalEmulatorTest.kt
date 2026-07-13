@@ -244,25 +244,49 @@ class TerminalEmulatorTest {
     @Test
     fun `osc 52 write decodes base64 and reports a clipboard copy`() {
         val copied = mutableListOf<String>()
-        val emu = TerminalEmulator(onClipboardCopy = { copied += it })
+        val emu = TerminalEmulator(onClipboardCopy = { copied += it }, clipboardWriteEnabled = true)
         // OSC 52 ; c ; <base64 "hello"> ST
         emu.feed("$esc]52;c;aGVsbG8=$esc\\".encodeToByteArray())
         assertEquals(listOf("hello"), copied)
     }
 
     @Test
-    fun `osc 52 accepts an empty selection field`() {
+    fun `osc 52 write is dropped when clipboard write is disabled by default`() {
+        // Threat model: an untrusted server must not silently overwrite the system clipboard. The gate
+        // is off by default (like xterm/kitty), so a valid write is dropped until the user opts in.
         val copied = mutableListOf<String>()
         val emu = TerminalEmulator(onClipboardCopy = { copied += it })
+        emu.feed("$esc]52;c;aGVsbG8=$esc\\".encodeToByteArray())
+        assertTrue(copied.isEmpty(), "OSC 52 write must be gated off by default")
+    }
+
+    @Test
+    fun `osc 52 write starts working after clipboard write is enabled live`() {
+        // The gate is mutable: flipping it on an already-open emulator (a live settings change) makes
+        // subsequent writes go through without recreating the session.
+        val copied = mutableListOf<String>()
+        val emu = TerminalEmulator(onClipboardCopy = { copied += it })
+        emu.feed("$esc]52;c;aGVsbG8=$esc\\".encodeToByteArray())
+        assertTrue(copied.isEmpty())
+        emu.clipboardWriteEnabled = true
+        emu.feed("$esc]52;c;d29ybGQ=$esc\\".encodeToByteArray()) // base64 "world"
+        assertEquals(listOf("world"), copied)
+    }
+
+    @Test
+    fun `osc 52 accepts an empty selection field`() {
+        val copied = mutableListOf<String>()
+        val emu = TerminalEmulator(onClipboardCopy = { copied += it }, clipboardWriteEnabled = true)
         emu.feed("$esc]52;;aGVsbG8=$esc\\".encodeToByteArray())
         assertEquals(listOf("hello"), copied)
     }
 
     @Test
     fun `osc 52 read request is ignored to avoid leaking the clipboard`() {
-        // Pd == '?' — a server request to read the clipboard. Never granted (threat model): callback stays silent.
+        // Pd == '?' — a server request to read the clipboard. Never granted (threat model): callback
+        // stays silent even with writes enabled.
         val copied = mutableListOf<String>()
-        val emu = TerminalEmulator(onClipboardCopy = { copied += it })
+        val emu = TerminalEmulator(onClipboardCopy = { copied += it }, clipboardWriteEnabled = true)
         emu.feed("$esc]52;c;?$esc\\".encodeToByteArray())
         assertTrue(copied.isEmpty())
     }
@@ -271,7 +295,7 @@ class TerminalEmulatorTest {
     fun `osc 52 read query with trailing data is still denied`() {
         // Defense in depth: any Pd starting with '?' is treated as a read request and the clipboard isn't returned.
         val copied = mutableListOf<String>()
-        val emu = TerminalEmulator(onClipboardCopy = { copied += it })
+        val emu = TerminalEmulator(onClipboardCopy = { copied += it }, clipboardWriteEnabled = true)
         emu.feed("$esc]52;c;?aGVsbG8=$esc\\".encodeToByteArray())
         assertTrue(copied.isEmpty())
     }
@@ -279,7 +303,7 @@ class TerminalEmulatorTest {
     @Test
     fun `osc 52 with invalid base64 is ignored`() {
         val copied = mutableListOf<String>()
-        val emu = TerminalEmulator(onClipboardCopy = { copied += it })
+        val emu = TerminalEmulator(onClipboardCopy = { copied += it }, clipboardWriteEnabled = true)
         emu.feed("$esc]52;c;@@@notbase64$esc\\".encodeToByteArray())
         assertTrue(copied.isEmpty())
     }
@@ -289,7 +313,7 @@ class TerminalEmulatorTest {
         // Threat model: a server must not be able to push megabytes into the system clipboard. base64
         // "YWFh" decodes to "aaa" (3 bytes) — 25000 repeats = 75000 bytes > the 64 KiB limit → stay silent.
         val copied = mutableListOf<String>()
-        val emu = TerminalEmulator(onClipboardCopy = { copied += it })
+        val emu = TerminalEmulator(onClipboardCopy = { copied += it }, clipboardWriteEnabled = true)
         emu.feed("$esc]52;c;${"YWFh".repeat(25000)}$esc\\".encodeToByteArray())
         assertTrue(copied.isEmpty(), "an oversized clipboard write should be dropped")
     }
@@ -298,7 +322,7 @@ class TerminalEmulatorTest {
     fun `osc 52 clipboard write at a sane size still works`() {
         // 1000×"aaa" = 3000 bytes — within the limit, the write goes through.
         val copied = mutableListOf<String>()
-        val emu = TerminalEmulator(onClipboardCopy = { copied += it })
+        val emu = TerminalEmulator(onClipboardCopy = { copied += it }, clipboardWriteEnabled = true)
         emu.feed("$esc]52;c;${"YWFh".repeat(1000)}$esc\\".encodeToByteArray())
         assertEquals(listOf("aaa".repeat(1000)), copied)
     }

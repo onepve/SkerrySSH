@@ -133,8 +133,11 @@ const val DEFAULT_MAX_SCROLLBACK = 5000
  * @param respond called with terminal replies (DSR/DA) — the UI sends them back to the PTY.
  * @param onBell called on BEL (0x07).
  * @param onClipboardCopy called on an OSC 52 write (decoded text) — the UI puts it on the system
- *   clipboard. A clipboard READ request (OSC 52 with `?`) is deliberately ignored: the user's
- *   clipboard contents are not handed to an untrusted server.
+ *   clipboard, but only while [clipboardWriteEnabled] is on. A clipboard READ request (OSC 52 with
+ *   `?`) is always ignored: the user's clipboard contents are not handed to an untrusted server.
+ * @param clipboardWriteEnabled whether OSC 52 clipboard writes are honored. Default off (like
+ *   xterm/kitty): an untrusted server must not silently overwrite the system clipboard without the
+ *   user opting in. Mutable so a live settings change applies to an already-open session.
  */
 class TerminalEmulator(
     cols: Int = 80,
@@ -148,7 +151,14 @@ class TerminalEmulator(
     private val respond: (String) -> Unit = {},
     private val onBell: () -> Unit = {},
     private val onClipboardCopy: (String) -> Unit = {},
+    clipboardWriteEnabled: Boolean = false,
 ) {
+    /**
+     * OSC 52 write gate: when off (default), a server's clipboard writes are dropped. Not a val — a
+     * live settings change flips it on an already-open session (see [TerminalScreenState]). Reading
+     * the clipboard is never allowed regardless of this flag.
+     */
+    var clipboardWriteEnabled: Boolean = clipboardWriteEnabled
     var cols: Int = cols.coerceAtLeast(1)
         private set
     var rows: Int = rows.coerceAtLeast(1)
@@ -486,10 +496,13 @@ class TerminalEmulator(
     /**
      * OSC 52: `Pc;Pd`. Pd is base64 text to write to the clipboard (via [onClipboardCopy]).
      * Pd == `?` is a server request to READ the clipboard; deliberately ignored (the user's
-     * clipboard is never handed to the server). Invalid base64 is silently discarded.
+     * clipboard is never handed to the server). Invalid base64 is silently discarded. The whole
+     * write path is gated behind [clipboardWriteEnabled] (default off): an untrusted server must not
+     * silently replace the system clipboard until the user opts in.
      */
     @OptIn(ExperimentalEncodingApi::class)
     private fun setClipboard(rest: String) {
+        if (!clipboardWriteEnabled) return // opt-in gate — a server can't touch the clipboard by default
         val data = rest.substringAfter(';', "")
         if (data.isEmpty() || data.startsWith("?")) return // empty or a read request — clipboard not handed over
         val text = runCatching { Base64.decode(data).decodeToString() }.getOrNull() ?: return

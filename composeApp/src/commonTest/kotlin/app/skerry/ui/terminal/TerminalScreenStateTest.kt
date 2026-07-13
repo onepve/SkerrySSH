@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -603,6 +604,58 @@ class TerminalScreenStateTest {
         session.emit("b".encodeToByteArray())
 
         assertEquals(before + 2, state.snapshotVersion)
+        scope.cancel()
+    }
+
+    @Test
+    fun `osc 52 clipboard write is dropped when the gate is off by default`() = runTest {
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val session = FakeTerminalSession()
+        val state = TerminalScreenState(session, scope)
+        val esc = 27.toChar().toString()
+
+        val copies = mutableListOf<String>()
+        val collector = scope.launch { state.clipboardCopies.collect { copies += it } }
+
+        session.emit("$esc]52;c;aGVsbG8=$esc\\".encodeToByteArray()) // base64 "hello"
+        assertEquals(emptyList(), copies) // gated off — no clipboard write reaches the UI
+        collector.cancel()
+        scope.cancel()
+    }
+
+    @Test
+    fun `osc 52 clipboard write reaches the UI once the gate is enabled`() = runTest {
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val session = FakeTerminalSession()
+        val state = TerminalScreenState(session, scope, clipboardWriteEnabled = true)
+        val esc = 27.toChar().toString()
+
+        val copies = mutableListOf<String>()
+        val collector = scope.launch { state.clipboardCopies.collect { copies += it } }
+
+        session.emit("$esc]52;c;aGVsbG8=$esc\\".encodeToByteArray())
+        assertEquals(listOf("hello"), copies)
+        collector.cancel()
+        scope.cancel()
+    }
+
+    @Test
+    fun `applyClipboardWriteEnabled toggles the gate on an open session`() = runTest {
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val session = FakeTerminalSession()
+        val state = TerminalScreenState(session, scope) // starts off
+        val esc = 27.toChar().toString()
+
+        val copies = mutableListOf<String>()
+        val collector = scope.launch { state.clipboardCopies.collect { copies += it } }
+
+        session.emit("$esc]52;c;aGVsbG8=$esc\\".encodeToByteArray())
+        assertEquals(emptyList(), copies)
+
+        state.applyClipboardWriteEnabled(true) // live settings change
+        session.emit("$esc]52;c;d29ybGQ=$esc\\".encodeToByteArray()) // base64 "world"
+        assertEquals(listOf("world"), copies)
+        collector.cancel()
         scope.cancel()
     }
 

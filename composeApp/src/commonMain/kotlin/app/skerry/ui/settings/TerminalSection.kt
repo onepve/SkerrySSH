@@ -41,6 +41,8 @@ import app.skerry.ui.generated.resources.settings_terminal_cursor_block_steady
 import app.skerry.ui.generated.resources.settings_terminal_cursor_style
 import app.skerry.ui.generated.resources.settings_terminal_cursor_underline_blink
 import app.skerry.ui.generated.resources.settings_terminal_cursor_underline_steady
+import app.skerry.ui.generated.resources.settings_terminal_clipboard_write
+import app.skerry.ui.generated.resources.settings_terminal_clipboard_write_desc
 import app.skerry.ui.generated.resources.settings_terminal_scrollback
 import app.skerry.ui.generated.resources.settings_terminal_scrollback_desc
 import app.skerry.ui.generated.resources.settings_terminal_section_behavior
@@ -167,6 +169,15 @@ internal fun TerminalSection(state: DesktopDesignState) {
         stringResource(Res.string.settings_terminal_show_title_desc),
         on = state.showTerminalTitleOnTabs,
         onToggle = state::toggleShowTerminalTitleOnTabs,
+    )
+    HLine()
+    // OSC 52 clipboard-write gate (default off, like xterm/kitty): keeps an untrusted host from
+    // silently overwriting the system clipboard. Applies to new and already-open sessions.
+    SettingToggleRow(
+        stringResource(Res.string.settings_terminal_clipboard_write),
+        stringResource(Res.string.settings_terminal_clipboard_write_desc),
+        on = state.allowServerClipboardWrite,
+        onToggle = state::toggleAllowServerClipboardWrite,
     )
 }
 

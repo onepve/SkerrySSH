@@ -74,6 +74,8 @@
     <string name="settings_terminal_cursor_bar_steady">Bar</string>
     <string name="settings_terminal_show_title">Show terminal title on tabs</string>
     <string name="settings_terminal_show_title_desc">Let the connected shell rename a tab (e.g. the running program). Off — tabs always show the saved host name.</string>
+    <string name="settings_terminal_clipboard_write">Allow server clipboard writes (OSC 52)</string>
+    <string name="settings_terminal_clipboard_write_desc">Let the connected shell replace your system clipboard (used by tmux/vim yank). Off by default — a malicious host could otherwise slip attacker-controlled text into what you paste.</string>
 
     <!-- Sync section (also covers the account card and linked devices — merged from the former Account tab) -->
     <string name="settings_disconnect">Disconnect</string>

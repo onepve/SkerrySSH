@@ -148,6 +148,11 @@ class DesktopDesignState(
     private val onTerminalCursorStyleChange: (TerminalCursorStyle) -> Unit = {},
     initialShowTerminalTitleOnTabs: Boolean = false,
     private val onShowTerminalTitleOnTabsChange: (Boolean) -> Unit = {},
+    // Whether the server may write the system clipboard via OSC 52 (Terminal → "Allow server
+    // clipboard write"). Off by default (like xterm/kitty). Snapshotted into new sessions via
+    // [app.skerry.ui.terminal.TerminalSessionPrefs] and pushed live into open ones.
+    initialAllowServerClipboardWrite: Boolean = false,
+    private val onAllowServerClipboardWriteChange: (Boolean) -> Unit = {},
     // Terminal color theme (Appearance → theme cards). Read from persistence at startup, written back
     // via the callback. Threaded into the terminal via [app.skerry.ui.terminal.LocalTerminalTheme] and
     // applied to open sessions live. Default (Night Sea, no-op) preserves the prior look for
@@ -247,6 +252,12 @@ class DesktopDesignState(
 
     /** Whether to show the live OSC title on terminal tabs (Terminal → Show title on tabs). */
     var showTerminalTitleOnTabs: Boolean by mutableStateOf(initialShowTerminalTitleOnTabs); private set
+
+    /**
+     * Whether a server may write the system clipboard via OSC 52 (Terminal → Allow server clipboard
+     * write). Off by default; snapshotted into new sessions and pushed live into open ones.
+     */
+    var allowServerClipboardWrite: Boolean by mutableStateOf(initialAllowServerClipboardWrite); private set
 
     /** Open group management dialog (create/edit), or `null`. */
     var groupDialog: GroupDialog? by mutableStateOf(null); private set
@@ -523,6 +534,12 @@ class DesktopDesignState(
     fun toggleShowTerminalTitleOnTabs() {
         showTerminalTitleOnTabs = !showTerminalTitleOnTabs
         onShowTerminalTitleOnTabsChange(showTerminalTitleOnTabs)
+    }
+
+    /** Toggle honoring server OSC 52 clipboard writes and report outward (for persistence). */
+    fun toggleAllowServerClipboardWrite() {
+        allowServerClipboardWrite = !allowServerClipboardWrite
+        onAllowServerClipboardWriteChange(allowServerClipboardWrite)
     }
 
     fun toggleSanitize() { sanitize = !sanitize }

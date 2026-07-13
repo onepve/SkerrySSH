@@ -55,6 +55,10 @@ class TerminalScreenState(
     scrollback: Int = DEFAULT_MAX_SCROLLBACK,
     cursorShape: CursorShape = CursorShape.Block,
     cursorBlink: Boolean = true,
+    // Whether OSC 52 clipboard writes from the server are honored. Default off (like xterm/kitty):
+    // an untrusted host must not silently overwrite the system clipboard until the user opts in.
+    // Snapshotted at connect; also pushed live into an open session via [applyClipboardWriteEnabled].
+    clipboardWriteEnabled: Boolean = false,
 ) {
     // OSC 52 requests to write to the system clipboard. extraBufferCapacity keeps tryEmit from the
     // owner coroutine from dropping when there's no subscriber yet; DROP_OLDEST on burst keeps the
@@ -77,8 +81,9 @@ class TerminalScreenState(
         // contract breaks.
         respond = { reply -> send(reply) },
         // OSC 52 write is also called synchronously from feed(); publish to the flow, UI thread
-        // writes to the system clipboard.
+        // writes to the system clipboard. Gated in the emulator by [clipboardWriteEnabled].
         onClipboardCopy = { text -> _clipboardCopies.tryEmit(text) },
+        clipboardWriteEnabled = clipboardWriteEnabled,
     )
 
     /** Screen snapshot (rows top to bottom) for rendering. */
@@ -251,6 +256,7 @@ class TerminalScreenState(
             is TerminalCommand.Feed -> emulator.feed(cmd.chunk)
             is TerminalCommand.SetCursorDefault -> emulator.applyCursorDefault(cmd.shape, cmd.blink)
             is TerminalCommand.SetMaxScrollback -> emulator.applyMaxScrollback(cmd.lines)
+            is TerminalCommand.SetClipboardWriteEnabled -> emulator.clipboardWriteEnabled = cmd.enabled
             is TerminalCommand.Resize -> {
                 // PTY is resized first, the emulator only on success: otherwise the grid would be
                 // wider than the application knows and the tail of rows would stay undrawn. A PTY
@@ -624,6 +630,15 @@ class TerminalScreenState(
     fun applyScrollback(lines: Int) {
         commands.trySend(TerminalCommand.SetMaxScrollback(lines))
     }
+
+    /**
+     * Toggle whether server OSC 52 clipboard writes are honored on an already-open session (setting
+     * changed live). Goes through the same command queue as feed/resize, so it can't race the
+     * single-threaded emulator.
+     */
+    fun applyClipboardWriteEnabled(enabled: Boolean) {
+        commands.trySend(TerminalCommand.SetClipboardWriteEnabled(enabled))
+    }
 }
 
 /** Command to the sole emulator owner; the queue preserves feed/resize ordering. */
@@ -639,6 +654,9 @@ private sealed interface TerminalCommand {
 
     /** New scrollback depth (setting changed while the session is open). */
     class SetMaxScrollback(val lines: Int) : TerminalCommand
+
+    /** New OSC 52 clipboard-write gate state (setting changed while the session is open). */
+    class SetClipboardWriteEnabled(val enabled: Boolean) : TerminalCommand
 }
 
 /**
