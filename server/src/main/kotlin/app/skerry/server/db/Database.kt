@@ -6,6 +6,8 @@ import com.zaxxer.hikari.HikariDataSource
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.vendors.SQLiteDialect
+import org.jetbrains.exposed.sql.vendors.currentDialect
 
 /** Database connection and schema creation. SQLite by default, PostgreSQL via URL. */
 object Db {
@@ -23,14 +25,38 @@ object Db {
         return database
     }
 
+    // Inlined createMissingTablesAndColumns (create + add-missing-columns + mapping consistence):
+    // migrates by adding new nullable columns (Devices.platform, Devices.lastSyncVersion) to an
+    // existing database without losing data. Inlined because sqlite-jdbc >= 3.50 reports
+    // supportsAlterTableWithAddColumn = true, which routes Exposed (through 0.61) into schema-sync
+    // paths whose metadata reads misfire on SQLite: an empty PK_NAME becomes "ADD PRIMARY KEY",
+    // autoincrement misdetection becomes "MODIFY COLUMN" — statements SQLite cannot execute and
+    // this schema does not need. On SQLite keep only what it supports and this migration relies
+    // on: creating tables/indexes and adding new columns. Other dialects run everything.
+    @Suppress("DEPRECATION")
     fun createSchema(database: Database) {
+        val tables = arrayOf(
+            Accounts, Devices, Records, Pairing, ActivityLog,
+            AccountKeys, Teams, TeamMembers, TeamRecords,
+        )
         transaction(database) {
-            // createMissingTablesAndColumns (not create): migrates by adding new nullable columns
-            // (Devices.platform, Devices.lastSyncVersion) to an existing database without losing data.
-            SchemaUtils.createMissingTablesAndColumns(
-                Accounts, Devices, Records, Pairing, ActivityLog,
-                AccountKeys, Teams, TeamMembers, TeamRecords,
-            )
+            val isSqlite = currentDialect is SQLiteDialect
+            fun supported(sql: String) = !isSqlite || sql.startsWith("CREATE ") ||
+                (sql.startsWith("ALTER TABLE") && " ADD " in sql && "CONSTRAINT" !in sql && "PRIMARY KEY" !in sql)
+            // Like the original: without a reset, index metadata cached before the create phase
+            // makes checkMappingConsistence re-emit CREATE INDEX for indexes that already exist.
+            db.dialect.resetCaches()
+            val created = SchemaUtils.createStatements(tables = tables)
+            created.forEach { exec(it) }
+            commit()
+            val altered = SchemaUtils.addMissingColumnsStatements(tables = tables).filter(::supported)
+            altered.forEach { exec(it) }
+            commit()
+            val executed = created + altered
+            SchemaUtils.checkMappingConsistence(tables = tables)
+                .filter { it !in executed && supported(it) }
+                .forEach { exec(it) }
+            db.dialect.resetCaches()
         }
     }
 }

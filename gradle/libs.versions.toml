@@ -20,7 +20,7 @@ material3 = "1.11.0-alpha07"
 kotlinx-coroutines = "1.10.2"
 kotlinx-serialization = "1.9.0"
 ktor = "3.4.3"
-logback = "1.5.18"
+logback = "1.5.38"
 # slf4j-nop: a no-op SLF4J provider for the app. sshj logs via slf4j-api (2.0.17 on the
 # classpath); without any binding SLF4J prints "No SLF4J providers were found" and goes NOP.
 # An explicit nop removes the warning while keeping current behavior (sshj logs are not needed in the client anyway).
@@ -46,8 +46,8 @@ atomicfu = "0.32.1"
 # --- Phase 2 sync ---
 # Exposed — the server's type-safe SQL layer; SQLite by default, PostgreSQL via DB URL
 exposed = "0.58.0"
-sqlite-jdbc = "3.49.1.0"
-postgresql = "42.7.5"
+sqlite-jdbc = "3.53.2.0"
+postgresql = "42.7.13"
 hikari = "6.3.0"
 # Nimbus SRP6a — an audited SRP-6a implementation, used by the server and the JVM sync client
 nimbus-srp = "2.1.0"
