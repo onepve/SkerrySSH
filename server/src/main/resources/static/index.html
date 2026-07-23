@@ -593,6 +593,9 @@ const L = {
     ftAi:{l:"AI",t:"AI · 在你控制之下",d:"终端内 AI 助手，不经过确认不执行任何命令。",p:["自有 OpenAI Key — 或纯本地模型","每个主机单独设置信任等级","离线也能用（本地模型）","AI 回复使用当前 UI 语言"]},
     ftMore:{l:"更多",t:"更多 · 精益求精",d:"每天节省时间的小细节。",p:["VNC 远程桌面","SFTP 内置文件查看/编辑（F3/F4）","会话录像回放","Windows 安装器（.exe / .msi）"]},
     extras:["VNC 远程桌面","SFTP 内置文件查看/编辑（F3/F4）","会话录像回放","Windows 安装器（.exe / .msi）"],
+    snippetComments:["strftime 格式","24 小时","Unix 秒","UUID v4","N 位随机字符","系统剪贴板","按标签取密码（预览掩码）","运行时提示输入"], snippetNote:"// 含变量的片段发送前弹出确认窗口 — 所见即所发",
+    connComments:["SSH、SFTP、隧道、串口","支持 ProxyJump 跳板机与 SSH 证书","内置双栏 SFTP 文件管理器","本地转发","远程转发","SOCKS 代理"],
+    teamComments:["共享主机和片段，端到端加密","起个名字，邀请成员","所有成员可见","在共享主机上运行","按团队轮换密钥"],
 guideLabel:"快速上手", guideTitle:"使用说明",
     guideFirstTitle:"第一次使用",
     guideLocalTitle:"本机离线使用", guideLocalStep1:"打开 Skerry，设置主密码", guideLocalStep2:"选「本地加密存储」", guideLocalStep3:"进入主界面，开始用",
@@ -642,6 +645,9 @@ guideLabel:"快速上手", guideTitle:"使用说明",
     ftAi:{l:"AI",t:"AI, kept on a leash",d:"An in-terminal assistant that does nothing without your permission.",p:["Your own OpenAI key — or fully local models","Trust level configurable per host","Works offline (local models)","Assistant replies in your UI language"]},
     ftMore:{l:"More",t:"More · the finishing touches",d:"Small things that save time every day.",p:["VNC remote desktop","Built-in SFTP file viewer/editor (F3/F4)","Session recording playback","Windows installer (.exe / .msi)"]},
     extras:["VNC remote desktop","built-in SFTP file viewer/editor (F3/F4)","session recording playback","Windows installer (.exe / .msi)"],
+    snippetComments:["strftime format","24-hour","Unix seconds","UUID v4","N random chars","system clipboard","password by label (masked)","prompted at runtime"], snippetNote:"// confirmation dialog preview before sending — what you see is what gets sent",
+    connComments:["SSH, SFTP, tunnels, serial","with ProxyJump & SSH certificates","dual-pane SFTP right in the app","local forward","remote forward","SOCKS proxy"],
+    teamComments:["share hosts & snippets E2E encrypted","name it, invite members","visible to all members","run on shared hosts","per-team key rotation"],
     guideLabel:"Get Started", guideTitle:"How it works",
     guideFirstTitle:"First time using Skerry",
     guideLocalTitle:"Offline local use", guideLocalStep1:"Open Skerry, set your master password", guideLocalStep2:"Choose \"Local encrypted storage\"", guideLocalStep3:"Start connecting to servers",
@@ -691,6 +697,9 @@ guideLabel:"快速上手", guideTitle:"使用说明",
     ftAi:{l:"AI",t:"AI, который под контролем",d:"Ассистент в терминале — ничего не делает без вашего разрешения.",p:["Свой ключ OpenAI — или полностью локальные модели","Уровень доверия настраивается для каждого хоста","Работает офлайн (локальные модели)","Ассистент отвечает на языке интерфейса"]},
     ftMore:{l:"Прочее",t:"Прочее · последние штрихи",d:"Мелочи, которые каждый день экономят время.",p:["VNC удалённый рабочий стол","Встроенный просмотр/редактор файлов SFTP (F3/F4)","Воспроизведение записей сессий","Установщик Windows (.exe / .msi)"]},
     extras:["VNC удалённый рабочий стол","встроенный просмотр/редактор файлов SFTP (F3/F4)","воспроизведение записей сессий","установщик Windows (.exe / .msi)"],
+    snippetComments:["формат strftime","24 часа","Unix-сек","UUID v4","N случ. симв.","буфер обмена","пароль по метке (скрыт)","запрос при выполнении"], snippetNote:"// диалог подтверждения перед отправкой — что видите, то и отправляется",
+    connComments:["SSH, SFTP, туннели, serial","с ProxyJump и SSH-сертификатами","двухпанельный SFTP в приложении","локальный проброс","удалённый проброс","SOCKS-прокси"],
+    teamComments:["делитесь хостами и фрагментами (E2E)","назовите, пригласите участников","видно всем участникам","запуск на общих хостах","ротация ключей команды"],
     guideLabel:"Начало работы", guideTitle:"Как использовать",
     guideFirstTitle:"Первое использование",
     guideLocalTitle:"Локально (офлайн)", guideLocalStep1:"Откройте Skerry, задайте мастер-пароль", guideLocalStep2:"Выберите «Локальное хранилище»", guideLocalStep3:"Начинайте подключаться",
@@ -877,35 +886,28 @@ function renderFeats(){
     // i=0:Terminal, i=1:Connections, i=2:Vault, i=3:Teams, i=4:Snippet, i=5:AI, i=6:More
     if (i === 4) {
       // Snippet card — show variable syntax in a terminal window
+      const sc = L[curLang].snippetComments;
       const snippetVars = [
-        `date:  <span style="color:#34d3c0">\${{date:YYYY-MM-DD}}</span>  <span style="color:#5e7482">// strftime format</span>`,
-        `time:  <span style="color:#34d3c0">\${{time:HH:mm:ss}}</span>  <span style="color:#5e7482">// 24-hour</span>`,
-        `ts:    <span style="color:#34d3c0">\${{timestamp}}</span>  <span style="color:#5e7482">// Unix seconds</span>`,
-        `uuid:  <span style="color:#34d3c0">\${{uuid}}</span>  <span style="color:#5e7482">// random UUID v4</span>`,
-        `rnd:   <span style="color:#34d3c0">\${{random:16}}</span>  <span style="color:#5e7482">// N random chars</span>`,
-        `clip:  <span style="color:#34d3c0">\${{clipboard}}</span>  <span style="color:#5e7482">// system clipboard</span>`,
-        `vault: <span style="color:#34d3c0">\${{vault:MySecret}}</span>  <span style="color:#5e7482">// password by label (masked in preview)</span>`,
-        `param: <span style="color:#34d3c0">\${{param:username}}</span>  <span style="color:#5e7482">// prompted at runtime</span>`
+        `date:  <span style="color:#34d3c0">\${{date:YYYY-MM-DD}}</span>  <span style="color:#5e7482">// ${sc[0]}</span>`,
+        `time:  <span style="color:#34d3c0">\${{time:HH:mm:ss}}</span>  <span style="color:#5e7482">// ${sc[1]}</span>`,
+        `ts:    <span style="color:#34d3c0">\${{timestamp}}</span>  <span style="color:#5e7482">// ${sc[2]}</span>`,
+        `uuid:  <span style="color:#34d3c0">\${{uuid}}</span>  <span style="color:#5e7482">// ${sc[3]}</span>`,
+        `rnd:   <span style="color:#34d3c0">\${{random:16}}</span>  <span style="color:#5e7482">// ${sc[4]}</span>`,
+        `clip:  <span style="color:#34d3c0">\${{clipboard}}</span>  <span style="color:#5e7482">// ${sc[5]}</span>`,
+        `vault: <span style="color:#34d3c0">\${{vault:MySecret}}</span>  <span style="color:#5e7482">// ${sc[6]}</span>`,
+        `param: <span style="color:#34d3c0">\${{param:username}}</span>  <span style="color:#5e7482">// ${sc[7]}</span>`
       ];
       const snippetLis = snippetVars.map(v => `<div style="color:#a8bac4;display:flex;gap:10px;line-height:1.9"><span style="color:#2bbdee;font-family:'JetBrains Mono',monospace;font-size:12px">▸</span><code style="font-family:'JetBrains Mono',monospace;font-size:12.5px">${v}</code></div>`).join('');
+      const snippetNote = L[curLang].snippetNote || '// 含变量的片段发送前弹出确认窗口 — 所见即所发';
       rowsHtml += `<div class="feat-row${active?' active':''}">${featText}
-        <div class="feat-shot-wrap"><div class="bg-glow"></div><div class="feat-shot extra"><div class="fake-titlebar"><span></span><span></span><span></span><code>snippet — template</code></div><div class="fake-term">${snippetLis}<div style="color:var(--dim);margin-top:10px;font-size:11.5px;border-top:1px solid var(--border1);padding-top:10px">// 含变量的片段发送前弹出确认窗口 — 所见即所发</div></div></div></div></div>`;
+        <div class="feat-shot-wrap"><div class="bg-glow"></div><div class="feat-shot extra"><div class="fake-titlebar"><span></span><span></span><span></span><code>snippet — template</code></div><div class="fake-term">${snippetLis}<div style="color:var(--dim);margin-top:10px;font-size:11.5px;border-top:1px solid var(--border1);padding-top:10px">${snippetNote}</div></div></div></div></div>`;
     } else if (i === 1 || i === 3) {
-      // Connections & Teams — code card (no dedicated screenshot yet)
-      const codeLines = i === 1 ? [
-        `<span style="color:#5e7482"># Connections: SSH, SFTP, tunnels, serial</span>`,
-        `<span style="color:#34d3c0">ssh</span> user@host <span style="color:#5e7482">— with ProxyJump & certs</span>`,
-        `<span style="color:#34d3c0">sftp</span> host <span style="color:#5e7482">— dual-pane right in the app</span>`,
-        `<span style="color:#34d3c0">-L 8080:localhost:80</span> <span style="color:#5e7482">— local forward</span>`,
-        `<span style="color:#34d3c0">-R 3000:localhost:3000</span> <span style="color:#5e7482">— remote forward</span>`,
-        `<span style="color:#34d3c0">-D 1080</span> <span style="color:#5e7482">— SOCKS proxy</span>`
-      ] : [
-        `<span style="color:#5e7482"># Teams: share hosts & snippets E2E encrypted</span>`,
-        `<span style="color:#34d3c0">create team</span> <span style="color:#5e7482">— name it, invite members</span>`,
-        `<span style="color:#34d3c0">share host</span> <span style="color:#5e7482">— visible to all members</span>`,
-        `<span style="color:#34d3c0">share snippet</span> <span style="color:#5e7482">— run on shared hosts</span>`,
-        `<span style="color:#34d3c0">rotate keys</span> <span style="color:#5e7482">— per-team key rotation</span>`
-      ];
+      // Connections & Teams — code card
+      const cmts = i === 1 ? L[curLang].connComments : L[curLang].teamComments;
+      const prefixes = i === 1
+        ? ['<span style="color:#5e7482"># </span>', '<span style="color:#34d3c0">ssh</span> user@host <span style="color:#5e7482">— </span>', '<span style="color:#34d3c0">sftp</span> host <span style="color:#5e7482">— </span>', '<span style="color:#34d3c0">-L 8080:localhost:80</span> <span style="color:#5e7482">— </span>', '<span style="color:#34d3c0">-R 3000:localhost:3000</span> <span style="color:#5e7482">— </span>', '<span style="color:#34d3c0">-D 1080</span> <span style="color:#5e7482">— </span>']
+        : ['<span style="color:#5e7482"># </span>', '<span style="color:#34d3c0">create team</span> <span style="color:#5e7482">— </span>', '<span style="color:#34d3c0">share host</span> <span style="color:#5e7482">— </span>', '<span style="color:#34d3c0">share snippet</span> <span style="color:#5e7482">— </span>', '<span style="color:#34d3c0">rotate keys</span> <span style="color:#5e7482">— </span>'];
+      const codeLines = cmts.map((c,j) => prefixes[j] + c);
       const codeLis = codeLines.map(v => `<div style="color:#a8bac4;display:flex;gap:10px;line-height:1.85"><span style="color:#2bbdee;font-family:'JetBrains Mono',monospace;font-size:11px">$</span><code style="font-family:'JetBrains Mono',monospace;font-size:13px">${v}</code></div>`).join('');
       rowsHtml += `<div class="feat-row${active?' active':''}">${featText}
         <div class="feat-shot-wrap"><div class="bg-glow"></div><div class="feat-shot extra"><div class="fake-titlebar"><span></span><span></span><span></span><code>skerry</code></div><div class="fake-term">${codeLis}<div class="prompt">$ <span class="cursor"></span></div></div></div></div></div>`;
