@@ -282,13 +282,6 @@ internal fun SyncSetupBody(
     val statusState by sync.status.collectAsState()
     val needsInvite = statusState as? SyncStatus.NeedsInviteCode
 
-    // Connecting hit an existing account under a different password (issue #28): swap the form
-    // for the re-key confirmation. Same pattern as SyncSetupDialog.
-    (statusState as? SyncStatus.NeedsPasswordReplaceConfirm)?.let { pending ->
-        PasswordReplaceConfirm(sync, pending.accountId)
-        return
-    }
-
     val form = SyncSetupForm(serverUrl, account)
     val canSubmit = form.canSubmit(password.length) && !busy
 
