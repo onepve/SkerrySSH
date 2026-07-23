@@ -306,6 +306,34 @@ tasks.register<Exec>("packageAppImage") {
     environment("VERSION", providers.gradleProperty("skerry.versionName").orNull ?: "0.1.0")
 }
 
+// Portable build: zip the jpackage app-image (createDistributable) plus a portable/ marker
+// directory so the app detects portable mode at runtime. The marker signals the app to store
+// all data (vault, keys, configuration) alongside the executable instead of the system user
+// directory — ideal for USB drives or unpack-and-run use.
+// Used by the release workflow for the Windows and Linux portable assets (the arch suffix is
+// appended in the workflow, like for the msi). The bundled README warns about paths with
+// spaces on Windows — libsodium's loader (goterl) fails to initialize from them.
+tasks.register<Zip>("packagePortableZip") {
+    group = "compose desktop"
+    description = "Build a portable .zip from the jpackage app-image with a portable/ marker"
+    dependsOn("createDistributable")
+
+    val appVersion = providers.gradleProperty("skerry.versionName").orNull ?: "0.1.0"
+    archiveFileName.set("Skerry-$appVersion-portable.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("compose/binaries/main/portable"))
+
+    // Create the portable/ marker directory inside the app-image so the app detects
+    // portable mode at startup. The README explains the behaviour to the user.
+    doFirst {
+        val appDir = layout.buildDirectory.dir("compose/binaries/main/app/Skerry").get().asFile
+        val portableDir = appDir.resolve("portable")
+        portableDir.mkdirs()
+        project.file("portable/README.txt").copyTo(portableDir.resolve("README.txt"), overwrite = true)
+    }
+
+    from(layout.buildDirectory.dir("compose/binaries/main/app"))
+}
+
 // Build a single-file Skerry.flatpak via flatpak-builder. Unlike the other packaging tasks this
 // does NOT depend on createDistributable: flatpak-builder compiles the app hermetically inside the
 // sandbox from the committed offline sources (composeApp/flatpak/flatpak-sources.json). The task

@@ -173,7 +173,7 @@ jobs:
           [ -f "$TMP/skerry/lib/app/Skerry.cfg" ] && mv "$TMP/skerry/lib/app/Skerry.cfg" "$TMP/skerry/lib/app/skerry.cfg"
           sed -i -E 's/^(app\.classpath=\$APPDIR\/)(.*)$/\1\L\2/' "$TMP/skerry/lib/app/skerry.cfg"
           mkdir -p "$TMP/skerry/portable"
-          cp .github/portable-readme.txt "$TMP/skerry/portable/README.txt"
+          cp composeApp/portable/README.txt "$TMP/skerry/portable/README.txt"
           printf '#!/bin/sh\nHERE="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"\nexec "$HERE/bin/skerry" "$@"\n' > "$TMP/skerry/skerry"
           chmod 755 "$TMP/skerry/skerry"
           (cd "$TMP" && zip -qr skerry-xinchuang-amd64-portable.zip skerry)
@@ -198,7 +198,7 @@ jobs:
           [ -f "$TMP/skerry/lib/app/Skerry.cfg" ] && mv "$TMP/skerry/lib/app/Skerry.cfg" "$TMP/skerry/lib/app/skerry.cfg"
           sed -i -E 's/^(app\.classpath=\$APPDIR\/)(.*)$/\1\L\2/' "$TMP/skerry/lib/app/skerry.cfg"
           mkdir -p "$TMP/skerry/portable"
-          cp .github/portable-readme.txt "$TMP/skerry/portable/README.txt"
+          cp composeApp/portable/README.txt "$TMP/skerry/portable/README.txt"
           printf '#!/bin/sh\nHERE="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"\nexec "$HERE/bin/skerry" "$@"\n' > "$TMP/skerry/skerry"
           chmod 755 "$TMP/skerry/skerry"
           (cd "$TMP" && zip -qr skerry-xinchuang-arm64-portable.zip skerry)
@@ -273,7 +273,15 @@ jobs:
           ./gradlew :composeApp:packageExe --stacktrace
           ${{ needs.version.outputs.name && format('-Pskerry.versionName={0}', needs.version.outputs.name) || '' }}
 
-      - name: Suffix installers with the architecture
+      - name: Build portable ZIP
+        # packagePortableZip reuses the app-image createDistributable already builds for the
+        # msi, so the extra artifact costs only the zipping.
+        shell: bash
+        run: >
+          ./gradlew :composeApp:packagePortableZip --stacktrace
+          ${{ needs.version.outputs.name && format('-Pskerry.versionName={0}', needs.version.outputs.name) || '' }}
+
+      - name: Suffix and rename for distribution
         # jpackage emits Skerry-<version>.{msi,exe} with no arch marker; every other desktop
         # asset carries one, and a Windows ARM build would otherwise collide.
         # Rename to the fixed public names used by the download page / R2 latest/.
@@ -283,36 +291,17 @@ jobs:
           for f in *.msi; do mv "$f" "Skerry-windows-x64.msi"; done
           cd ../exe
           for f in *.exe; do mv "$f" "Skerry-windows-x64.exe"; done
+          cd ../portable
+          for f in *.zip; do mv "$f" "Skerry-portable-x64.zip"; done
 
-      - name: Upload Windows installers
-        uses: actions/upload-artifact@v7
-        with:
-          name: skerry-windows-installers-x64
-          path: |
-            composeApp/build/compose/binaries/main/msi/*.msi
-            composeApp/build/compose/binaries/main/exe/*.exe
-          if-no-files-found: error
-
-      - name: Build portable ZIP
-        shell: pwsh
-        env:
-          VERSION_PROP: ${{ needs.version.outputs.name && format('-Pskerry.versionName={0}', needs.version.outputs.name) || '' }}
-        run: |
-          ./gradlew :composeApp:createDistributable --stacktrace $env:VERSION_PROP
-          # portable marker directory — doubles as the data root (keys, vault, config live here)
-          New-Item -ItemType Directory -Path composeApp/build/compose/binaries/main/app/Skerry/portable -Force | Out-Null
-          Copy-Item .github/portable-readme.txt composeApp/build/compose/binaries/main/app/Skerry/portable/README.txt
-          # Compress-Archive zips a directory flat by default; push into the parent so
-          # the archive root contains a Skerry/ folder, not a pile of loose files.
-          Push-Location composeApp/build/compose/binaries/main/app
-          Compress-Archive -Path Skerry -DestinationPath "$env:GITHUB_WORKSPACE/Skerry-portable-x64.zip"
-          Pop-Location
-
-      - name: Upload Windows portable ZIP
+      - name: Upload Windows distributables
         uses: actions/upload-artifact@v7
         with:
           name: skerry-windows-x64
-          path: Skerry-portable-x64.zip
+          path: |
+            composeApp/build/compose/binaries/main/msi/*.msi
+            composeApp/build/compose/binaries/main/exe/*.exe
+            composeApp/build/compose/binaries/main/portable/*.zip
           if-no-files-found: error
 
   macos-desktop:
