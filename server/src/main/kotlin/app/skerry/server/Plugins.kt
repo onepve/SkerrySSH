@@ -11,6 +11,7 @@ import app.skerry.server.routes.pairingStartRoute
 import app.skerry.server.routes.syncWebSocket
 import app.skerry.server.routes.teamRoutes
 import app.skerry.server.routes.vaultRoutes
+import io.ktor.http.CacheControl
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
@@ -40,7 +41,9 @@ import io.ktor.server.http.content.staticResources
 import io.ktor.server.request.contentLength
 import io.ktor.server.request.header
 import io.ktor.server.request.httpMethod
+import io.ktor.server.response.cacheControl
 import io.ktor.server.response.respond
+import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondRedirect
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
@@ -211,6 +214,16 @@ fun Application.configureServer(services: Services) {
             val html = this::class.java.classLoader.getResource("static/index.html")?.readText()
                 ?: "<html><body><h1>Skerry Sync</h1><p><a href='${consolePath}/'>Admin Console</a></p></body></html>"
             call.respondText(html, ContentType.Text.Html)
+        }
+
+        get("/favicon.ico") {
+            val ico = this::class.java.classLoader.getResourceAsStream("favicon.ico")
+            if (ico != null) {
+                call.response.cacheControl(CacheControl.MaxAge(maxAgeSeconds = 86400))
+                call.respondBytes(ico.readBytes(), ContentType.Image.XIcon)
+            } else {
+                call.respond(HttpStatusCode.NotFound)
+            }
         }
 
         // Static admin console (self-hosted): served from resources/admin bundled in the JAR.

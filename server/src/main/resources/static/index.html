@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title data-l10n="pageTitle">Skerry · 开源跨平台 SSH 客户端</title>
 <meta name="description" content="Skerry — 开源 SSH 客户端：终端、SFTP、隧道和加密密钥库。Linux、Windows、macOS、Android。">
+<link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Onest:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -589,6 +590,7 @@ const L = {
     ftVault:{l:"保险库",t:"别人读不了的保险库",d:"密钥、密码和证书在设备上加密。主密码只有你知道。",p:["仅在本地设备解密","Android 指纹解锁","SSH 证书与密钥同等待遇"]},
     ftTunnels:{l:"隧道",t:"隧道 — 不需要记参数",d:"几次点击完成端口转发 — 可视化，不用记 ssh 参数。",p:["本地、远程和 SOCKS 转发","断线自动重连","界面中直接查看主机指标"]},
     ftAi:{l:"AI",t:"AI — 在你控制之下",d:"终端内 AI 助手，不经过你确认不执行任何命令。",p:["每个主机单独设置信任等级","自己的 OpenAI Key — 或纯本地模型","离线也能用"]},
+    ftSnippet:{l:"片段变量",t:"片段 — 动态变量",d:"命令片段支持 ${{...}} 占位符，发送前实时替换。含变量的片段弹出确认窗口预览。",p:["${{date:YYYY-MM-DD}} / ${{time:HH:mm}} — 日期/时间","${{timestamp}} — Unix 时间戳 · ${{uuid}} — UUID","${{random:16}} — 随机字符 · ${{clipboard}} — 剪贴板","${{vault:标签名}} — 从保险库取密码","${{param:名称}} — 运行时提示输入"]},
     ftMore:{l:"更多",t:"还有一打小功能",d:"每天节省时间的小细节。",p:["Telnet 和串口连接 — Android 上甚至支持 USB","输出历史快速搜索","输命令时自动补全提示"]},
     extras:["VNC 远程桌面","SFTP 内置文件查看/编辑（F3/F4）","会话录像回放","Windows 安装器（.exe / .msi）"],
 guideLabel:"快速上手", guideTitle:"使用说明",
@@ -637,6 +639,7 @@ guideLabel:"快速上手", guideTitle:"使用说明",
     ftVault:{l:"Vault",t:"A vault nobody else can read",d:"Keys, passwords and certificates are encrypted on your device. Only you know the unlock password.",p:["Decryption happens only locally, on your device","Biometric unlock on Android","SSH certificates alongside keys"]},
     ftTunnels:{l:"Tunnels",t:"Tunnels without the ritual",d:"Port forwarding in a couple of clicks — visual, no ssh flags to memorize.",p:["Local, remote and SOCKS forwarding","Automatic reconnect on connection loss","Host metrics right in the UI"]},
     ftAi:{l:"AI",t:"AI, kept on a leash",d:"An in-terminal assistant that does nothing without your permission.",p:["Trust level is configured per host","Your own OpenAI key — or fully local models","Works even without internet"]},
+    ftSnippet:{l:"Snippets",t:"Snippets — dynamic variables",d:"Command snippets support ${{...}} placeholders resolved at runtime. Every snippet with variables opens a confirmation dialog preview.",p:["${{date:YYYY-MM-DD}} / ${{time:HH:mm}} — date & time","${{timestamp}} — Unix timestamp · ${{uuid}} — UUID","${{random:16}} — random chars · ${{clipboard}} — clipboard","${{vault:label}} — password from vault","${{param:name}} — prompt at runtime"]},
     ftMore:{l:"More",t:"A dozen small things under the hood",d:"Small things that save time every day.",p:["Telnet and serial connections — even over USB on Android","Fast search through output history","Command suggestions as you type"]},
     extras:["VNC remote desktop","built-in SFTP file viewer/editor (F3/F4)","session recording playback","Windows installer (.exe / .msi)"],
     guideLabel:"Get Started", guideTitle:"How it works",
@@ -685,6 +688,7 @@ guideLabel:"快速上手", guideTitle:"使用说明",
     ftVault:{l:"Хранилище",t:"Хранилище, которое никто не прочитает",d:"Ключи, пароли и сертификаты зашифрованы на устройстве. Пароль знаете только вы.",p:["Расшифровка — только локально, на вашем устройстве","Биометрическая разблокировка на Android","SSH-сертификаты наравне с ключами"]},
     ftTunnels:{l:"Туннели",t:"Туннели без танцев с бубном",d:"Пробросы портов настраиваются в пару кликов — наглядно, без запоминания флагов ssh.",p:["Локальный, удалённый и SOCKS-проброс","Автоматическое переподключение при обрыве связи","Метрики хоста прямо в интерфейсе"]},
     ftAi:{l:"AI",t:"AI, который под контролем",d:"Ассистент в терминале, который ничего не сделает без вашего разрешения.",p:["Уровень доверия настраивается для каждого хоста","Свой ключ OpenAI — или полностью локальные модели","Работает даже без интернета"]},
+    ftSnippet:{l:"Фрагменты",t:"Фрагменты — динамические переменные",d:"Командные фрагменты поддерживают подстановку ${{...}} с заменой при выполнении. Фрагменты с переменными открывают диалог подтверждения.",p:["${{date:YYYY-MM-DD}} / ${{time:HH:mm}} — дата и время","${{timestamp}} — Unix-метка · ${{uuid}} — UUID","${{random:16}} — случайные символы · ${{clipboard}} — буфер обмена","${{vault:метка}} — пароль из хранилища","${{param:имя}} — запрос при выполнении"]},
     ftMore:{l:"Прочее",t:"Под капотом — ещё десяток мелочей",d:"Мелочи, которые каждый день экономят время.",p:["Telnet и serial-подключения — даже по USB на Android","Быстрый поиск по истории вывода","Подсказки команд по мере ввода"]},
     extras:["VNC удалённый рабочий стол","встроенный просмотр/редактор файлов SFTP (F3/F4)","воспроизведение записей сессий","установщик Windows (.exe / .msi)"],
     guideLabel:"Начало работы", guideTitle:"Как использовать",
@@ -755,7 +759,7 @@ const PLATFORMS = [
 // === Feature data ===
 function getFeats(lang){
   const t = L[lang];
-  const keys = ['ftTerminal','ftSftp','ftVault','ftTunnels','ftAi','ftMore'];
+  const keys = ['ftTerminal','ftSftp','ftVault','ftTunnels','ftAi','ftSnippet','ftMore'];
   return keys.map(k => t[k]);
 }
 
@@ -876,6 +880,19 @@ function renderFeats(){
       rowsHtml += `<div class="feat-row${active?' active':''}">
         <div class="feat-text"><span class="sec-label">${f.l}</span><h3>${f.t}</h3><p>${f.d}</p><div class="feat-points">${f.p.map(p => `<div class="feat-point"><span></span><span>${p}</span></div>`).join('')}</div></div>
         <div class="feat-shot-wrap"><div class="bg-glow"></div><div class="feat-shot extra"><div class="fake-titlebar"><span></span><span></span><span></span><code>skerry — terminal</code></div><div class="fake-term"><div class="prompt">$ skerry --features</div>${extrasLis}<div class="prompt">$ <span class="cursor"></span></div></div></div></div></div>`;
+    } else if(i === feats.length - 2){
+      // Snippet card — show variable syntax examples in a terminal window
+      const snippetVars = [
+        '<span style="color:#34d3c0">${{date:YYYY-MM-DD HH:mm:ss}}</span>',
+        '<span style="color:#34d3c0">${{timestamp}}</span>  //  <span style="color:#34d3c0">${{uuid}}</span>',
+        '<span style="color:#34d3c0">${{random:16}}</span>  //  <span style="color:#34d3c0">${{clipboard}}</span>',
+        '<span style="color:#34d3c0">${{vault:MySecret}}</span>',
+        '<span style="color:#34d3c0">${{param:username}}</span>'
+      ];
+      const snippetLis = snippetVars.map(v => `<div style="color:#a8bac4;display:flex;gap:10px"><span style="color:#2bbdee">▸</span><code style="font-family:'JetBrains Mono',monospace;font-size:13px">${v}</code></div>`).join('');
+      rowsHtml += `<div class="feat-row${active?' active':''}">
+        <div class="feat-text"><span class="sec-label">${f.l}</span><h3>${f.t}</h3><p>${f.d}</p><div class="feat-points">${f.p.map(p => `<div class="feat-point"><span></span><span>${p}</span></div>`).join('')}</div></div>
+        <div class="feat-shot-wrap"><div class="bg-glow"></div><div class="feat-shot extra"><div class="fake-titlebar"><span></span><span></span><span></span><code>snippet — template</code></div><div class="fake-term"><div class="prompt"># my-snippet.sh</div>${snippetLis}<div style="color:var(--dim);margin-top:8px;font-size:12px">// 发送前弹出确认窗口预览实际内容 / confirmation dialog preview before sending</div></div></div></div></div>`;
     } else {
       const srcs = ['screenshots/feature-sftp.png','screenshots/feature-vault.png','screenshots/feature-tunnels.png','screenshots/feature-ai.png'];
       // feature layout: Terminal first (i=0 uses hero image), then sftp, vault, tunnels, ai

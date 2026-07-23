@@ -1328,6 +1328,7 @@ class SyncCoordinator(
         } finally {
             dk.zeroize()
         }
+<<<<<<< HEAD
     }
 
     // One sync attempt + the Online bookkeeping; exceptions propagate to runSyncLocked.
@@ -1421,6 +1422,8 @@ class SyncCoordinator(
         } finally {
             dk.zeroize()
         }
+=======
+>>>>>>> custom
     }
 
     /**
