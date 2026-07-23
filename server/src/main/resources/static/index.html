@@ -878,14 +878,14 @@ function renderFeats(){
     if (i === 4) {
       // Snippet card — show variable syntax in a terminal window
       const snippetVars = [
-        `date:  <span style="color:#34d3c0">${{date:YYYY-MM-DD}}</span>  <span style="color:#5e7482">// strftime format</span>`,
-        `time:  <span style="color:#34d3c0">${{time:HH:mm:ss}}</span>  <span style="color:#5e7482">// 24-hour</span>`,
-        `ts:    <span style="color:#34d3c0">${{timestamp}}</span>  <span style="color:#5e7482">// Unix seconds</span>`,
-        `uuid:  <span style="color:#34d3c0">${{uuid}}</span>  <span style="color:#5e7482">// random UUID v4</span>`,
-        `rnd:   <span style="color:#34d3c0">${{random:16}}</span>  <span style="color:#5e7482">// N random chars</span>`,
-        `clip:  <span style="color:#34d3c0">${{clipboard}}</span>  <span style="color:#5e7482">// system clipboard</span>`,
-        `vault: <span style="color:#34d3c0">${{vault:MySecret}}</span>  <span style="color:#5e7482">// password by label (masked in preview)</span>`,
-        `param: <span style="color:#34d3c0">${{param:username}}</span>  <span style="color:#5e7482">// prompted at runtime</span>`
+        `date:  <span style="color:#34d3c0">\${{date:YYYY-MM-DD}}</span>  <span style="color:#5e7482">// strftime format</span>`,
+        `time:  <span style="color:#34d3c0">\${{time:HH:mm:ss}}</span>  <span style="color:#5e7482">// 24-hour</span>`,
+        `ts:    <span style="color:#34d3c0">\${{timestamp}}</span>  <span style="color:#5e7482">// Unix seconds</span>`,
+        `uuid:  <span style="color:#34d3c0">\${{uuid}}</span>  <span style="color:#5e7482">// random UUID v4</span>`,
+        `rnd:   <span style="color:#34d3c0">\${{random:16}}</span>  <span style="color:#5e7482">// N random chars</span>`,
+        `clip:  <span style="color:#34d3c0">\${{clipboard}}</span>  <span style="color:#5e7482">// system clipboard</span>`,
+        `vault: <span style="color:#34d3c0">\${{vault:MySecret}}</span>  <span style="color:#5e7482">// password by label (masked in preview)</span>`,
+        `param: <span style="color:#34d3c0">\${{param:username}}</span>  <span style="color:#5e7482">// prompted at runtime</span>`
       ];
       const snippetLis = snippetVars.map(v => `<div style="color:#a8bac4;display:flex;gap:10px;line-height:1.9"><span style="color:#2bbdee;font-family:'JetBrains Mono',monospace;font-size:12px">▸</span><code style="font-family:'JetBrains Mono',monospace;font-size:12.5px">${v}</code></div>`).join('');
       rowsHtml += `<div class="feat-row${active?' active':''}">${featText}
