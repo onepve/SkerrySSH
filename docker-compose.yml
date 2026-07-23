@@ -10,9 +10,8 @@
 
 services:
   sync:
-    build:
-      context: .
-      dockerfile: server/Dockerfile
+    # 使用 Docker Hub 发布的镜像（CI 由 server-v* tag 触发构建）
+    image: onepve/skerry-sync:latest
     ports:
       - "127.0.0.1:8080:8080"
     env_file: /opt/SkerrySSH-Sync/.env
