@@ -47,6 +47,7 @@ import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondRedirect
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
+import io.ktor.server.routing.head
 import io.ktor.server.routing.routing
 import io.ktor.server.websocket.WebSockets
 import kotlin.time.Duration.Companion.seconds
@@ -108,7 +109,7 @@ fun Application.configureServer(services: Services) {
         header("Referrer-Policy", "no-referrer")
         header(
             "Content-Security-Policy",
-            "default-src 'self'; font-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
+            "default-src 'self'; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         )
     }
     // Rate-limit by client IP: throttles brute force/flooding on register, SRP, and pairing claim.
@@ -224,6 +225,10 @@ fun Application.configureServer(services: Services) {
             } else {
                 call.respond(HttpStatusCode.NotFound)
             }
+        }
+        head("/favicon.ico") {
+            call.response.cacheControl(CacheControl.MaxAge(maxAgeSeconds = 86400))
+            call.respond(HttpStatusCode.OK)
         }
 
         // Static admin console (self-hosted): served from resources/admin bundled in the JAR.
