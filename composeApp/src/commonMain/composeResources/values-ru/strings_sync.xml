@@ -38,7 +38,7 @@
 
     <!-- Поля формы -->
     <string name="sync_field_server_url">АДРЕС СЕРВЕРА</string>
-    <string name="sync_placeholder_server_url">https://sync.onepve.com</string>
+    <string name="sync_placeholder_server_url">https://ssh.onepve.com</string>
     <string name="sync_field_account">Почта аккаунта</string>
     <string name="sync_placeholder_account">your@email.com</string>
     <string name="sync_account_email_hint">Введите действительный адрес эл. почты</string>

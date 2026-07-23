@@ -38,7 +38,7 @@
 
     <!-- Поля формы -->
     <string name="sync_field_server_url">SERVER URL</string>
-    <string name="sync_placeholder_server_url">https://sync.example.com</string>
+    <string name="sync_placeholder_server_url">https://ssh.onepve.com</string>
     <string name="sync_field_account">ACCOUNT</string>
     <string name="sync_field_invite_code">INVITE CODE</string>
     <string name="sync_placeholder_invite_code">Invite code (if required)</string>
