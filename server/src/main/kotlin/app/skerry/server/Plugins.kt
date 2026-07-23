@@ -233,8 +233,21 @@ fun Application.configureServer(services: Services) {
 
         // Static admin console (self-hosted): served from resources/admin bundled in the JAR.
         staticResources(services.config.consolePath, "admin")
-        // Screenshots referenced by the landing page index.html
-        staticResources("/screenshots", "static/screenshots")
+        // Screenshots referenced by the landing page index.html — served from classpath.
+        get("/screenshots/{name}") {
+            val name = call.parameters["name"] ?: ""
+            val ico = this::class.java.classLoader.getResourceAsStream("static/screenshots/$name")
+            if (ico != null) {
+                call.response.cacheControl(CacheControl.MaxAge(maxAgeSeconds = 86400))
+                call.respondBytes(ico.readBytes(), ContentType.Image.PNG)
+            } else {
+                call.respond(HttpStatusCode.NotFound)
+            }
+        }
+        head("/screenshots/{name}") {
+            call.response.cacheControl(CacheControl.MaxAge(maxAgeSeconds = 86400))
+            call.respond(HttpStatusCode.OK)
+        }
 
         authRoutes(services)
         pairingClaimRoute(services)   // no JWT: the new device hasn't logged in yet
