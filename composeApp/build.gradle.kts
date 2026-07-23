@@ -328,7 +328,8 @@ tasks.register<Zip>("packagePortableZip") {
         val appDir = layout.buildDirectory.dir("compose/binaries/main/app/Skerry").get().asFile
         val portableDir = appDir.resolve("portable")
         portableDir.mkdirs()
-        project.file("portable/README.txt").copyTo(portableDir.resolve("README.txt"), overwrite = true)
+        layout.projectDirectory.file("portable/README.txt").asFile
+            .copyTo(portableDir.resolve("README.txt"), overwrite = true)
     }
 
     from(layout.buildDirectory.dir("compose/binaries/main/app"))
