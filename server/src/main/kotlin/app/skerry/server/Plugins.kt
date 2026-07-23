@@ -109,7 +109,7 @@ fun Application.configureServer(services: Services) {
         header("Referrer-Policy", "no-referrer")
         header(
             "Content-Security-Policy",
-            "default-src 'self'; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+            "default-src 'self'; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data:; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         )
     }
     // Rate-limit by client IP: throttles brute force/flooding on register, SRP, and pairing claim.
