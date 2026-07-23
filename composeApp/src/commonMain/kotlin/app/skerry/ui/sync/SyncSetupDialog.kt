@@ -143,7 +143,7 @@ fun SyncSetupDialog(sync: SyncCoordinator, onDismiss: () -> Unit) {
             SyncField(
                 stringResource(Res.string.sync_placeholder_server_url), serverUrl, "dns", KeyboardType.Uri, ImeAction.Next,
                 trailing = if (serverUrl.trim() != SyncSetupForm.DEFAULT_SERVER_URL) {
-                    { Sym("close", size = 16.sp, color = D.faint, modifier = Modifier.clickable { serverUrl = SyncSetupForm.DEFAULT_SERVER_URL }) }
+                    { Sym("close", size = 16.sp, color = Skerry.colors.faint, modifier = Modifier.clickable { serverUrl = SyncSetupForm.DEFAULT_SERVER_URL }) }
                 } else null,
             ) { serverUrl = it }
 
@@ -151,7 +151,7 @@ fun SyncSetupDialog(sync: SyncCoordinator, onDismiss: () -> Unit) {
             SyncField(stringResource(Res.string.sync_placeholder_account), account, "person", KeyboardType.Email, ImeAction.Next) { account = it }
             // Show email validation hint when account doesn't match email format
             if (account.isNotEmpty() && !form.isAccountEmail) {
-                Txt(stringResource(Res.string.sync_account_email_hint), color = D.amber, size = 11.sp, modifier = Modifier.padding(top = 4.dp))
+                Txt(stringResource(Res.string.sync_account_email_hint), color = Skerry.colors.amber, size = 11.sp, modifier = Modifier.padding(top = 4.dp))
             }
 
             FieldLabel(stringResource(Res.string.sync_field_master_password))

@@ -298,13 +298,13 @@ internal fun SyncSetupBody(
             SyncTextField(serverUrl, stringResource(Res.string.sync_placeholder_server_url), KeyboardType.Uri, icon = "dns") { serverUrl = it }
         }
         if (serverUrl.trim() != SyncSetupForm.DEFAULT_SERVER_URL) {
-            Sym("close", size = 18.sp, color = D.faint, modifier = Modifier.padding(start = 6.dp).clickable { serverUrl = SyncSetupForm.DEFAULT_SERVER_URL })
+            Sym("close", size = 18.sp, color = Skerry.colors.faint, modifier = Modifier.padding(start = 6.dp).clickable { serverUrl = SyncSetupForm.DEFAULT_SERVER_URL })
         }
     }
     SyncFieldLabel(stringResource(Res.string.sync_field_account))
     SyncTextField(account, stringResource(Res.string.sync_placeholder_account), KeyboardType.Email, icon = "person") { account = it }
     if (account.isNotEmpty() && !form.isAccountEmail) {
-        Txt(stringResource(Res.string.sync_account_email_hint), color = D.amber, size = 12.sp, modifier = Modifier.padding(top = 4.dp))
+        Txt(stringResource(Res.string.sync_account_email_hint), color = Skerry.colors.amber, size = 12.sp, modifier = Modifier.padding(top = 4.dp))
     }
     SyncFieldLabel(stringResource(Res.string.sync_field_master_password))
     SyncTextField(password, stringResource(Res.string.sync_placeholder_master_password), KeyboardType.Password, masked = true, icon = "key") { password = it }
@@ -603,37 +603,38 @@ internal fun InviteCodeOverlay(error: String?, onSubmit: (String) -> Unit, onDis
     ) {
         Column(
             Modifier.widthIn(max = 380.dp).fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp)).background(D.surfaceDeep)
-                .border(1.dp, D.cyan14, RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(12.dp)).background(Skerry.colors.surfaceDeep)
+                .border(1.dp, Skerry.colors.cyan14, RoundedCornerShape(12.dp))
                 .padding(22.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Sym("vpn_key", size = 18.sp, color = D.cyanBright)
-                Txt(stringResource(Res.string.sync_field_invite_code), color = D.text, size = 15.sp, weight = FontWeight.SemiBold)
+                Sym("vpn_key", size = 18.sp, color = Skerry.colors.cyanBright)
+                Txt(stringResource(Res.string.sync_field_invite_code), color = Skerry.colors.text, size = 15.sp, weight = FontWeight.SemiBold)
             }
             Txt(
                 stringResource(Res.string.sync_placeholder_invite_code),
-                color = D.faint, size = 12.sp, modifier = Modifier.padding(top = 6.dp, bottom = 14.dp),
+                color = Skerry.colors.faint, size = 12.sp, modifier = Modifier.padding(top = 6.dp, bottom = 14.dp),
             )
             val ui = LocalFonts.current.ui
-            val style = remember(ui) { TextStyle(color = D.text, fontSize = 14.sp, fontFamily = ui) }
+            val textColor = Skerry.colors.text
+            val style = remember(ui) { TextStyle(color = textColor, fontSize = 14.sp, fontFamily = ui) }
             BasicTextField(
                 value = code,
                 onValueChange = { code = it },
                 singleLine = true,
                 textStyle = style,
-                cursorBrush = SolidColor(D.cyan),
+                cursorBrush = SolidColor(Skerry.colors.cyan),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                 modifier = Modifier.fillMaxWidth(),
                 decorationBox = { inner ->
                     Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(D.bg)
-                            .border(1.dp, D.cyan14, RoundedCornerShape(8.dp))
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Skerry.colors.bg)
+                            .border(1.dp, Skerry.colors.cyan14, RoundedCornerShape(8.dp))
                             .padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Box(Modifier.weight(1f)) {
-                            if (code.isEmpty()) Txt("XXX-XXXXX", color = D.faint, size = 14.sp)
+                            if (code.isEmpty()) Txt("XXX-XXXXX", color = Skerry.colors.faint, size = 14.sp)
                             inner()
                         }
                     }
@@ -641,8 +642,8 @@ internal fun InviteCodeOverlay(error: String?, onSubmit: (String) -> Unit, onDis
             )
             if (error != null) {
                 Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Sym("error", size = 14.sp, color = D.sunset)
-                    Txt(error, color = D.sunset, size = 12.sp)
+                    Sym("error", size = 14.sp, color = Skerry.colors.sunset)
+                    Txt(error, color = Skerry.colors.sunset, size = 12.sp)
                 }
             }
             Row(
@@ -652,13 +653,13 @@ internal fun InviteCodeOverlay(error: String?, onSubmit: (String) -> Unit, onDis
             ) {
                 Box(Modifier.weight(1f))
                 Box(Modifier.clip(RoundedCornerShape(7.dp)).clickable(onClick = onDismiss).padding(horizontal = 16.dp, vertical = 9.dp)) {
-                    Txt(stringResource(Res.string.sync_cancel), color = D.dim, size = 12.5.sp)
+                    Txt(stringResource(Res.string.sync_cancel), color = Skerry.colors.dim, size = 12.5.sp)
                 }
                 PrimaryButton(
                     stringResource(Res.string.sync_connect),
                     onClick = { if (code.isNotBlank()) onSubmit(code.trim()) },
                     enabled = code.isNotBlank(),
-                    bg = if (code.isNotBlank()) D.cyan else D.cyan.copy(alpha = 0.4f),
+                    bg = if (code.isNotBlank()) Skerry.colors.cyan else Skerry.colors.cyan.copy(alpha = 0.4f),
                 )
             }
         }
