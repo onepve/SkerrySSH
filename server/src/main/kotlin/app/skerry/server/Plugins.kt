@@ -2,6 +2,7 @@ package app.skerry.server
 
 import app.skerry.server.auth.TokenService
 import app.skerry.server.model.ErrorResponse
+import app.skerry.server.model.HealthResponse
 import app.skerry.server.routes.adminRoutes
 import app.skerry.server.routes.authRoutes
 import app.skerry.server.routes.deviceRoutes
@@ -200,7 +201,9 @@ fun Application.configureServer(services: Services) {
     }
 
     routing {
-        get("/healthz") { call.respondText("ok") }
+        get("/healthz") {
+            call.respond(HealthResponse("ok", SERVER_VERSION))
+        }
 
         // Landing page: serve the bundled static index.html directly.
         get("/") {
