@@ -313,7 +313,7 @@ tasks.register<Exec>("packageAppImage") {
 // Used by the release workflow for the Windows and Linux portable assets (the arch suffix is
 // appended in the workflow, like for the msi). The bundled README warns about paths with
 // spaces on Windows — libsodium's loader (goterl) fails to initialize from them.
-tasks.register<Zip>("packagePortableZip") {
+val packagePortableZip by tasks.registering(Zip::class) {
     group = "compose desktop"
     description = "Build a portable .zip from the jpackage app-image with a portable/ marker"
     dependsOn("createDistributable")
@@ -322,18 +322,24 @@ tasks.register<Zip>("packagePortableZip") {
     archiveFileName.set("Skerry-$appVersion-portable.zip")
     destinationDirectory.set(layout.buildDirectory.dir("compose/binaries/main/portable"))
 
-    // Create the portable/ marker directory inside the app-image so the app detects
-    // portable mode at startup. The README explains the behaviour to the user.
-    doFirst {
+    // Create portable/ marker from a separate task to keep the Zip task config-cache compatible.
+    val readme = layout.projectDirectory.file("portable/README.txt")
+    from(layout.buildDirectory.dir("compose/binaries/main/app"))
+}
+
+val createPortableMarker by tasks.registering {
+    group = "compose desktop"
+    description = "Copy README.txt into the portable/ marker directory before packaging"
+    dependsOn("createDistributable")
+    doLast {
         val appDir = layout.buildDirectory.dir("compose/binaries/main/app/Skerry").get().asFile
         val portableDir = appDir.resolve("portable")
         portableDir.mkdirs()
         layout.projectDirectory.file("portable/README.txt").asFile
             .copyTo(portableDir.resolve("README.txt"), overwrite = true)
     }
-
-    from(layout.buildDirectory.dir("compose/binaries/main/app"))
 }
+packagePortableZip { dependsOn(createPortableMarker) }}
 
 // Build a single-file Skerry.flatpak via flatpak-builder. Unlike the other packaging tasks this
 // does NOT depend on createDistributable: flatpak-builder compiles the app hermetically inside the

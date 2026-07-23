@@ -274,12 +274,20 @@ jobs:
           ${{ needs.version.outputs.name && format('-Pskerry.versionName={0}', needs.version.outputs.name) || '' }}
 
       - name: Build portable ZIP
-        # packagePortableZip reuses the app-image createDistributable already builds for the
-        # msi, so the extra artifact costs only the zipping.
+        # Shell-based instead of the Gradle task — avoids config-cache serialization
+        # issues with Gradle 9.x on Windows runners.
         shell: bash
-        run: >
-          ./gradlew :composeApp:packagePortableZip --stacktrace
-          ${{ needs.version.outputs.name && format('-Pskerry.versionName={0}', needs.version.outputs.name) || '' }}
+        run: |
+          set -euo pipefail
+          VER='${{ needs.version.outputs.name || "0.1.0" }}'
+          SRC=composeApp/build/compose/binaries/main/app/Skerry
+          DST_DIR=composeApp/build/compose/binaries/main/portable
+          mkdir -p "$DST_DIR"
+          # Create portable/ marker with README
+          mkdir -p "$SRC/portable"
+          cp composeApp/portable/README.txt "$SRC/portable/README.txt"
+          # Zip preserving structure so Skerry.exe is at the root
+          (cd "$(dirname "$SRC")" && zip -qr "${GITHUB_WORKSPACE}/${DST_DIR}/Skerry-${VER}-portable.zip" Skerry/)
 
       - name: Suffix and rename for distribution
         # jpackage emits Skerry-<version>.{msi,exe} with no arch marker; every other desktop
