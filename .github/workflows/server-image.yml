@@ -62,6 +62,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Set server version from tag
+        if: startsWith(github.ref, 'refs/tags/server-v')
+        run: |
+          version="${GITHUB_REF_NAME#server-v}"
+          sed -i "s/^skerry\.versionName=.*/skerry.versionName=$version/" gradle.properties
+          echo "Server version set to $version"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
