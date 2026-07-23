@@ -40,7 +40,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.skerry.ui.design.D
 import app.skerry.ui.design.GhostButton
 import app.skerry.ui.design.LocalFonts
 import app.skerry.ui.design.PrimaryButton
@@ -94,6 +93,7 @@ import app.skerry.ui.vault.MIN_MASTER_PASSWORD_LENGTH
 import kotlinx.coroutines.flow.dropWhile
 import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.resources.stringResource
+import app.skerry.ui.theme.Skerry
 
 /**
  * Onboarding step right after vault creation, before biometric enroll
@@ -127,7 +127,7 @@ fun SyncOnboardingScreen(sync: SyncCoordinator, onDone: () -> Unit) {
     // fillMaxSize scroll container over the background; content centered vertically and width-constrained.
     // Center (not TopCenter): when the form is shorter than the screen it's centered (large desktop
     // window, phone), longer (keyboard) it scrolls. verticalScroll measures the column by its height.
-    Box(Modifier.fillMaxSize().background(D.bg).verticalScroll(rememberScrollState()), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().background(Skerry.colors.bg).verticalScroll(rememberScrollState()), contentAlignment = Alignment.Center) {
         Column(Modifier.widthIn(max = 460.dp).fillMaxWidth().padding(horizontal = 22.dp, vertical = 32.dp)) {
             if (!showSyncForm) {
                 SyncStorageChoice(
@@ -143,15 +143,15 @@ fun SyncOnboardingScreen(sync: SyncCoordinator, onDone: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Sym("chevron_left", size = 20.sp, color = D.dim)
-                    Txt(stringResource(Res.string.sync_back), color = D.dim, size = 13.sp)
+                    Sym("chevron_left", size = 20.sp, color = Skerry.colors.dim)
+                    Txt(stringResource(Res.string.sync_back), color = Skerry.colors.dim, size = 13.sp)
                 }
                 Spacer(Modifier.height(10.dp))
 
-                Txt(stringResource(Res.string.sync_setup_title), color = D.text, size = 22.sp, weight = FontWeight.Bold)
+                Txt(stringResource(Res.string.sync_setup_title), color = Skerry.colors.text, size = 22.sp, weight = FontWeight.Bold)
                 Txt(
                     stringResource(Res.string.sync_setup_desc),
-                    color = D.dim, size = 13.sp, lineHeight = 19.sp, modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
+                    color = Skerry.colors.dim, size = 13.sp, lineHeight = 19.sp, modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
                 )
 
                 // The form stays composed in every status. The Busy branch used to replace it,
@@ -161,7 +161,7 @@ fun SyncOnboardingScreen(sync: SyncCoordinator, onDone: () -> Unit) {
                 val busy = status == SyncStatus.Busy
                 if (busy) {
                     Spacer(Modifier.height(8.dp))
-                    SyncStatusNotice("sync", D.cyanBright, stringResource(Res.string.sync_connecting), stringResource(Res.string.sync_connecting_sub))
+                    SyncStatusNotice("sync", Skerry.colors.cyanBright, stringResource(Res.string.sync_connecting), stringResource(Res.string.sync_connecting_sub))
                 }
                 // Connecting hit an existing account under a different password (issue #28): the connect
                 // is paused until the user decides. Without this the form here just snapped back to idle
@@ -197,16 +197,16 @@ fun SyncOnboardingScreen(sync: SyncCoordinator, onDone: () -> Unit) {
 private fun SyncStorageChoice(onLocal: () -> Unit, onSync: () -> Unit) {
     Txt(
         stringResource(Res.string.sync_storage_choice_title),
-        color = D.text, size = 22.sp, weight = FontWeight.Bold, lineHeight = 28.sp,
+        color = Skerry.colors.text, size = 22.sp, weight = FontWeight.Bold, lineHeight = 28.sp,
     )
     Txt(
         stringResource(Res.string.sync_storage_choice_desc),
-        color = D.dim, size = 13.sp, lineHeight = 19.sp, modifier = Modifier.padding(top = 8.dp, bottom = 22.dp),
+        color = Skerry.colors.dim, size = 13.sp, lineHeight = 19.sp, modifier = Modifier.padding(top = 8.dp, bottom = 22.dp),
     )
 
     SyncChoiceCard(
         icon = "lock",
-        iconColor = D.moss,
+        iconColor = Skerry.colors.moss,
         title = stringResource(Res.string.sync_storage_local_title),
         subtitle = stringResource(Res.string.sync_storage_local_sub),
         onClick = onLocal,
@@ -214,7 +214,7 @@ private fun SyncStorageChoice(onLocal: () -> Unit, onSync: () -> Unit) {
     Spacer(Modifier.height(12.dp))
     SyncChoiceCard(
         icon = "cloud_sync",
-        iconColor = D.cyanBright,
+        iconColor = Skerry.colors.cyanBright,
         title = stringResource(Res.string.sync_storage_server_title),
         subtitle = stringResource(Res.string.sync_storage_server_sub),
         onClick = onSync,
@@ -225,8 +225,8 @@ private fun SyncStorageChoice(onLocal: () -> Unit, onSync: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Sym("shield_lock", size = 14.sp, color = D.moss)
-        Txt(stringResource(Res.string.sync_switch_later), color = D.faint, size = 11.5.sp)
+        Sym("shield_lock", size = 14.sp, color = Skerry.colors.moss)
+        Txt(stringResource(Res.string.sync_switch_later), color = Skerry.colors.faint, size = 11.5.sp)
     }
 }
 
@@ -240,8 +240,8 @@ private fun SyncChoiceCard(
     onClick: () -> Unit,
 ) {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(13.dp)).background(D.surfaceDeep)
-            .border(1.dp, D.cyan14, RoundedCornerShape(13.dp)).clickable(onClick = onClick).padding(16.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(13.dp)).background(Skerry.colors.surfaceDeep)
+            .border(1.dp, Skerry.colors.cyan14, RoundedCornerShape(13.dp)).clickable(onClick = onClick).padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -252,10 +252,10 @@ private fun SyncChoiceCard(
             Sym(icon, size = 22.sp, color = iconColor)
         }
         Column(Modifier.weight(1f)) {
-            Txt(title, color = D.text, size = 15.sp, weight = FontWeight.SemiBold)
-            Txt(subtitle, color = D.faint, size = 12.sp, lineHeight = 16.sp, modifier = Modifier.padding(top = 3.dp))
+            Txt(title, color = Skerry.colors.text, size = 15.sp, weight = FontWeight.SemiBold)
+            Txt(subtitle, color = Skerry.colors.faint, size = 12.sp, lineHeight = 16.sp, modifier = Modifier.padding(top = 3.dp))
         }
-        Sym("chevron_right", size = 22.sp, color = D.dim)
+        Sym("chevron_right", size = 22.sp, color = Skerry.colors.dim)
     }
 }
 
@@ -298,13 +298,13 @@ internal fun SyncSetupBody(
             SyncTextField(serverUrl, stringResource(Res.string.sync_placeholder_server_url), KeyboardType.Uri, icon = "dns") { serverUrl = it }
         }
         if (serverUrl.trim() != SyncSetupForm.DEFAULT_SERVER_URL) {
-            Sym("close", size = 18.sp, color = D.faint, modifier = Modifier.padding(start = 6.dp).clickable { serverUrl = SyncSetupForm.DEFAULT_SERVER_URL })
+            Sym("close", size = 18.sp, color = Skerry.colors.faint, modifier = Modifier.padding(start = 6.dp).clickable { serverUrl = SyncSetupForm.DEFAULT_SERVER_URL })
         }
     }
     SyncFieldLabel(stringResource(Res.string.sync_field_account))
     SyncTextField(account, stringResource(Res.string.sync_placeholder_account), KeyboardType.Email, icon = "person") { account = it }
     if (account.isNotEmpty() && !form.isAccountEmail) {
-        Txt(stringResource(Res.string.sync_account_email_hint), color = D.amber, size = 12.sp, modifier = Modifier.padding(top = 4.dp))
+        Txt(stringResource(Res.string.sync_account_email_hint), color = Skerry.colors.amber, size = 12.sp, modifier = Modifier.padding(top = 4.dp))
     }
     SyncFieldLabel(stringResource(Res.string.sync_field_master_password))
     SyncTextField(password, stringResource(Res.string.sync_placeholder_master_password), KeyboardType.Password, masked = true, icon = "key") { password = it }
@@ -316,30 +316,30 @@ internal fun SyncSetupBody(
     ) {
         Box(
             Modifier.size(20.dp).clip(RoundedCornerShape(6.dp))
-                .background(if (keepConnected) D.cyan else Color.Transparent)
-                .border(1.dp, if (keepConnected) D.cyan else D.cyan14, RoundedCornerShape(6.dp)),
+                .background(if (keepConnected) Skerry.colors.cyan else Color.Transparent)
+                .border(1.dp, if (keepConnected) Skerry.colors.cyan else Skerry.colors.cyan14, RoundedCornerShape(6.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            if (keepConnected) Sym("check", size = 14.sp, color = Color(0xFF0A1A26))
+            if (keepConnected) Sym("check", size = 14.sp, color = Skerry.colors.ink)
         }
         Column(Modifier.weight(1f)) {
-            Txt(stringResource(Res.string.sync_keep_connected), color = D.text, size = 13.sp, weight = FontWeight.Medium)
-            Txt(stringResource(Res.string.sync_keep_connected_sub), color = D.faint, size = 11.5.sp)
+            Txt(stringResource(Res.string.sync_keep_connected), color = Skerry.colors.text, size = 13.sp, weight = FontWeight.Medium)
+            Txt(stringResource(Res.string.sync_keep_connected_sub), color = Skerry.colors.faint, size = 11.5.sp)
         }
     }
 
     // http:// is allowed (local test/LAN without a TLS proxy) but defenseless against MITM — warn explicitly.
     if (form.isInsecureUrl) {
         Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Sym("warning", size = 14.sp, color = D.sunset)
-            Txt(stringResource(Res.string.sync_insecure_url_warning), color = D.sunset, size = 11.5.sp, lineHeight = 15.sp)
+            Sym("warning", size = 14.sp, color = Skerry.colors.sunset)
+            Txt(stringResource(Res.string.sync_insecure_url_warning), color = Skerry.colors.sunset, size = 11.5.sp, lineHeight = 15.sp)
         }
     }
 
     if (errorMessage != null) {
         Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Sym("error", size = 14.sp, color = D.sunset)
-            Txt(errorMessage, color = D.sunset, size = 12.sp)
+            Sym("error", size = 14.sp, color = Skerry.colors.sunset)
+            Txt(errorMessage, color = Skerry.colors.sunset, size = 12.sp)
         }
     }
 
@@ -358,12 +358,12 @@ internal fun SyncSetupBody(
         },
         modifier = Modifier.padding(top = 18.dp),
         enabled = canSubmit,
-        bg = if (canSubmit) D.cyan else D.cyan.copy(alpha = 0.4f),
+        bg = if (canSubmit) Skerry.colors.cyan else Skerry.colors.cyan.copy(alpha = 0.4f),
         icon = "cloud_sync",
     )
     Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Sym("shield_lock", size = 14.sp, color = D.moss)
-        Txt(stringResource(Res.string.sync_zero_knowledge_password), color = D.faint, size = 11.sp)
+        Sym("shield_lock", size = 14.sp, color = Skerry.colors.moss)
+        Txt(stringResource(Res.string.sync_zero_knowledge_password), color = Skerry.colors.faint, size = 11.sp)
     }
 
     // Pop-up invite-code dialog when the server requires one (triggered by 403 on register).
@@ -406,7 +406,7 @@ fun PairingJoinScreen(sync: SyncCoordinator, onBack: () -> Unit, onDone: () -> U
         currentOnDone()
     }
 
-    Box(Modifier.fillMaxSize().background(D.bg).verticalScroll(rememberScrollState()), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().background(Skerry.colors.bg).verticalScroll(rememberScrollState()), contentAlignment = Alignment.Center) {
         Column(Modifier.widthIn(max = 460.dp).fillMaxWidth().padding(horizontal = 22.dp, vertical = 32.dp)) {
             Row(
                 Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onBack)
@@ -414,14 +414,14 @@ fun PairingJoinScreen(sync: SyncCoordinator, onBack: () -> Unit, onDone: () -> U
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Sym("chevron_left", size = 20.sp, color = D.dim)
-                Txt(stringResource(Res.string.sync_back), color = D.dim, size = 13.sp)
+                Sym("chevron_left", size = 20.sp, color = Skerry.colors.dim)
+                Txt(stringResource(Res.string.sync_back), color = Skerry.colors.dim, size = 13.sp)
             }
             Spacer(Modifier.height(10.dp))
-            Txt(stringResource(Res.string.sync_join_title), color = D.text, size = 22.sp, weight = FontWeight.Bold)
+            Txt(stringResource(Res.string.sync_join_title), color = Skerry.colors.text, size = 22.sp, weight = FontWeight.Bold)
             Txt(
                 stringResource(Res.string.sync_join_desc),
-                color = D.dim, size = 13.sp, lineHeight = 19.sp, modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
+                color = Skerry.colors.dim, size = 13.sp, lineHeight = 19.sp, modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
             )
             SyncJoinBody(sync, errorMessage = (status as? SyncStatus.Failed)?.let { syncFailureText(it) })
         }
@@ -468,8 +468,8 @@ private fun SyncJoinBody(sync: SyncCoordinator, errorMessage: String?) {
     val codeIsInsecure = remember(code) { PairingPayload.isInsecureServerUrl(code) }
     if (codeIsInsecure) {
         Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Sym("warning", size = 14.sp, color = D.sunset)
-            Txt(stringResource(Res.string.sync_insecure_url_warning), color = D.sunset, size = 11.5.sp, lineHeight = 15.sp)
+            Sym("warning", size = 14.sp, color = Skerry.colors.sunset)
+            Txt(stringResource(Res.string.sync_insecure_url_warning), color = Skerry.colors.sunset, size = 11.5.sp, lineHeight = 15.sp)
         }
     }
     SyncFieldLabel(stringResource(Res.string.sync_field_choose_password))
@@ -478,8 +478,8 @@ private fun SyncJoinBody(sync: SyncCoordinator, errorMessage: String?) {
     SyncTextField(confirm, stringResource(Res.string.sync_placeholder_repeat), KeyboardType.Password, masked = true, icon = "key") { confirm = it }
     if (confirm.isNotEmpty() && !passwordsMatch) {
         Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Sym("error", size = 14.sp, color = D.sunset)
-            Txt(stringResource(Res.string.sync_passwords_mismatch), color = D.sunset, size = 11.5.sp)
+            Sym("error", size = 14.sp, color = Skerry.colors.sunset)
+            Txt(stringResource(Res.string.sync_passwords_mismatch), color = Skerry.colors.sunset, size = 11.5.sp)
         }
     }
 
@@ -490,22 +490,22 @@ private fun SyncJoinBody(sync: SyncCoordinator, errorMessage: String?) {
     ) {
         Box(
             Modifier.size(20.dp).clip(RoundedCornerShape(6.dp))
-                .background(if (keepConnected) D.cyan else Color.Transparent)
-                .border(1.dp, if (keepConnected) D.cyan else D.cyan14, RoundedCornerShape(6.dp)),
+                .background(if (keepConnected) Skerry.colors.cyan else Color.Transparent)
+                .border(1.dp, if (keepConnected) Skerry.colors.cyan else Skerry.colors.cyan14, RoundedCornerShape(6.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            if (keepConnected) Sym("check", size = 14.sp, color = Color(0xFF0A1A26))
+            if (keepConnected) Sym("check", size = 14.sp, color = Skerry.colors.ink)
         }
         Column(Modifier.weight(1f)) {
-            Txt(stringResource(Res.string.sync_keep_connected), color = D.text, size = 13.sp, weight = FontWeight.Medium)
-            Txt(stringResource(Res.string.sync_keep_connected_sub), color = D.faint, size = 11.5.sp)
+            Txt(stringResource(Res.string.sync_keep_connected), color = Skerry.colors.text, size = 13.sp, weight = FontWeight.Medium)
+            Txt(stringResource(Res.string.sync_keep_connected_sub), color = Skerry.colors.faint, size = 11.5.sp)
         }
     }
 
     if (errorMessage != null) {
         Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Sym("error", size = 14.sp, color = D.sunset)
-            Txt(errorMessage, color = D.sunset, size = 12.sp)
+            Sym("error", size = 14.sp, color = Skerry.colors.sunset)
+            Txt(errorMessage, color = Skerry.colors.sunset, size = 12.sp)
         }
     }
 
@@ -520,12 +520,12 @@ private fun SyncJoinBody(sync: SyncCoordinator, errorMessage: String?) {
         },
         modifier = Modifier.padding(top = 18.dp),
         enabled = canSubmit,
-        bg = if (canSubmit) D.cyan else D.cyan.copy(alpha = 0.4f),
+        bg = if (canSubmit) Skerry.colors.cyan else Skerry.colors.cyan.copy(alpha = 0.4f),
         icon = "cloud_sync",
     )
     Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Sym("shield_lock", size = 14.sp, color = D.moss)
-        Txt(stringResource(Res.string.sync_zero_knowledge_account), color = D.faint, size = 11.sp)
+        Sym("shield_lock", size = 14.sp, color = Skerry.colors.moss)
+        Txt(stringResource(Res.string.sync_zero_knowledge_account), color = Skerry.colors.faint, size = 11.sp)
     }
 }
 
@@ -533,21 +533,21 @@ private fun SyncJoinBody(sync: SyncCoordinator, errorMessage: String?) {
 @Composable
 internal fun SyncStatusNotice(icon: String, iconColor: Color, title: String, subtitle: String) {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(11.dp)).border(1.dp, D.cyan08, RoundedCornerShape(11.dp)).padding(15.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(11.dp)).border(1.dp, Skerry.colors.cyan08, RoundedCornerShape(11.dp)).padding(15.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Sym(icon, size = 22.sp, color = iconColor)
         Column(Modifier.weight(1f)) {
-            Txt(title, color = D.text, size = 14.sp, weight = FontWeight.Medium)
-            Txt(subtitle, color = D.faint, size = 12.sp, modifier = Modifier.padding(top = 2.dp))
+            Txt(title, color = Skerry.colors.text, size = 14.sp, weight = FontWeight.Medium)
+            Txt(subtitle, color = Skerry.colors.faint, size = 12.sp, modifier = Modifier.padding(top = 2.dp))
         }
     }
 }
 
 @Composable
 private fun SyncFieldLabel(text: String) {
-    Txt(text, color = D.faint, size = 10.5.sp, weight = FontWeight.SemiBold, letterSpacing = 0.6.sp, modifier = Modifier.padding(top = 16.dp, bottom = 6.dp))
+    Txt(text, color = Skerry.colors.faint, size = 10.5.sp, weight = FontWeight.SemiBold, letterSpacing = 0.6.sp, modifier = Modifier.padding(top = 16.dp, bottom = 6.dp))
 }
 
 @Composable
@@ -560,25 +560,26 @@ private fun SyncTextField(
     onChange: (String) -> Unit,
 ) {
     val ui = LocalFonts.current.ui
-    val style = remember(ui) { TextStyle(color = D.text, fontSize = 15.sp, fontFamily = ui, lineHeight = 20.sp) }
+    val textColor = Skerry.colors.text
+    val style = remember(ui, textColor) { TextStyle(color = textColor, fontSize = 15.sp, fontFamily = ui, lineHeight = 20.sp) }
     BasicTextField(
         value = value,
         onValueChange = onChange,
         singleLine = true,
         textStyle = style,
-        cursorBrush = SolidColor(D.cyan),
+        cursorBrush = SolidColor(Skerry.colors.cyan),
         visualTransformation = if (masked) PasswordVisualTransformation() else VisualTransformation.None,
         keyboardOptions = KeyboardOptions(keyboardType = if (masked) KeyboardType.Password else keyboardType),
         modifier = Modifier.fillMaxWidth(),
         decorationBox = { inner ->
             Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(11.dp)).background(D.bg).border(1.dp, D.cyan14, RoundedCornerShape(11.dp)).padding(horizontal = 14.dp, vertical = 13.dp),
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(11.dp)).background(Skerry.colors.bg).border(1.dp, Skerry.colors.cyan14, RoundedCornerShape(11.dp)).padding(horizontal = 14.dp, vertical = 13.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                if (icon != null) Sym(icon, size = 18.sp, color = D.faint)
+                if (icon != null) Sym(icon, size = 18.sp, color = Skerry.colors.faint)
                 Box(Modifier.weight(1f)) {
-                    if (value.isEmpty()) Txt(placeholder, color = D.faint, size = 15.sp)
+                    if (value.isEmpty()) Txt(placeholder, color = Skerry.colors.faint, size = 15.sp)
                     inner()
                 }
             }
@@ -602,37 +603,38 @@ internal fun InviteCodeOverlay(error: String?, onSubmit: (String) -> Unit, onDis
     ) {
         Column(
             Modifier.widthIn(max = 380.dp).fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp)).background(D.surfaceDeep)
-                .border(1.dp, D.cyan14, RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(12.dp)).background(Skerry.colors.surfaceDeep)
+                .border(1.dp, Skerry.colors.cyan14, RoundedCornerShape(12.dp))
                 .padding(22.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Sym("vpn_key", size = 18.sp, color = D.cyanBright)
-                Txt(stringResource(Res.string.sync_field_invite_code), color = D.text, size = 15.sp, weight = FontWeight.SemiBold)
+                Sym("vpn_key", size = 18.sp, color = Skerry.colors.cyanBright)
+                Txt(stringResource(Res.string.sync_field_invite_code), color = Skerry.colors.text, size = 15.sp, weight = FontWeight.SemiBold)
             }
             Txt(
                 stringResource(Res.string.sync_placeholder_invite_code),
-                color = D.faint, size = 12.sp, modifier = Modifier.padding(top = 6.dp, bottom = 14.dp),
+                color = Skerry.colors.faint, size = 12.sp, modifier = Modifier.padding(top = 6.dp, bottom = 14.dp),
             )
             val ui = LocalFonts.current.ui
-            val style = remember(ui) { TextStyle(color = D.text, fontSize = 14.sp, fontFamily = ui) }
+            val textColor = Skerry.colors.text
+            val style = remember(ui) { TextStyle(color = textColor, fontSize = 14.sp, fontFamily = ui) }
             BasicTextField(
                 value = code,
                 onValueChange = { code = it },
                 singleLine = true,
                 textStyle = style,
-                cursorBrush = SolidColor(D.cyan),
+                cursorBrush = SolidColor(Skerry.colors.cyan),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                 modifier = Modifier.fillMaxWidth(),
                 decorationBox = { inner ->
                     Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(D.bg)
-                            .border(1.dp, D.cyan14, RoundedCornerShape(8.dp))
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Skerry.colors.bg)
+                            .border(1.dp, Skerry.colors.cyan14, RoundedCornerShape(8.dp))
                             .padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Box(Modifier.weight(1f)) {
-                            if (code.isEmpty()) Txt("XXX-XXXXX", color = D.faint, size = 14.sp)
+                            if (code.isEmpty()) Txt("XXX-XXXXX", color = Skerry.colors.faint, size = 14.sp)
                             inner()
                         }
                     }
@@ -640,8 +642,8 @@ internal fun InviteCodeOverlay(error: String?, onSubmit: (String) -> Unit, onDis
             )
             if (error != null) {
                 Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Sym("error", size = 14.sp, color = D.sunset)
-                    Txt(error, color = D.sunset, size = 12.sp)
+                    Sym("error", size = 14.sp, color = Skerry.colors.sunset)
+                    Txt(error, color = Skerry.colors.sunset, size = 12.sp)
                 }
             }
             Row(
@@ -651,13 +653,13 @@ internal fun InviteCodeOverlay(error: String?, onSubmit: (String) -> Unit, onDis
             ) {
                 Box(Modifier.weight(1f))
                 Box(Modifier.clip(RoundedCornerShape(7.dp)).clickable(onClick = onDismiss).padding(horizontal = 16.dp, vertical = 9.dp)) {
-                    Txt(stringResource(Res.string.sync_cancel), color = D.dim, size = 12.5.sp)
+                    Txt(stringResource(Res.string.sync_cancel), color = Skerry.colors.dim, size = 12.5.sp)
                 }
                 PrimaryButton(
                     stringResource(Res.string.sync_connect),
                     onClick = { if (code.isNotBlank()) onSubmit(code.trim()) },
                     enabled = code.isNotBlank(),
-                    bg = if (code.isNotBlank()) D.cyan else D.cyan.copy(alpha = 0.4f),
+                    bg = if (code.isNotBlank()) Skerry.colors.cyan else Skerry.colors.cyan.copy(alpha = 0.4f),
                 )
             }
         }
