@@ -585,13 +585,13 @@ const L = {
     heroSub3:"完全开源。无需注册、无需云、无需订阅。",
     relNote:"",
     featLabel:"全部功能", featTitle:"远程连接所需的一切",
-    ftTerminal:{l:"终端",t:"终端 · 多标签会话",d:"内置终端模拟器，多标签会话管理。SSH / Mosh / Serial / Telnet 全支持。",p:["完整终端模拟：图形字符、Unicode","输出中的可点击链接","分屏视图 — 会话并排"]},
-    ftSftp:{l:"SFTP",t:"文件 — 双栏管理",d:"内置双栏文件管理器 — 无需额外软件。",p:["经典文件管理器布局","文件通过同一条加密连接传输","桌面端和 Android 体验一致"]},
-    ftVault:{l:"保险库",t:"别人读不了的保险库",d:"密钥、密码和证书在设备上加密。主密码只有你知道。",p:["仅在本地设备解密","Android 指纹解锁","SSH 证书与密钥同等待遇"]},
-    ftTunnels:{l:"隧道",t:"隧道 — 不需要记参数",d:"几次点击完成端口转发 — 可视化，不用记 ssh 参数。",p:["本地、远程和 SOCKS 转发","断线自动重连","界面中直接查看主机指标"]},
-    ftAi:{l:"AI",t:"AI — 在你控制之下",d:"终端内 AI 助手，不经过你确认不执行任何命令。",p:["每个主机单独设置信任等级","自己的 OpenAI Key — 或纯本地模型","离线也能用"]},
-    ftSnippet:{l:"片段变量",t:"片段 — 动态变量",d:"命令片段支持 ${{...}} 占位符，发送前实时替换。含变量的片段弹出确认窗口预览。",p:["${{date:YYYY-MM-DD}} / ${{time:HH:mm}} — 日期/时间","${{timestamp}} — Unix 时间戳 · ${{uuid}} — UUID","${{random:16}} — 随机字符 · ${{clipboard}} — 剪贴板","${{vault:标签名}} — 从保险库取密码","${{param:名称}} — 运行时提示输入"]},
-    ftMore:{l:"更多",t:"还有一打小功能",d:"每天节省时间的小细节。",p:["Telnet 和串口连接 — Android 上甚至支持 USB","输出历史快速搜索","输命令时自动补全提示"]},
+    ftTerminal:{l:"终端",t:"终端 · 多标签会话",d:"内置终端模拟器。SSH / Mosh / Serial / Telnet 全支持。",p:["多标签 + 分屏视图 — 会话并排","自动重连 — 断线无需手动","滚动搜索 — 输出历史快速查找","实时主机指标 — 延迟/上行可视"]},
+    ftConnections:{l:"连接",t:"连接 · 不止 SSH",d:"SFTP 文件管理、端口转发、跳板机 — 一键搞定。",p:["SFTP 双栏文件管理器 — 同一条加密连接","本地/远程/SOCKS 端口转发 — 可视化配置","SSH ProxyJump 跳板机 + SSH 证书","Telnet + 串口 — 桌面和 Android USB-OTG"]},
+    ftVault:{l:"保险库",t:"保险库 · 别人读不了",d:"密钥、密码和证书在设备上加密。Argon2id + XChaCha20-Poly1305。",p:["主密码不会发送至服务器","Android 指纹解锁","SSH 证书与密钥同等待遇"]},
+    ftTeams:{l:"团队",t:"团队 · 端到端加密共享",d:"和同事共享主机与片段，全程加密 — 服务器也看不到。",p:["E2E 加密 — 仅在成员设备上解密","共享主机 + 片段 — 统一管理","团队角色管理 — 控制访问权限"]},
+    ftSnippet:{l:"片段",t:"片段 · ${{动态变量}}",d:"命令库带终端自动补全。支持 ${{...}} 占位符，发送前实时替换并弹出确认窗口预览。",p:["${{date:format}} / ${{time:format}} — 日期/时间，支持 strftime 格式","${{timestamp}} — Unix 秒级时间戳 · ${{uuid}} — 随机 UUID","${{random:N}} — N 位随机字符 · ${{clipboard}} — 系统剪贴板内容","${{vault:标签名}} — 从保险库取密码（预览时掩码）","${{param:名称}} — 运行时弹出输入框提示"]},
+    ftAi:{l:"AI",t:"AI · 在你控制之下",d:"终端内 AI 助手，不经过确认不执行任何命令。",p:["自有 OpenAI Key — 或纯本地模型","每个主机单独设置信任等级","离线也能用（本地模型）","AI 回复使用当前 UI 语言"]},
+    ftMore:{l:"更多",t:"更多 · 精益求精",d:"每天节省时间的小细节。",p:["VNC 远程桌面","SFTP 内置文件查看/编辑（F3/F4）","会话录像回放","Windows 安装器（.exe / .msi）"]},
     extras:["VNC 远程桌面","SFTP 内置文件查看/编辑（F3/F4）","会话录像回放","Windows 安装器（.exe / .msi）"],
 guideLabel:"快速上手", guideTitle:"使用说明",
     guideFirstTitle:"第一次使用",
@@ -634,13 +634,13 @@ guideLabel:"快速上手", guideTitle:"使用说明",
     heroSub3:"Open source. No clouds, no accounts, no subscriptions.",
     relNote:"",
     featLabel:"Features", featTitle:"Everything you need for remote connections",
-    ftTerminal:{l:"Terminal",t:"Terminal · Tabbed sessions",d:"Built-in terminal emulator with tabbed sessions. SSH / Mosh / Serial / Telnet — all in one.",p:["Full terminal emulation: box-drawing, Unicode","Clickable links in output","Split view — sessions side by side"]},
-    ftSftp:{l:"SFTP",t:"Files — in two panes",d:"A familiar dual-pane file manager built right in — no extra apps.",p:["The classic file-manager layout you already know","Files travel over the same secure connection","Works the same on desktop and Android"]},
-    ftVault:{l:"Vault",t:"A vault nobody else can read",d:"Keys, passwords and certificates are encrypted on your device. Only you know the unlock password.",p:["Decryption happens only locally, on your device","Biometric unlock on Android","SSH certificates alongside keys"]},
-    ftTunnels:{l:"Tunnels",t:"Tunnels without the ritual",d:"Port forwarding in a couple of clicks — visual, no ssh flags to memorize.",p:["Local, remote and SOCKS forwarding","Automatic reconnect on connection loss","Host metrics right in the UI"]},
-    ftAi:{l:"AI",t:"AI, kept on a leash",d:"An in-terminal assistant that does nothing without your permission.",p:["Trust level is configured per host","Your own OpenAI key — or fully local models","Works even without internet"]},
-    ftSnippet:{l:"Snippets",t:"Snippets — dynamic variables",d:"Command snippets support ${{...}} placeholders resolved at runtime. Every snippet with variables opens a confirmation dialog preview.",p:["${{date:YYYY-MM-DD}} / ${{time:HH:mm}} — date & time","${{timestamp}} — Unix timestamp · ${{uuid}} — UUID","${{random:16}} — random chars · ${{clipboard}} — clipboard","${{vault:label}} — password from vault","${{param:name}} — prompt at runtime"]},
-    ftMore:{l:"More",t:"A dozen small things under the hood",d:"Small things that save time every day.",p:["Telnet and serial connections — even over USB on Android","Fast search through output history","Command suggestions as you type"]},
+    ftTerminal:{l:"Terminal",t:"Terminal · Tabbed sessions",d:"Built-in terminal emulator. SSH / Mosh / Serial / Telnet — all in one.",p:["Tabbed + split view — sessions side by side","Auto-reconnect — hands-free after network loss","Scrollback search — find anything in output history","Live host metrics — latency/uplink at a glance"]},
+    ftConnections:{l:"Connections",t:"Connections · Beyond SSH",d:"SFTP, port forwarding, jump hosts — one click away.",p:["SFTP dual-pane file manager — same secure connection","Local / remote / SOCKS port forwarding — visual setup","SSH ProxyJump + SSH certificates","Telnet + Serial — desktop & Android USB-OTG"]},
+    ftVault:{l:"Vault",t:"A vault nobody else can read",d:"Keys, passwords and certificates encrypted on-device. Argon2id + XChaCha20-Poly1305.",p:["Master password never sent to the server","Biometric unlock on Android","SSH certificates alongside keys"]},
+    ftTeams:{l:"Teams",t:"Teams · E2E encrypted sharing",d:"Share hosts and snippets with your team, encrypted end-to-end — invisible to the server.",p:["E2E encryption — decrypted only on member devices","Shared hosts + snippets — unified management","Team roles — control access permissions"]},
+    ftSnippet:{l:"Snippets",t:"Snippets · ${{dynamic vars}}",d:"Command library with terminal type-ahead. Supports ${{...}} placeholders resolved at runtime behind a confirmation dialog.",p:["${{date:format}} / ${{time:format}} — date & time, strftime syntax","${{timestamp}} — Unix seconds · ${{uuid}} — random UUID","${{random:N}} — N random chars · ${{clipboard}} — system clipboard","${{vault:label}} — password from vault (masked in preview)","${{param:name}} — prompted at runtime"]},
+    ftAi:{l:"AI",t:"AI, kept on a leash",d:"An in-terminal assistant that does nothing without your permission.",p:["Your own OpenAI key — or fully local models","Trust level configurable per host","Works offline (local models)","Assistant replies in your UI language"]},
+    ftMore:{l:"More",t:"More · the finishing touches",d:"Small things that save time every day.",p:["VNC remote desktop","Built-in SFTP file viewer/editor (F3/F4)","Session recording playback","Windows installer (.exe / .msi)"]},
     extras:["VNC remote desktop","built-in SFTP file viewer/editor (F3/F4)","session recording playback","Windows installer (.exe / .msi)"],
     guideLabel:"Get Started", guideTitle:"How it works",
     guideFirstTitle:"First time using Skerry",
@@ -683,13 +683,13 @@ guideLabel:"快速上手", guideTitle:"使用说明",
     heroSub3:"Открытый исходный код. Никаких облаков, аккаунтов и подписок.",
     relNote:"",
     featLabel:"Возможности", featTitle:"Всё, что нужно для удалённого подключения",
-    ftTerminal:{l:"Терминал",t:"Терминал · Вкладки",d:"Встроенный эмулятор терминала с вкладками. SSH / Mosh / Serial / Telnet — всё в одном.",p:["Полная эмуляция терминала: псевдографика, Unicode","Кликабельные ссылки в выводе","Split view — сессии бок о бок"]},
-    ftSftp:{l:"SFTP",t:"Файлы — в две панели",d:"Двухпанельный файловый менеджер прямо в клиенте — без отдельных приложений.",p:["Привычная раскладка классических файловых менеджеров","Файлы идут по тому же защищённому подключению","Одинаково работает на десктопе и Android"]},
-    ftVault:{l:"Хранилище",t:"Хранилище, которое никто не прочитает",d:"Ключи, пароли и сертификаты зашифрованы на устройстве. Пароль знаете только вы.",p:["Расшифровка — только локально, на вашем устройстве","Биометрическая разблокировка на Android","SSH-сертификаты наравне с ключами"]},
-    ftTunnels:{l:"Туннели",t:"Туннели без танцев с бубном",d:"Пробросы портов настраиваются в пару кликов — наглядно, без запоминания флагов ssh.",p:["Локальный, удалённый и SOCKS-проброс","Автоматическое переподключение при обрыве связи","Метрики хоста прямо в интерфейсе"]},
-    ftAi:{l:"AI",t:"AI, который под контролем",d:"Ассистент в терминале, который ничего не сделает без вашего разрешения.",p:["Уровень доверия настраивается для каждого хоста","Свой ключ OpenAI — или полностью локальные модели","Работает даже без интернета"]},
-    ftSnippet:{l:"Фрагменты",t:"Фрагменты — динамические переменные",d:"Командные фрагменты поддерживают подстановку ${{...}} с заменой при выполнении. Фрагменты с переменными открывают диалог подтверждения.",p:["${{date:YYYY-MM-DD}} / ${{time:HH:mm}} — дата и время","${{timestamp}} — Unix-метка · ${{uuid}} — UUID","${{random:16}} — случайные символы · ${{clipboard}} — буфер обмена","${{vault:метка}} — пароль из хранилища","${{param:имя}} — запрос при выполнении"]},
-    ftMore:{l:"Прочее",t:"Под капотом — ещё десяток мелочей",d:"Мелочи, которые каждый день экономят время.",p:["Telnet и serial-подключения — даже по USB на Android","Быстрый поиск по истории вывода","Подсказки команд по мере ввода"]},
+    ftTerminal:{l:"Терминал",t:"Терминал · Вкладки",d:"Встроенный эмулятор терминала. SSH / Mosh / Serial / Telnet — всё в одном.",p:["Вкладки + Split view — сессии бок о бок","Автоподключение — без рук после обрыва связи","Поиск по истории — в выводе терминала","Метрики хоста — задержка/канал наглядно"]},
+    ftConnections:{l:"Подключения",t:"Подключения · Не только SSH",d:"SFTP, проброс портов, jump-хосты — в один клик.",p:["SFTP — двухпанельный файловый менеджер","Локальный / удалённый / SOCKS проброс — наглядная настройка","SSH ProxyJump + SSH сертификаты","Telnet + Serial — настольный и Android USB-OTG"]},
+    ftVault:{l:"Хранилище",t:"Хранилище, которое никто не прочитает",d:"Ключи, пароли и сертификаты зашифрованы. Argon2id + XChaCha20-Poly1305.",p:["Мастер-пароль не отправляется на сервер","Биометрическая разблокировка на Android","SSH-сертификаты наравне с ключами"]},
+    ftTeams:{l:"Команды",t:"Команды · Сквозное шифрование",d:"Делитесь хостами и фрагментами с коллегами — сервер не видит содержимого.",p:["E2E шифрование — расшифровка только на устройствах участников","Общие хосты + фрагменты — единое управление","Роли команды — контроль доступа"]},
+    ftSnippet:{l:"Фрагменты",t:"Фрагменты · ${{переменные}}",d:"Библиотека команд с автодополнением. Поддержка ${{...}} с заменой при выполнении и диалогом подтверждения.",p:["${{date:format}} / ${{time:format}} — дата и время, синтаксис strftime","${{timestamp}} — Unix-секунды · ${{uuid}} — случайный UUID","${{random:N}} — N случайных символов · ${{clipboard}} — буфер обмена","${{vault:метка}} — пароль из хранилища (в предпросмотре скрыт)","${{param:имя}} — запрос при выполнении"]},
+    ftAi:{l:"AI",t:"AI, который под контролем",d:"Ассистент в терминале — ничего не делает без вашего разрешения.",p:["Свой ключ OpenAI — или полностью локальные модели","Уровень доверия настраивается для каждого хоста","Работает офлайн (локальные модели)","Ассистент отвечает на языке интерфейса"]},
+    ftMore:{l:"Прочее",t:"Прочее · последние штрихи",d:"Мелочи, которые каждый день экономят время.",p:["VNC удалённый рабочий стол","Встроенный просмотр/редактор файлов SFTP (F3/F4)","Воспроизведение записей сессий","Установщик Windows (.exe / .msi)"]},
     extras:["VNC удалённый рабочий стол","встроенный просмотр/редактор файлов SFTP (F3/F4)","воспроизведение записей сессий","установщик Windows (.exe / .msi)"],
     guideLabel:"Начало работы", guideTitle:"Как использовать",
     guideFirstTitle:"Первое использование",
@@ -759,7 +759,7 @@ const PLATFORMS = [
 // === Feature data ===
 function getFeats(lang){
   const t = L[lang];
-  const keys = ['ftTerminal','ftSftp','ftVault','ftTunnels','ftAi','ftSnippet','ftMore'];
+  const keys = ['ftTerminal','ftConnections','ftVault','ftTeams','ftSnippet','ftAi','ftMore'];
   return keys.map(k => t[k]);
 }
 
@@ -870,33 +870,49 @@ function renderFeats(){
   document.getElementById('featTabsDesktop').innerHTML = tabsHtml;
 
   // Rows
-  const isLast = activeFeat === feats.length - 1;
   let rowsHtml = '';
   feats.forEach((f,i) => {
     const active = i === activeFeat;
-    if(i === feats.length - 1){
-      // "More" card
-      const extrasLis = L[curLang].extras.map(x => `<div style="color:#a8bac4;display:flex;gap:10px"><span style="color:#5fe6d6">✓</span><span>${x}</span></div>`).join('');
-      rowsHtml += `<div class="feat-row${active?' active':''}">
-        <div class="feat-text"><span class="sec-label">${f.l}</span><h3>${f.t}</h3><p>${f.d}</p><div class="feat-points">${f.p.map(p => `<div class="feat-point"><span></span><span>${p}</span></div>`).join('')}</div></div>
-        <div class="feat-shot-wrap"><div class="bg-glow"></div><div class="feat-shot extra"><div class="fake-titlebar"><span></span><span></span><span></span><code>skerry — terminal</code></div><div class="fake-term"><div class="prompt">$ skerry --features</div>${extrasLis}<div class="prompt">$ <span class="cursor"></span></div></div></div></div></div>`;
-    } else if(i === feats.length - 2){
-      // Snippet card — show variable syntax examples in a terminal window
+    const featText = `<div class="feat-text"><span class="sec-label">${f.l}</span><h3>${f.t}</h3><p>${f.d}</p><div class="feat-points">${f.p.map(p => `<div class="feat-point"><span></span><span>${p}</span></div>`).join('')}</div></div>`;
+    // i=0:Terminal, i=1:Connections, i=2:Vault, i=3:Teams, i=4:Snippet, i=5:AI, i=6:More
+    if (i === 4) {
+      // Snippet card — show variable syntax in a terminal window
       const snippetVars = [
-        '<span style="color:#34d3c0">${{date:YYYY-MM-DD HH:mm:ss}}</span>',
-        '<span style="color:#34d3c0">${{timestamp}}</span>  //  <span style="color:#34d3c0">${{uuid}}</span>',
-        '<span style="color:#34d3c0">${{random:16}}</span>  //  <span style="color:#34d3c0">${{clipboard}}</span>',
-        '<span style="color:#34d3c0">${{vault:MySecret}}</span>',
-        '<span style="color:#34d3c0">${{param:username}}</span>'
+        `date:  <span style="color:#34d3c0">${{date:YYYY-MM-DD}}</span>  <span style="color:#5e7482">// strftime format</span>`,
+        `time:  <span style="color:#34d3c0">${{time:HH:mm:ss}}</span>  <span style="color:#5e7482">// 24-hour</span>`,
+        `ts:    <span style="color:#34d3c0">${{timestamp}}</span>  <span style="color:#5e7482">// Unix seconds</span>`,
+        `uuid:  <span style="color:#34d3c0">${{uuid}}</span>  <span style="color:#5e7482">// random UUID v4</span>`,
+        `rnd:   <span style="color:#34d3c0">${{random:16}}</span>  <span style="color:#5e7482">// N random chars</span>`,
+        `clip:  <span style="color:#34d3c0">${{clipboard}}</span>  <span style="color:#5e7482">// system clipboard</span>`,
+        `vault: <span style="color:#34d3c0">${{vault:MySecret}}</span>  <span style="color:#5e7482">// password by label (masked in preview)</span>`,
+        `param: <span style="color:#34d3c0">${{param:username}}</span>  <span style="color:#5e7482">// prompted at runtime</span>`
       ];
-      const snippetLis = snippetVars.map(v => `<div style="color:#a8bac4;display:flex;gap:10px"><span style="color:#2bbdee">▸</span><code style="font-family:'JetBrains Mono',monospace;font-size:13px">${v}</code></div>`).join('');
-      rowsHtml += `<div class="feat-row${active?' active':''}">
-        <div class="feat-text"><span class="sec-label">${f.l}</span><h3>${f.t}</h3><p>${f.d}</p><div class="feat-points">${f.p.map(p => `<div class="feat-point"><span></span><span>${p}</span></div>`).join('')}</div></div>
-        <div class="feat-shot-wrap"><div class="bg-glow"></div><div class="feat-shot extra"><div class="fake-titlebar"><span></span><span></span><span></span><code>snippet — template</code></div><div class="fake-term"><div class="prompt"># my-snippet.sh</div>${snippetLis}<div style="color:var(--dim);margin-top:8px;font-size:12px">// 发送前弹出确认窗口预览实际内容 / confirmation dialog preview before sending</div></div></div></div></div>`;
+      const snippetLis = snippetVars.map(v => `<div style="color:#a8bac4;display:flex;gap:10px;line-height:1.9"><span style="color:#2bbdee;font-family:'JetBrains Mono',monospace;font-size:12px">▸</span><code style="font-family:'JetBrains Mono',monospace;font-size:12.5px">${v}</code></div>`).join('');
+      rowsHtml += `<div class="feat-row${active?' active':''}">${featText}
+        <div class="feat-shot-wrap"><div class="bg-glow"></div><div class="feat-shot extra"><div class="fake-titlebar"><span></span><span></span><span></span><code>snippet — template</code></div><div class="fake-term">${snippetLis}<div style="color:var(--dim);margin-top:10px;font-size:11.5px;border-top:1px solid var(--border1);padding-top:10px">// 含变量的片段发送前弹出确认窗口 — 所见即所发</div></div></div></div></div>`;
+    } else if (i === 1 || i === 3) {
+      // Connections & Teams — code card (no dedicated screenshot yet)
+      const codeLines = i === 1 ? [
+        `<span style="color:#5e7482"># Connections: SSH, SFTP, tunnels, serial</span>`,
+        `<span style="color:#34d3c0">ssh</span> user@host <span style="color:#5e7482">— with ProxyJump & certs</span>`,
+        `<span style="color:#34d3c0">sftp</span> host <span style="color:#5e7482">— dual-pane right in the app</span>`,
+        `<span style="color:#34d3c0">-L 8080:localhost:80</span> <span style="color:#5e7482">— local forward</span>`,
+        `<span style="color:#34d3c0">-R 3000:localhost:3000</span> <span style="color:#5e7482">— remote forward</span>`,
+        `<span style="color:#34d3c0">-D 1080</span> <span style="color:#5e7482">— SOCKS proxy</span>`
+      ] : [
+        `<span style="color:#5e7482"># Teams: share hosts & snippets E2E encrypted</span>`,
+        `<span style="color:#34d3c0">create team</span> <span style="color:#5e7482">— name it, invite members</span>`,
+        `<span style="color:#34d3c0">share host</span> <span style="color:#5e7482">— visible to all members</span>`,
+        `<span style="color:#34d3c0">share snippet</span> <span style="color:#5e7482">— run on shared hosts</span>`,
+        `<span style="color:#34d3c0">rotate keys</span> <span style="color:#5e7482">— per-team key rotation</span>`
+      ];
+      const codeLis = codeLines.map(v => `<div style="color:#a8bac4;display:flex;gap:10px;line-height:1.85"><span style="color:#2bbdee;font-family:'JetBrains Mono',monospace;font-size:11px">$</span><code style="font-family:'JetBrains Mono',monospace;font-size:13px">${v}</code></div>`).join('');
+      rowsHtml += `<div class="feat-row${active?' active':''}">${featText}
+        <div class="feat-shot-wrap"><div class="bg-glow"></div><div class="feat-shot extra"><div class="fake-titlebar"><span></span><span></span><span></span><code>skerry</code></div><div class="fake-term">${codeLis}<div class="prompt">$ <span class="cursor"></span></div></div></div></div></div>`;
     } else {
-      const srcs = ['screenshots/feature-sftp.png','screenshots/feature-vault.png','screenshots/feature-tunnels.png','screenshots/feature-ai.png'];
-      // feature layout: Terminal first (i=0 uses hero image), then sftp, vault, tunnels, ai
-      const src = i === 0 ? 'screenshots/feature-terminal.png' : srcs[i-1];
+      // Screenshot cards
+      const srcMap = {0:'screenshots/feature-terminal.png',2:'screenshots/feature-vault.png',5:'screenshots/feature-ai.png',6:'screenshots/feature-sftp.png'};
+      const src = srcMap[i] || 'screenshots/feature-terminal.png';
       rowsHtml += `<div class="feat-row${active?' active':''}">
         <div class="feat-text"><span class="sec-label">${f.l}</span><h3>${f.t}</h3><p>${f.d}</p><div class="feat-points">${f.p.map(p => `<div class="feat-point"><span></span><span>${p}</span></div>`).join('')}</div></div>
         <div class="feat-shot-wrap"><div class="bg-glow"></div><div class="feat-shot"><img src="${src}" alt="${f.l}" loading="lazy"></div></div>
