@@ -37,6 +37,8 @@ object Devices : Table("devices") {
     /** Sync cursor the device has read/written up to (plaintext counter). */
     val lastSyncVersion = long("last_sync_version").nullable()
     val revoked = bool("revoked").default(false)
+    /** Last IP address that logged in with this device (for suspicious login detection). */
+    val lastIp = varchar("last_ip", 45).nullable()
 
     // PK on (accountId, id): deviceId is unique per account, not globally — otherwise a client
     // supplying another account's deviceId could hijack or make un-revocable someone else's
@@ -167,6 +169,30 @@ object TeamRecords : Table("team_records") {
     init {
         index("idx_team_records_delta", false, teamId, teamSeq)
     }
+}
+
+/**
+ * Invitation codes: gated registration. Codes are single-use unless [max_uses] > 1; expired codes
+ * are soft-invalid (not deleted) so the admin can audit history. [used_by] is nullable — set on first
+ * use; deleted when the consuming account is deleted (no FK — the log survives account deletion).
+ */
+object InviteCodes : Table("invite_codes") {
+    val code = varchar("code", 64)
+    val createdBy = varchar("created_by", 64).default("admin")
+    val createdAt = long("created_at")
+    /** Nullable expiry — null means never expires. */
+    val expiresAt = long("expires_at").nullable()
+    /** Max uses before auto-expiring. Default 1 (single-use). */
+    val maxUses = integer("max_uses").default(1)
+    /** How many times the code has been consumed. Monotonic counter. */
+    val useCount = integer("use_count").default(0)
+    /** First account that used the code. Null until consumed. */
+    val usedBy = varchar("used_by", 320).nullable()
+    val usedAt = long("used_at").nullable()
+    /** Whether this code is shown on the instance's public landing page. */
+    val isPublic = bool("is_public").default(false)
+
+    override val primaryKey = PrimaryKey(code)
 }
 
 /** One-time pairing sessions (variant B): dataKey encrypted with a transferKey, with a TTL. */

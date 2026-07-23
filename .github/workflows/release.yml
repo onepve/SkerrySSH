@@ -39,6 +39,9 @@ on:
     tags:
       - "v*"
 
+env:
+  TZ: Asia/Shanghai
+
 permissions:
   contents: read
 
@@ -69,7 +72,10 @@ jobs:
 
   linux-desktop:
     needs: version
+    env:
+      TZ: Asia/Shanghai
     strategy:
+      fail-fast: false
       matrix:
         include:
           - runner: ubuntu-latest
@@ -93,9 +99,25 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
 
+      - name: Package deb + rpm + Chinese distro debs (x86_64 only)
+        if: matrix.arch == 'x86_64'
+        run: >
+          ./gradlew :composeApp:packageDeb :composeApp:packageRpm :composeApp:packageChineseDebs --stacktrace
+          ${{ needs.version.outputs.name && format('-Pskerry.versionName={0}', needs.version.outputs.name) || '' }}
+
       - name: Package deb + rpm
+        if: matrix.arch != 'x86_64'
         run: >
           ./gradlew :composeApp:packageDeb :composeApp:packageRpm --stacktrace
+          ${{ needs.version.outputs.name && format('-Pskerry.versionName={0}', needs.version.outputs.name) || '' }}
+
+      - name: Package Chinese distro deb (aarch64)
+        # All three distros ship ARM64 editions (Kylin V10 Phytium/Kunpeng, UOS V20
+        # kunpeng/feiteng, NARI Linx) — one unified .deb for all. The repack task
+        # auto-detects arch from the source deb name, so no script changes needed.
+        if: matrix.arch == 'aarch64'
+        run: >
+          ./gradlew :composeApp:packageChineseDebs --stacktrace
           ${{ needs.version.outputs.name && format('-Pskerry.versionName={0}', needs.version.outputs.name) || '' }}
 
       - name: Fetch appimagetool
@@ -125,6 +147,64 @@ jobs:
           ./gradlew :composeApp:packageAppImage --stacktrace
           ${{ needs.version.outputs.name && format('-Pskerry.versionName={0}', needs.version.outputs.name) || '' }}
 
+      - name: Build xinchuang portable ZIP x86_64 (kylin/uos/nari unified)
+        # Same app-image the AppImage step just rebuilt. The zip holds a single skerry/
+        # folder: launcher script + bin/ + lib/ on top, data root portable/ inside — the
+        # app detects portable/ next to its launcher and keeps vault/keys/config there.
+        # One zip for all three distros (contents are identical).
+        # ZIP (not tar.gz) so xinchuang users on Windows desktops can extract it natively.
+        if: matrix.arch == 'x86_64'
+        run: |
+          set -euo pipefail
+          SRC=composeApp/build/compose/binaries/main/app/Skerry
+          TMP=$(mktemp -d)
+          mkdir -p "$TMP/skerry"
+          cp -a "$SRC/bin" "$SRC/lib" "$TMP/skerry/"
+          # All-lowercase inside the zip, same rule as the Chinese deb — mixed-case
+          # leftovers break on case-sensitive Linux filesystems.
+          mv "$TMP/skerry/bin/Skerry" "$TMP/skerry/bin/skerry"
+          mv "$TMP/skerry/lib/Skerry.png" "$TMP/skerry/lib/skerry.png"
+          rm -f "$TMP/skerry/lib/"*.desktop
+          find "$TMP/skerry/lib/app" -depth -name '*[A-Z]*' \
+            -exec bash -c 'for p; do mv "$p" "$(dirname "$p")/$(basename "$p" | tr "A-Z" "a-z")"; done' _ {} +
+          # jpackage launcher resolves its cfg by executable name — bin/skerry
+          # looks for lib/app/skerry.cfg. The find above already lowercases the
+          # filename, but keep an explicit rename guard for clarity.
+          [ -f "$TMP/skerry/lib/app/Skerry.cfg" ] && mv "$TMP/skerry/lib/app/Skerry.cfg" "$TMP/skerry/lib/app/skerry.cfg"
+          sed -i -E 's/^(app\.classpath=\$APPDIR\/)(.*)$/\1\L\2/' "$TMP/skerry/lib/app/skerry.cfg"
+          mkdir -p "$TMP/skerry/portable"
+          cp .github/portable-readme.txt "$TMP/skerry/portable/README.txt"
+          printf '#!/bin/sh\nHERE="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"\nexec "$HERE/bin/skerry" "$@"\n' > "$TMP/skerry/skerry"
+          chmod 755 "$TMP/skerry/skerry"
+          (cd "$TMP" && zip -qr skerry-xinchuang-amd64-portable.zip skerry)
+          mv "$TMP/skerry-xinchuang-amd64-portable.zip" "$GITHUB_WORKSPACE/"
+          rm -rf "$TMP"
+
+      - name: Build xinchuang portable ZIP arm64 (kylin/uos/nari unified)
+        if: matrix.arch == 'aarch64'
+        run: |
+          set -euo pipefail
+          SRC=composeApp/build/compose/binaries/main/app/Skerry
+          TMP=$(mktemp -d)
+          mkdir -p "$TMP/skerry"
+          cp -a "$SRC/bin" "$SRC/lib" "$TMP/skerry/"
+          mv "$TMP/skerry/bin/Skerry" "$TMP/skerry/bin/skerry"
+          mv "$TMP/skerry/lib/Skerry.png" "$TMP/skerry/lib/skerry.png"
+          rm -f "$TMP/skerry/lib/"*.desktop
+          find "$TMP/skerry/lib/app" -depth -name '*[A-Z]*' \
+            -exec bash -c 'for p; do mv "$p" "$(dirname "$p")/$(basename "$p" | tr "A-Z" "a-z")"; done' _ {} +
+          # jpackage launcher resolves its cfg by executable name — bin/skerry
+          # looks for lib/app/skerry.cfg. Explicit rename guard for clarity.
+          [ -f "$TMP/skerry/lib/app/Skerry.cfg" ] && mv "$TMP/skerry/lib/app/Skerry.cfg" "$TMP/skerry/lib/app/skerry.cfg"
+          sed -i -E 's/^(app\.classpath=\$APPDIR\/)(.*)$/\1\L\2/' "$TMP/skerry/lib/app/skerry.cfg"
+          mkdir -p "$TMP/skerry/portable"
+          cp .github/portable-readme.txt "$TMP/skerry/portable/README.txt"
+          printf '#!/bin/sh\nHERE="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"\nexec "$HERE/bin/skerry" "$@"\n' > "$TMP/skerry/skerry"
+          chmod 755 "$TMP/skerry/skerry"
+          (cd "$TMP" && zip -qr skerry-xinchuang-arm64-portable.zip skerry)
+          mv "$TMP/skerry-xinchuang-arm64-portable.zip" "$GITHUB_WORKSPACE/"
+          rm -rf "$TMP"
+
       - name: Upload Linux distributables
         # deb/rpm/AppImage names already carry the arch (amd64/arm64, x86_64/aarch64),
         # so the two matrix legs can't collide in the release.
@@ -135,6 +215,7 @@ jobs:
             composeApp/build/compose/binaries/main/deb/*.deb
             composeApp/build/compose/binaries/main/rpm/*.rpm
             composeApp/build/compose/binaries/main/appimage/*.AppImage
+            skerry-*-portable.zip
           if-no-files-found: error
 
   windows-desktop:
@@ -143,39 +224,95 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Set timezone to China Standard Time
+        run: Set-TimeZone -Id "China Standard Time"
+
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
 
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+
+      # Windows installers: MSI + WiX-Burn EXE. Both go through light.exe, which links
+      # with code page 1252 — the package description MUST stay ASCII-only or the link
+      # dies with LGHT0311 (exit 311). See composeApp/build.gradle.kts.
       - name: Install WiX Toolset (jpackage MSI)
         # jpackage needs WiX 3.x (candle.exe/light.exe) for .msi; recent
         # windows runners may not ship it.
         run: choco install wixtoolset -y --no-progress
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
-
       - name: Package msi
+        id: msi
+        shell: bash
+        # downloadWix fetches wix3112rtm.zip from github.com and the runner's
+        # connection to it is flaky (NoHttpResponseException), so retry before failing.
+        run: |
+          for attempt in 1 2 3; do
+            echo "=== packageMsi attempt $attempt ==="
+            if ./gradlew :composeApp:packageMsi --stacktrace \
+              ${{ needs.version.outputs.name && format('-Pskerry.versionName={0}', needs.version.outputs.name) || '' }}; then
+              echo "packageMsi succeeded on attempt $attempt"
+              exit 0
+            fi
+            echo "attempt $attempt failed, waiting before retry..."
+            sleep 20
+          done
+          echo "packageMsi failed after 3 attempts"
+          for f in composeApp/build/compose/logs/packageMsi/jpackage-*-err.txt; do
+            echo "===== $f ====="; cat "$f" || true
+          done
+          exit 1
+
+      - name: Package exe
+        id: exe
         shell: bash
         run: >
-          ./gradlew :composeApp:packageMsi --stacktrace
+          ./gradlew :composeApp:packageExe --stacktrace
           ${{ needs.version.outputs.name && format('-Pskerry.versionName={0}', needs.version.outputs.name) || '' }}
 
-      - name: Suffix msi with the architecture
-        # jpackage emits Skerry-<version>.msi with no arch marker; every other desktop
+      - name: Suffix installers with the architecture
+        # jpackage emits Skerry-<version>.{msi,exe} with no arch marker; every other desktop
         # asset carries one, and a Windows ARM build would otherwise collide.
+        # Rename to the fixed public names used by the download page / R2 latest/.
         shell: bash
         run: |
           cd composeApp/build/compose/binaries/main/msi
-          for f in *.msi; do mv "$f" "${f%.msi}-x64.msi"; done
+          for f in *.msi; do mv "$f" "Skerry-windows-x64.msi"; done
+          cd ../exe
+          for f in *.exe; do mv "$f" "Skerry-windows-x64.exe"; done
 
-      - name: Upload Windows distributable
+      - name: Upload Windows installers
+        uses: actions/upload-artifact@v7
+        with:
+          name: skerry-windows-installers-x64
+          path: |
+            composeApp/build/compose/binaries/main/msi/*.msi
+            composeApp/build/compose/binaries/main/exe/*.exe
+          if-no-files-found: error
+
+      - name: Build portable ZIP
+        shell: pwsh
+        env:
+          VERSION_PROP: ${{ needs.version.outputs.name && format('-Pskerry.versionName={0}', needs.version.outputs.name) || '' }}
+        run: |
+          ./gradlew :composeApp:createDistributable --stacktrace $env:VERSION_PROP
+          # portable marker directory — doubles as the data root (keys, vault, config live here)
+          New-Item -ItemType Directory -Path composeApp/build/compose/binaries/main/app/Skerry/portable -Force | Out-Null
+          Copy-Item .github/portable-readme.txt composeApp/build/compose/binaries/main/app/Skerry/portable/README.txt
+          # Compress-Archive zips a directory flat by default; push into the parent so
+          # the archive root contains a Skerry/ folder, not a pile of loose files.
+          Push-Location composeApp/build/compose/binaries/main/app
+          Compress-Archive -Path Skerry -DestinationPath "$env:GITHUB_WORKSPACE/Skerry-portable-x64.zip"
+          Pop-Location
+
+      - name: Upload Windows portable ZIP
         uses: actions/upload-artifact@v7
         with:
           name: skerry-windows-x64
-          path: composeApp/build/compose/binaries/main/msi/*.msi
+          path: Skerry-portable-x64.zip
           if-no-files-found: error
 
   macos-desktop:
@@ -359,7 +496,7 @@ jobs:
   # creates a DRAFT release for a human to review and publish. Skipped on manual runs
   # (then the artifacts just stay on the run, as before).
   publish:
-    needs: [linux-desktop, windows-desktop, macos-desktop, android, linux-flatpak]
+    needs: [version, linux-desktop, windows-desktop, macos-desktop, android, linux-flatpak]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
@@ -377,12 +514,74 @@ jobs:
         run: |
           mkdir -p dist
           find artifacts -type f -exec cp {} dist/ \;
+          # 删掉内部重打包的 .deb（skerry-xinchuang_0.1.9_amd64.deb），只保留对外版
+          rm -f dist/skerry-xinchuang_*.deb
           cd dist && sha256sum * > SHA256SUMS.txt
+
+      - name: Write release notes
+        run: |
+          cat > dist/RELEASE_NOTES.md <<'EOF'
+
+          > **注意 / Note:** macOS 安装包未签名且未经过公证。首次运行时，请前往系统设置 → 隐私与安全性，点击“仍然打开”。  
+          > macOS packages are unsigned and un-notarized. On first launch, open **System Settings → Privacy & Security** and click **Open Anyway**.
+
+          ## 校验 / Verification
+          SHA256 校验和请查看 `SHA256SUMS.txt` / SHA256 checksums for all files are in `SHA256SUMS.txt`.
+          EOF
 
       - name: Create draft release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: >
-          gh release create "$GITHUB_REF_NAME" dist/*
-          --draft --generate-notes --title "$GITHUB_REF_NAME"
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --draft \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file dist/RELEASE_NOTES.md \
+            dist/*
+
+      - name: Upload stable filenames to R2
+        # Fixed paths under Skerry/latest/ so the landing page's download cards never change.
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+        run: |
+          set -euo pipefail
+          ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          upload() { # $1 local file, $2 r2 key
+            aws s3 cp "$1" "s3://${R2_BUCKET_NAME}/Skerry/latest/$2" \
+              --endpoint-url "$ENDPOINT" --region auto --no-progress \
+              --cache-control "max-age=0, no-cache"
+          }
+          upload "$(ls dist/Skerry-*.apk)"                    Skerry-android.apk
+          upload "$(ls dist/Skerry-windows-x64.exe)"          Skerry-windows-x64.exe
+          upload "$(ls dist/Skerry-windows-x64.msi)"          Skerry-windows-x64.msi
+          upload "$(ls dist/Skerry-portable-x64.zip)"         Skerry-portable-x64.zip
+          upload "$(ls dist/Skerry-*-arm64.dmg)"              Skerry-macos-arm64.dmg
+          upload "$(ls dist/Skerry-*-x64.dmg)"                Skerry-macos-x64.dmg
+          upload "$(ls dist/skerry_[0-9]*_amd64.deb)"          Skerry-linux-amd64.deb
+          upload "dist/Skerry-xinchuang-amd64.deb"          Skerry-xinchuang-amd64.deb
+          upload "dist/Skerry-xinchuang-arm64.deb"          Skerry-xinchuang-arm64.deb
+          upload "dist/skerry-xinchuang-amd64-portable.zip" skerry-xinchuang-amd64-portable.zip
+          upload "dist/skerry-xinchuang-arm64-portable.zip" skerry-xinchuang-arm64-portable.zip
+          upload "$(ls dist/*.x86_64.rpm)"                    Skerry-linux-x86_64.rpm
+          upload "$(ls dist/*-x86_64.AppImage)"               Skerry-linux-x86_64.AppImage
+          upload "$(ls dist/*_arm64.deb)"                     Skerry-linux-arm64.deb
+          upload "$(ls dist/*.aarch64.rpm)"                   Skerry-linux-aarch64.rpm
+          upload "$(ls dist/*-aarch64.AppImage)"              Skerry-linux-aarch64.AppImage
+          upload "$(ls dist/Skerry-*.flatpak)"                Skerry-linux.flatpak
+          upload dist/SHA256SUMS.txt                          SHA256SUMS.txt
+          # Write and upload the version manifest that the in-app update checker reads.
+          VERSION_NAME="${{ needs.version.outputs.name }}"
+          [ -z "$VERSION_NAME" ] && VERSION_NAME="$(sed -n 's/^skerry.versionName=//p' gradle.properties)"
+          VERSION_CODE="${{ inputs.versionCode || github.run_number }}"
+          cat > "$RUNNER_TEMP/version.json" <<EOF
+          {
+            "version": "$VERSION_NAME",
+            "version_code": $VERSION_CODE,
+            "page_url": "https://ssh.onepve.com/"
+          }
+          EOF
+          upload "$RUNNER_TEMP/version.json"                   version.json

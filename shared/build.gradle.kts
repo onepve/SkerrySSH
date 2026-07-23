@@ -103,6 +103,10 @@ kotlin {
                 // Native access to serial ports (SerialSystem actual). Desktop only —
                 // on Android, serial will go over USB-OTG as a separate implementation.
                 implementation(libs.jserialcomm)
+                // JNA core for Native.load — pre-loads bundled libsodium on non-ASCII app paths,
+                // working around goterl ResourceLoader's broken %-encoded path handling
+                // (LibsodiumNativeLoader).
+                implementation(libs.jna)
             }
         }
         androidMain.dependencies {

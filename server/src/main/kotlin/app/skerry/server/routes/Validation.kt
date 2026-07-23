@@ -17,6 +17,13 @@ internal fun tooLong(accountId: String, vararg otherIds: String): Boolean =
 /** True if any identifier is longer than [MAX_OTHER_ID]. */
 internal fun anyTooLong(vararg ids: String): Boolean = ids.any { it.length > MAX_OTHER_ID }
 
+/**
+ * Minimal email shape required of new account IDs (accountId doubles as the email identity for
+ * welcome / reset mail). Intentionally lenient — full RFC 5322 buys nothing here; the mail
+ * service does its own validation before sending.
+ */
+internal val EMAIL_RE = Regex("""^[^@\s]+@[^@\s]+\.[^@\s]+$""")
+
 /** Required path parameter: responds 400 and returns null if missing or blank. */
 internal suspend fun ApplicationCall.requiredPathId(name: String): String? {
     val value = parameters[name]
@@ -30,3 +37,7 @@ internal suspend fun ApplicationCall.requiredPathId(name: String): String? {
 /** `?limit=` query parameter with a default and hard bounds 1..[max], so lists can't grow unbounded. */
 internal fun ApplicationCall.limitParam(default: Int, max: Int): Int =
     request.queryParameters["limit"]?.toIntOrNull()?.coerceIn(1, max) ?: default
+
+/** `?offset=` query parameter (non-negative, default 0). */
+internal fun ApplicationCall.offsetParam(): Long =
+    request.queryParameters["offset"]?.toLongOrNull()?.coerceAtLeast(0) ?: 0L

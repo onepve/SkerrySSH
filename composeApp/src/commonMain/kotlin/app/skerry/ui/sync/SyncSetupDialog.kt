@@ -55,6 +55,7 @@ import app.skerry.ui.generated.resources.sync_cancel
 import app.skerry.ui.generated.resources.sync_connect
 import app.skerry.ui.generated.resources.sync_keep_connected
 import app.skerry.ui.generated.resources.sync_keep_connected_sub_long
+import app.skerry.ui.generated.resources.sync_account_email_hint
 import org.jetbrains.compose.resources.stringResource
 import app.skerry.ui.design.CancelButton
 import app.skerry.ui.design.D
@@ -78,7 +79,7 @@ fun SyncSetupDialog(sync: SyncCoordinator, onDismiss: () -> Unit) {
 
     // Prefill from the saved link (after restart/Reconnect): server+account known, only the password needed.
     val saved = remember { sync.savedConfig }
-    var serverUrl by remember { mutableStateOf(saved?.serverUrl ?: "") }
+    var serverUrl by remember { mutableStateOf(saved?.serverUrl ?: SyncSetupForm.DEFAULT_SERVER_URL) }
     var account by remember { mutableStateOf(saved?.accountId ?: "") }
     var password by remember { mutableStateOf("") }
     var keepConnected by remember { mutableStateOf(saved?.keepConnected ?: true) }
@@ -139,10 +140,19 @@ fun SyncSetupDialog(sync: SyncCoordinator, onDismiss: () -> Unit) {
             )
 
             FieldLabel(stringResource(Res.string.sync_field_server_url), top = 16.dp)
-            SyncField(stringResource(Res.string.sync_placeholder_server_url), serverUrl, "dns", KeyboardType.Uri, ImeAction.Next) { serverUrl = it }
+            SyncField(
+                stringResource(Res.string.sync_placeholder_server_url), serverUrl, "dns", KeyboardType.Uri, ImeAction.Next,
+                trailing = if (serverUrl.trim() != SyncSetupForm.DEFAULT_SERVER_URL) {
+                    { Sym("close", size = 16.sp, color = D.faint, modifier = Modifier.clickable { serverUrl = SyncSetupForm.DEFAULT_SERVER_URL }) }
+                } else null,
+            ) { serverUrl = it }
 
-            FieldLabel(stringResource(Res.string.sync_field_account))
-            SyncField(stringResource(Res.string.sync_placeholder_account), account, "person", KeyboardType.Text, ImeAction.Next) { account = it }
+            FieldLabel(text = stringResource(Res.string.sync_field_account))
+            SyncField(stringResource(Res.string.sync_placeholder_account), account, "person", KeyboardType.Email, ImeAction.Next) { account = it }
+            // Show email validation hint when account doesn't match email format
+            if (account.isNotEmpty() && !form.isAccountEmail) {
+                Txt(stringResource(Res.string.sync_account_email_hint), color = D.amber, size = 11.sp, modifier = Modifier.padding(top = 4.dp))
+            }
 
             FieldLabel(stringResource(Res.string.sync_field_master_password))
             SyncField(stringResource(Res.string.sync_placeholder_master_password), password, "key", KeyboardType.Password, ImeAction.Done, secret = true, onSubmit = { submit() }) { password = it }
@@ -181,6 +191,16 @@ fun SyncSetupDialog(sync: SyncCoordinator, onDismiss: () -> Unit) {
                 PrimaryButton(stringResource(Res.string.sync_connect), onClick = { submit() }, enabled = canSubmit)
             }
         }
+    }
+
+    // Pop-up invite-code dialog when the server requires one (triggered by 403 on register).
+    val needsInvite = status as? SyncStatus.NeedsInviteCode
+    if (needsInvite != null) {
+        InviteCodeOverlay(
+            error = needsInvite.error?.let { syncFailureText(it) },
+            onSubmit = { code -> sync.retryWithInviteCode(code) },
+            onDismiss = { sync.cancelInviteCode() },
+        )
     }
 }
 
@@ -221,6 +241,7 @@ internal fun SyncField(
     imeAction: ImeAction,
     secret: Boolean = false,
     onSubmit: () -> Unit = {},
+    trailing: (@Composable () -> Unit)? = null,
     onChange: (String) -> Unit,
 ) {
     val ui = LocalFonts.current.ui
@@ -247,6 +268,7 @@ internal fun SyncField(
                     if (value.isEmpty()) Txt(placeholder, color = D.faint, size = 13.sp)
                     inner()
                 }
+                trailing?.invoke()
             }
         },
     )

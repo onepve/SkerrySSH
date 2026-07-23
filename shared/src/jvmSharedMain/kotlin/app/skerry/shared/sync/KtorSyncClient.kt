@@ -65,6 +65,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.Serializable
 import java.math.BigInteger
 import java.security.SecureRandom
 import java.util.Base64
@@ -90,6 +91,7 @@ class KtorSyncClient(
         authKey: ByteArray,
         wrappedDataKey: ByteArray,
         device: DeviceInfo,
+        inviteCode: String?,
     ): SyncSession {
         // The client itself computes the salt and verifier from authKey — the server never sees the password.
         val salt = BigInteger(256, random)
@@ -104,6 +106,7 @@ class KtorSyncClient(
                     wrappedDataKey = wrappedDataKey.b64(),
                     deviceId = device.id,
                     deviceName = device.name,
+                    inviteCode = inviteCode,
                     platform = device.platform,
                 ),
             )
@@ -446,13 +449,21 @@ class KtorSyncClient(
     private suspend fun HttpResponse.toException(): SyncException {
         val kind = when (status) {
             HttpStatusCode.Unauthorized -> SyncException.Kind.UNAUTHORIZED
+            HttpStatusCode.Forbidden -> SyncException.Kind.FORBIDDEN
             HttpStatusCode.NotFound -> SyncException.Kind.NOT_FOUND
             HttpStatusCode.Conflict -> SyncException.Kind.CONFLICT
             HttpStatusCode.Gone -> SyncException.Kind.GONE
             else -> SyncException.Kind.PROTOCOL
         }
-        return SyncException(kind, "server responded ${status.value}")
+        // Read the server's error body so the UI can show a translated message
+        // (e.g. "invalid or expired invitation code" → "邀请码无效或已过期")
+        val msg = runCatching { body<ErrorBody>() }.getOrNull()?.error
+            ?: "server responded ${status.value}"
+        return SyncException(kind, msg)
     }
+
+    @Serializable
+    private data class ErrorBody(val error: String)
 
     private fun HttpStatusCode.isSuccess() = value in 200..299
 

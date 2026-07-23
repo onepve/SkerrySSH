@@ -223,6 +223,7 @@ private fun SyncBody(sync: SyncCoordinator) {
             DisposableEffect(Unit) { onDispose { sync.cancelPasswordReplace() } }
             PasswordReplaceConfirm(sync, s.accountId)
         }
+        is SyncStatus.NeedsInviteCode -> { /* invite code pop-up handled by SyncSetupDialog overlay */ }
         // One shared SyncSetupBody call site for all form states: separate when-branches would be
         // separate composition slots, and a Disabled → Failed transition would still reset the
         // typed fields even though the form never visually left the screen.

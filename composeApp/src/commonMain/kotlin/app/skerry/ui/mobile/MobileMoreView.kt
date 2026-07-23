@@ -230,6 +230,7 @@ private fun syncSubtitle(): String {
         app.skerry.ui.sync.SyncStatus.Busy, is app.skerry.ui.sync.SyncStatus.NeedsPasswordReplaceConfirm -> stringResource(Res.string.more_sync_syncing)
         is app.skerry.ui.sync.SyncStatus.Configured -> stringResource(Res.string.more_sync_linked_locked)
         is app.skerry.ui.sync.SyncStatus.Failed -> stringResource(Res.string.more_sync_error)
+        is app.skerry.ui.sync.SyncStatus.NeedsInviteCode -> stringResource(Res.string.more_sync_syncing)
         app.skerry.ui.sync.SyncStatus.Disabled -> stringResource(Res.string.more_sync_local_only)
     }
 }

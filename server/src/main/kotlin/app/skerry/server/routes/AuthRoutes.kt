@@ -2,6 +2,7 @@ package app.skerry.server.routes
 
 import app.skerry.server.RateLimits
 import app.skerry.server.Services
+import app.skerry.server.db.InviteCodeRepository
 import app.skerry.sync.wire.ChallengeRequest
 import app.skerry.sync.wire.ChallengeResponse
 import app.skerry.sync.wire.ChangePasswordRequest
@@ -23,6 +24,13 @@ import java.math.BigInteger
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
+/** Extract client IP, preferring X-Forwarded-For when the proxy is trusted. */
+private fun io.ktor.server.application.ApplicationCall.clientIp(): String {
+    val forwarded = request.headers["X-Forwarded-For"]
+    if (!forwarded.isNullOrBlank()) return forwarded.substringBefore(",").trim()
+    return request.local.remoteAddress.toString().removePrefix("/").split(":").first()
+}
+
 /**
  * Registration and login. The server sees only the SRP salt/verifier and the wrapped dataKey; the password and dataKey are never transmitted.
  */
@@ -37,8 +45,42 @@ fun Route.authRoutes(services: Services) {
                 return@post
             }
             val req = call.receive<RegisterRequest>()
+            // Check if the account already exists BEFORE the invite-code gate: an existing user
+            // re-registering a second device with the same accountId must NOT be blocked by the
+            // invite-code requirement — that requirement is for genuinely new accounts only.
+            // Returning 409 lets the client fall back to login (which doesn't need a code).
+            //
+            // fork-once/skerry-ssh invariant: the client-side NeedsInviteCode / NeedsPasswordReplaceConfirm
+            // mutual exclusion depends on this order (existing-before-invite). If upstream ever reorders
+            // these checks, an existing user without a code would be incorrectly gated on invite.
+            if (services.accounts.find(req.accountId) != null) {
+                call.respond(HttpStatusCode.Conflict, ErrorResponse("account already exists"))
+                return@post
+            }
+            // Invitation-code gate: only matters for accounts that don't exist yet.
+            if (services.config.inviteRequired) {
+                val ic = req.inviteCode
+                if (ic == null || ic.isBlank()) {
+                    call.respond(HttpStatusCode.Forbidden, ErrorResponse("registration requires an invitation code"))
+                    return@post
+                }
+                when (services.inviteCodes.consume(ic, req.accountId)) {
+                    InviteCodeRepository.ConsumeResult.OK -> { /* proceed */ }
+                    InviteCodeRepository.ConsumeResult.INVALID -> {
+                        call.respond(HttpStatusCode.Forbidden, ErrorResponse("invalid or expired invitation code"))
+                        return@post
+                    }
+                }
+            }
             if (tooLong(req.accountId, req.deviceId)) {
                 call.respond(HttpStatusCode.BadRequest, ErrorResponse("identifier too long"))
+                return@post
+            }
+            // Account IDs double as email identities (welcome mail, password-reset notices): require
+            // a plausible email shape at registration. Existing non-email accounts still log in —
+            // only /auth/register is gated.
+            if (!EMAIL_RE.matches(req.accountId)) {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("account id must be an email address"))
                 return@post
             }
             // Optional per-instance cap (backstop for an instance left open). The count/create window
@@ -63,8 +105,11 @@ fun Route.authRoutes(services: Services) {
                 call.respond(HttpStatusCode.Conflict, ErrorResponse("account already exists"))
                 return@post
             }
-            services.devices.register(req.accountId, req.deviceId, req.deviceName, req.platform)
+            val ip = call.clientIp()
+            services.devices.register(req.accountId, req.deviceId, req.deviceName, req.platform, ip = ip)
             services.activity.record(req.accountId, "auth.register", "new account + device", deviceId = req.deviceId)
+            // Fire-and-forget: welcome email
+            services.sendWelcome(req.accountId)
             call.respond(
                 TokenResponse(
                     accessToken = services.tokens.issueAccess(req.accountId, req.deviceId),
@@ -91,7 +136,7 @@ fun Route.authRoutes(services: Services) {
             Triple(account.id, account.srpSalt, account.srpVerifier)
         } else {
             val fakeSalt = fakeSalt(req.accountId, services.config.jwtSecret)
-            val fakeVerifier = fakeVerifier(req.accountId, services.config.jwtSecret, services.srp.params.N)
+            val fakeVerifier = fakeVerifier(req.accountId, services.config.jwtSecret, services.srp.params.N).toString(16)
             Triple(req.accountId, fakeSalt, fakeVerifier)
         }
         val challenge = services.srp.startChallenge(id, salt, verifier)
@@ -111,13 +156,19 @@ fun Route.authRoutes(services: Services) {
             call.respond(HttpStatusCode.Unauthorized, ErrorResponse("authentication failed"))
             return@post
         }
-        val reactivated = services.devices.register(verified.accountId, req.deviceId, req.deviceName, req.platform)
+        val ip = call.clientIp()
+        val oldIp = services.devices.getLastIp(verified.accountId, req.deviceId)
+        val reactivated = services.devices.register(verified.accountId, req.deviceId, req.deviceName, req.platform, ip = ip)
         services.activity.record(verified.accountId, "auth.login", "srp login", deviceId = req.deviceId)
         // A revoked device returning with the correct password is a separate admin-console event:
         // revoke only invalidates tokens, so without this signal the admin wouldn't know the
         // device is active again.
         if (reactivated) {
             services.activity.record(verified.accountId, "device.reenrolled", "revoked device re-enrolled", deviceId = req.deviceId)
+        }
+        // Suspicious login: IP changed from previous session
+        if (oldIp != null && ip != oldIp) {
+            services.sendSuspiciousLogin(verified.accountId, req.deviceName, ip)
         }
         call.respond(
             VerifyResponse(
@@ -197,33 +248,21 @@ fun Route.authRoutes(services: Services) {
                 refreshToken = services.tokens.issueRefresh(accountId, deviceId),
             ),
         )
-    }
+        }
     }
 }
 
-private fun hmacSha256(secret: String, message: String): ByteArray {
+/** Deterministic fake salt per accountId — constant across process lifetime, 32 hex bytes. */
+private fun fakeSalt(accountId: String, jwtSecret: String): String {
     val mac = Mac.getInstance("HmacSHA256")
-    mac.init(SecretKeySpec(secret.toByteArray(Charsets.UTF_8), "HmacSHA256"))
-    return mac.doFinal(message.toByteArray(Charsets.UTF_8))
+    mac.init(SecretKeySpec(jwtSecret.toByteArray(), "HmacSHA256"))
+    return mac.doFinal(accountId.toByteArray()).take(32).joinToString("") { "%02x".format(it) }
 }
 
-/**
- * Deterministic fake SRP salt (hex) for a nonexistent account: HMAC-SHA256(server secret,
- * accountId). 32 bytes = 64 hex chars, the same length as a real client 256-bit salt, so the
- * challenge response is structurally indistinguishable from a real one. Stable across requests
- * (anti-enumeration: a repeated challenge for the same unknown accountId returns the same salt,
- * with no "account doesn't exist" signal).
- */
-private fun fakeSalt(accountId: String, serverSecret: String): String =
-    hmacSha256(serverSecret, "srp-fake-salt:$accountId").joinToString("") { "%02x".format(it) }
-
-/**
- * Pseudo-verifier (hex) for the synthetic challenge: a BigInteger from HMAC, reduced into the
- * group (mod N, nonzero). Only needed so `SRP6ServerSession.step1` computes a plausible `B` of the
- * same shape as a real account; no password can match it, so verify always fails.
- */
-private fun fakeVerifier(accountId: String, serverSecret: String, n: BigInteger): String {
-    val raw = BigInteger(1, hmacSha256(serverSecret, "srp-fake-verifier:$accountId")).mod(n)
-    val v = if (raw.signum() == 0) BigInteger.ONE else raw
-    return v.toString(16)
+/** Deterministic fake verifier: v ≡ g^key mod N, where key = HMAC-SHA256(jwtSecret, accountId). */
+private fun fakeVerifier(accountId: String, jwtSecret: String, n: BigInteger): BigInteger {
+    val mac = Mac.getInstance("HmacSHA256")
+    mac.init(SecretKeySpec(jwtSecret.toByteArray(), "HmacSHA256"))
+    val x = BigInteger(1, mac.doFinal(accountId.toByteArray()))
+    return BigInteger("2").modPow(x, n)
 }

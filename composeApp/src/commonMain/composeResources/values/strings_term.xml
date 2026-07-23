@@ -30,6 +30,7 @@
     <string name="term_notice_pick_side_by_side">Pick a host to open it side by side.</string>
     <string name="term_no_hosts_in_catalog">No hosts in catalog</string>
     <string name="term_info_host">Host</string>
+    <string name="term_info_panel">Host Info</string>
     <string name="term_info_address">Address</string>
     <string name="term_info_user">User</string>
     <string name="term_info_auth">Auth</string>

@@ -40,6 +40,9 @@
     <string name="sync_field_server_url">SERVER URL</string>
     <string name="sync_placeholder_server_url">https://sync.example.com</string>
     <string name="sync_field_account">ACCOUNT</string>
+    <string name="sync_field_invite_code">INVITE CODE</string>
+    <string name="sync_placeholder_invite_code">Invite code (if required)</string>
+    <string name="sync_account_email_hint">Enter a valid email address</string>
     <string name="sync_placeholder_account">you@example.com</string>
     <string name="sync_field_master_password">MASTER PASSWORD</string>
     <string name="sync_placeholder_master_password">master password</string>
@@ -53,7 +56,7 @@
 
     <!-- Связывание по коду (join) -->
     <string name="sync_join_title">Link with a code</string>
-    <string name="sync_join_desc">On a device that's already signed in, open Settings → Sync → Link a device, then scan its QR or paste the code here. The password below encrypts this device's vault and can't be recovered — lose it and you'll re-link from scratch.</string>
+    <string name="sync_join_desc">On a device that's already signed in, open Settings → Sync → Link a device, then scan its QR or paste the code here. The password below is a new master password for this device (not the signed-in device's password). It encrypts this device's vault and can't be recovered — lose it and you'll re-link from scratch.</string>
     <string name="sync_field_pairing_code">PAIRING CODE</string>
     <string name="sync_placeholder_pairing_code">Paste code (sk1.…)</string>
     <string name="sync_scan_qr">Scan QR code</string>
@@ -114,6 +117,7 @@
     <string name="sync_fail_save_settings">Couldn't save sync settings</string>
     <string name="sync_fail_sync">Sync failed</string>
     <string name="sync_fail_revoke">Couldn't revoke the device</string>
+    <string name="sync_fail_forbidden">Server requires an invitation code</string>
 
     <!-- issue #28: joining an existing account whose password differs re-keys this device to it -->
     <string name="sync_password_replace_title">Use your account password?</string>

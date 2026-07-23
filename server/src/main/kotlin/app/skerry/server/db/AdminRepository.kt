@@ -4,6 +4,7 @@ import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.core.and
 import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.lessEq
+import org.jetbrains.exposed.v1.core.like
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
 import org.jetbrains.exposed.v1.jdbc.selectAll
@@ -47,7 +48,7 @@ class AdminRepository(private val db: Database) {
      * grouped queries, not N+1): devices (total/active/last seen) and records (total/tombstones/bytes).
      * `NOT revoked` / `CASE WHEN deleted` are portable between SQLite (0/1) and PostgreSQL (boolean).
      */
-    suspend fun accountSummaries(limit: Int = 100): List<AccountSummary> = dbTransaction(db) {
+    suspend fun accountSummaries(limit: Int = 20, offset: Long = 0, search: String? = null): List<AccountSummary> = dbTransaction(db) {
         val devAgg = HashMap<String, DevAgg>()
         exec(
             """SELECT account_id,
@@ -77,9 +78,13 @@ class AdminRepository(private val db: Database) {
             }
         }
 
-        Accounts.selectAll()
-            .orderBy(Accounts.createdAt to SortOrder.ASC)
-            .limit(limit)
+        val q = if (!search.isNullOrBlank()) {
+            Accounts.selectAll().where { Accounts.id like "%${search}%" }
+        } else {
+            Accounts.selectAll()
+        }
+        q.orderBy(Accounts.createdAt to SortOrder.ASC)
+            .limit(limit).offset(offset)
             .map { row ->
                 val id = row[Accounts.id]
                 val d = devAgg[id] ?: DevAgg()
@@ -99,8 +104,12 @@ class AdminRepository(private val db: Database) {
     }
 
     /** Total accounts on the instance, for an accurate "N of M" in the console. */
-    suspend fun accountCount(): Long = dbTransaction(db) {
-        Accounts.selectAll().count()
+    suspend fun accountCount(search: String? = null): Long = dbTransaction(db) {
+        if (!search.isNullOrBlank()) {
+            Accounts.selectAll().where { Accounts.id like "%${search}%" }.count()
+        } else {
+            Accounts.selectAll().count()
+        }
     }
 
     /**

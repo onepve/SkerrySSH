@@ -17,12 +17,18 @@ data class ServerConfig(
     val jwtIssuer: String,
     /** Static admin console token (`/admin/stats`). Empty means admin data endpoints are closed. */
     val adminToken: String,
+    /** Path prefix for the admin console UI, e.g. "/console". */
+    val consolePath: String,
     val accessTokenTtlSeconds: Long,
     val refreshTokenTtlSeconds: Long,
     /** Lifetime of a one-shot pairing session (variant B quick pairing). */
     val pairingTtlSeconds: Long,
     /** How long to retain tombstone records before physical cleanup. */
     val tombstoneRetentionDays: Long,
+    /** How long to retain activity log events (days). 0 = keep all (capped by [activityMaxRows]). */
+    val activityRetentionDays: Int,
+    /** Hard cap on activity log rows (backstop for time-based retention). */
+    val activityMaxRows: Int,
     /** Allowed CORS origins. Empty disables CORS (native clients aren't subject to it). */
     val corsHosts: List<String>,
     /** Upper bound on request body size in bytes (OOM/abuse guard). Enforced via Content-Length -> 413. */
@@ -38,6 +44,29 @@ data class ServerConfig(
     val registrationOpen: Boolean,
     /** Hard cap on total accounts (backstop for an instance left open). 0 ⇒ unlimited. */
     val maxAccounts: Int,
+    /** Whether an invitation code is required to register (regardless of [registrationOpen]). */
+    val inviteRequired: Boolean,
+    // --- Mail settings (Scheme B) ---
+    /** Whether the mail subsystem is active. When false, all mail calls are no-ops. */
+    val mailEnabled: Boolean,
+    val smtpHost: String,
+    val smtpPort: Int,
+    val smtpUser: String,
+    val smtpPassword: String,
+    /** "From" address for outgoing mail, e.g. "Skerry <noreply@example.com>". */
+    val smtpFrom: String,
+    /** Use STARTTLS (port 587) or SMTPS (port 465). */
+    val smtpTls: Boolean,
+    /**
+     * Path to the mail brand/template configuration JSON file. When relative, resolved against the
+     * process working directory. Default: `./data/mail-config.json`.
+     */
+    val mailConfigPath: String,
+    /**
+     * Public URL of this sync server (e.g. "https://sync.example.com") — shown in email footers so
+     * users know which instance mailed them. Empty = footer line omitted.
+     */
+    val publicUrl: String,
 ) {
     val isPostgres: Boolean get() = databaseUrl.startsWith("jdbc:postgresql")
 
@@ -62,10 +91,13 @@ data class ServerConfig(
                 jwtSecret = str("SKERRY_JWT_SECRET", DEFAULT_JWT_SECRET),
                 jwtIssuer = str("SKERRY_JWT_ISSUER", "skerry-sync"),
                 adminToken = str("SKERRY_ADMIN_TOKEN", ""),
+                consolePath = str("SKERRY_CONSOLE_PATH", "/console"),
                 accessTokenTtlSeconds = long("SKERRY_ACCESS_TTL", 900),        // 15 minutes
                 refreshTokenTtlSeconds = long("SKERRY_REFRESH_TTL", 2_592_000), // 30 days
                 pairingTtlSeconds = long("SKERRY_PAIRING_TTL", 300),            // 5 minutes (design §3)
                 tombstoneRetentionDays = long("SKERRY_TOMBSTONE_DAYS", 90),     // design §2
+                activityRetentionDays = int("SKERRY_ACTIVITY_RETENTION_DAYS", 30),
+                activityMaxRows = int("SKERRY_ACTIVITY_MAX_ROWS", 10_000),
                 corsHosts = str("SKERRY_CORS_HOSTS", "")
                     .split(",").map { it.trim() }.filter { it.isNotEmpty() },
                 maxRequestBodyBytes = long("SKERRY_MAX_BODY_BYTES", 4L * 1024 * 1024), // 4 MiB
@@ -74,6 +106,17 @@ data class ServerConfig(
                 // Default open for backward compatibility; anything other than "open" (case-insensitive) closes it.
                 registrationOpen = str("SKERRY_REGISTRATION", "open").equals("open", ignoreCase = true),
                 maxAccounts = int("SKERRY_MAX_ACCOUNTS", 0).coerceAtLeast(0),
+                inviteRequired = str("SKERRY_INVITE_REQUIRED", "false").equals("true", ignoreCase = true),
+                // Mail
+                mailEnabled = str("SKERRY_MAIL_ENABLED", "false").equals("true", ignoreCase = true),
+                smtpHost = str("SKERRY_MAIL_HOST", ""),
+                smtpPort = int("SKERRY_MAIL_PORT", 587),
+                smtpUser = str("SKERRY_MAIL_USER", ""),
+                smtpPassword = str("SKERRY_MAIL_PASSWORD", ""),
+                smtpFrom = str("SKERRY_MAIL_FROM", "Skerry <noreply@example.com>"),
+                smtpTls = str("SKERRY_MAIL_TLS", "true").equals("true", ignoreCase = true),
+                mailConfigPath = str("SKERRY_MAIL_CONFIG_PATH", "/data/mail-config.json"),
+                publicUrl = str("SKERRY_PUBLIC_URL", "").trimEnd('/'),
             )
         }
     }

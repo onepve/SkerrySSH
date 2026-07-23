@@ -103,3 +103,27 @@ data class HealthResponse(val status: String, val version: String)
 
 @Serializable
 data class ErrorResponse(val error: String)
+
+// --- invite codes ---
+
+@Serializable
+data class GenerateInviteCodesResponse(val codes: List<String>)
+
+@Serializable
+data class InviteCodeDto(
+    val code: String,
+    val createdBy: String,
+    val createdAt: Long,
+    val expiresAt: Long?,
+    val maxUses: Int,
+    val useCount: Int,
+    val usedBy: String?,
+    val usedAt: Long?,
+    val isPublic: Boolean,
+)
+
+@Serializable
+data class InviteCodesResponse(val codes: List<InviteCodeDto>, val total: Long, val registrationOpen: Boolean)
+
+@Serializable
+data class BatchDeleteRequest(val codes: List<String>)

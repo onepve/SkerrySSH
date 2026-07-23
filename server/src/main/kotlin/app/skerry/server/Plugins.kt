@@ -10,6 +10,7 @@ import app.skerry.server.routes.pairingStartRoute
 import app.skerry.server.routes.syncWebSocket
 import app.skerry.server.routes.teamRoutes
 import app.skerry.server.routes.vaultRoutes
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
@@ -59,8 +60,12 @@ object RateLimits {
     val ADMIN = RateLimitName("admin")
 }
 
-/** Server version for /healthz and the admin console. */
-const val SERVER_VERSION = "0.1.0"
+/** Server version for /healthz and the admin console — populated from gradle.properties at build time. */
+const val SERVER_VERSION = ServerBuild.VERSION
+
+/**
+ * Root for operator-overridable data files. Kept for mail-config.json (loaded elsewhere).
+ */
 
 val JWTPrincipal.accountId: String get() = payload.subject
 val JWTPrincipal.deviceId: String get() = payload.getClaim(TokenService.CLAIM_DEVICE).asString()
@@ -197,11 +202,18 @@ fun Application.configureServer(services: Services) {
     routing {
         get("/healthz") { call.respondText("ok") }
 
-        // Root redirects to the admin console so opening the server in a browser isn't a 404.
-        get("/") { call.respondRedirect("/console/") }
+        // Landing page: serve the bundled static index.html directly.
+        get("/") {
+            val consolePath = services.config.consolePath
+            val html = this::class.java.classLoader.getResource("static/index.html")?.readText()
+                ?: "<html><body><h1>Skerry Sync</h1><p><a href='${consolePath}/'>Admin Console</a></p></body></html>"
+            call.respondText(html, ContentType.Text.Html)
+        }
 
-        // Static admin console (self-hosted): /console -> resources/admin/index.html.
-        staticResources("/console", "admin")
+        // Static admin console (self-hosted): served from resources/admin bundled in the JAR.
+        staticResources(services.config.consolePath, "admin")
+        // Screenshots referenced by the landing page index.html
+        staticResources("/screenshots", "static/screenshots")
 
         authRoutes(services)
         pairingClaimRoute(services)   // no JWT: the new device hasn't logged in yet

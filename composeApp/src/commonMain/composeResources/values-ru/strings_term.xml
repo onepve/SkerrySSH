@@ -30,6 +30,7 @@
     <string name="term_notice_pick_side_by_side">Выберите хост, чтобы открыть его рядом.</string>
     <string name="term_no_hosts_in_catalog">В каталоге нет хостов</string>
     <string name="term_info_host">Хост</string>
+    <string name="term_info_panel">Инфо о хосте</string>
     <string name="term_info_address">Адрес</string>
     <string name="term_info_user">Пользователь</string>
     <string name="term_info_auth">Аутентификация</string>

@@ -111,11 +111,16 @@ compose.desktop {
         mainClass = "app.skerry.ui.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.Msi, TargetFormat.Dmg)
+            targetFormats(TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.Msi, TargetFormat.Exe, TargetFormat.Dmg)
             // jlink drops modules loaded reflectively (jdk.unsupported, java.naming, GSSAPI, …),
             // so the packaged app died on startup while `./gradlew run` worked. Bundle them all.
             includeAllModules = true
             packageName = "Skerry"
+            vendor = "onepve"
+            // MUST be pure ASCII: jpackage feeds this into WiX and light.exe links
+            // the MSI with code page 1252 — any CJK character kills the link with
+            // LGHT0311 (exit 311). Both packageMsi and packageExe go through it.
+            description = "Open-source cross-platform SSH client"
             // Version from the single source (gradle.properties); the release workflow overrides it.
             val appVersion = providers.gradleProperty("skerry.versionName").orNull ?: "0.1.0"
             packageVersion = appVersion
@@ -125,7 +130,11 @@ compose.desktop {
             val macVersion = if (appVersion.substringBefore('.') == "0" && appVersion.contains('.'))
                 "1${appVersion.substring(appVersion.indexOf('.'))}" else appVersion
             // App icons per platform, rasterized from icons/skerry.svg (canonical mark, docs/design/Skerry Logo.html).
-            linux { iconFile.set(project.file("icons/skerry.png")) }
+            linux {
+                iconFile.set(project.file("icons/skerry.png"))
+                shortcut = true
+                menuGroup = "Network"
+            }
             windows {
                 iconFile.set(project.file("icons/skerry.ico"))
                 // Space-free install path (%LOCALAPPDATA%\Skerry): goterl/ionspin's isJarFile()
@@ -213,6 +222,9 @@ tasks.register<JavaExec>("screenshotDesign") {
     // Stub window chrome: draws the custom window buttons of the undecorated window in the titlebar.
     systemProperty("skerry.screenshot.windowChrome", providers.systemProperty("skerry.screenshot.windowChrome").getOrElse("false"))
 }
+
+// Repack the standard .deb for Kylin V10 / older Debian systems.
+apply(from = "kylin-deb.gradle.kts")
 
 // Kover coverage — applied via pluginManager (classpath comes from the root buildscript) so the
 // offline Flatpak build, which sets -Dskerry.offlineRepo, never resolves it. See the root build.
