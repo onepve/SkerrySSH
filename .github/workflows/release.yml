@@ -277,9 +277,10 @@ jobs:
         # Shell-based instead of the Gradle task — avoids config-cache serialization
         # issues with Gradle 9.x on Windows runners.
         shell: bash
+        env:
+          VER: ${{ needs.version.outputs.name || '0.1.0' }}
         run: |
           set -euo pipefail
-          VER='${{ needs.version.outputs.name || "0.1.0" }}'
           SRC=composeApp/build/compose/binaries/main/app/Skerry
           DST_DIR=composeApp/build/compose/binaries/main/portable
           mkdir -p "$DST_DIR"
