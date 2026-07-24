@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.skerry.ui.design.LocalFonts
 import app.skerry.ui.design.ModalScrim
+import app.skerry.ui.design.consumeClicks
 import app.skerry.ui.design.PrimaryButton
 import app.skerry.ui.design.Sym
 import app.skerry.ui.design.Txt
@@ -87,10 +88,7 @@ fun SetPinDialog(
                 .clip(RoundedCornerShape(12.dp))
                 .background(Skerry.colors.surfaceDeep)
                 .border(1.dp, Skerry.colors.cyan14, RoundedCornerShape(12.dp))
-                .let { modifier ->
-                    // consume clicks so backdrop dismiss doesn't fire on panel clicks
-                    modifier
-                }
+                .consumeClicks()
                 .padding(26.dp),
         ) {
             Txt(
