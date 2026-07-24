@@ -133,6 +133,9 @@
     <string name="settings_autolock_15m">Через 15 минут</string>
     <string name="settings_autolock_30m">Через 30 минут</string>
     <string name="settings_autolock_never">Никогда</string>
+    <string name="settings_security_soft_lock">Быстрая разблокировка</string>
+    <string name="settings_security_soft_lock_desc">Блокировка коротким PIN вместо мастер-пароля.</string>
+    <string name="settings_softlock_manage">Установить PIN</string>
     <string name="settings_security_2fa">Двухфакторная аутентификация</string>
     <string name="settings_security_2fa_desc">TOTP через приложение-аутентификатор.</string>
     <string name="settings_recent_security_events">НЕДАВНИЕ СОБЫТИЯ БЕЗОПАСНОСТИ</string>

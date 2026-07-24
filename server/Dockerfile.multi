@@ -9,10 +9,14 @@ FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY server/build/install/server/ /app/
 
-# Use the 'nobody' user (UID 65534) — exists on every Linux host, so chown-ing
-# the bind-mount data directory to 65534 on the host side makes permissions stick.
-RUN mkdir -p /data && chown nobody:nogroup /app /data
-USER nobody
+# Unprivileged user (least privilege): RCE in the process must not grant root in the container.
+# The /data volume belongs to it so the SQLite file is created without root.
+# uid/gid are pinned (999): without --uid the allocation follows the base image's user table, so a
+# base bump could shift it and lock the process out of an existing /data volume (SQLITE_READONLY).
+# 1000 is taken by the base image's "ubuntu" user. Bind-mount owners: chown to 999:999.
+RUN groupadd --system --gid 999 skerry && useradd --system --uid 999 --gid skerry --home /app skerry \
+    && mkdir -p /data && chown -R skerry:skerry /app /data
+USER skerry
 
 ENV SKERRY_HOST=0.0.0.0 \
     SKERRY_PORT=8080 \

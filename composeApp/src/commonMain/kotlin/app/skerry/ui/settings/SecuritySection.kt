@@ -98,6 +98,8 @@ import app.skerry.ui.generated.resources.settings_change_account_pw_title
 import app.skerry.ui.generated.resources.settings_security_account_password
 import app.skerry.ui.generated.resources.settings_security_account_password_desc
 import app.skerry.ui.sync.AccountPasswordChange
+import app.skerry.ui.generated.resources.settings_security_soft_lock
+import app.skerry.ui.generated.resources.settings_security_soft_lock_desc
 import app.skerry.ui.sync.SyncCoordinator
 import app.skerry.ui.sync.SyncFailureReason
 import app.skerry.ui.sync.SyncField
@@ -228,6 +230,34 @@ internal fun SecuritySection(
         Box(Modifier.width(170.dp)) { AutoLockPicker(state.autoLock, onPick = state::chooseAutoLock) }
     }
     HLine()
+
+    // Desktop quick unlock (PIN): when enabled, idle timeout triggers a soft lock instead of hard lock.
+    var showSetPin by remember { mutableStateOf(false) }
+    SettingToggleRow(stringResource(Res.string.settings_security_soft_lock), stringResource(Res.string.settings_security_soft_lock_desc), on = state.softLockEnabled, onToggle = {
+        if (!state.softLockEnabled) {
+            // Enabling PIN: show set-PIN dialog first
+            showSetPin = true
+        } else {
+            // Disabling: turn off directly, clear PIN hash
+            state.chooseSoftLockEnabled(false)
+            state.chooseSoftLockPinHash("")
+        }
+    })
+    HLine()
+
+    if (showSetPin) {
+        SetPinDialog(
+            currentHash = state.softLockPinHash,
+            onSet = { hash ->
+                state.chooseSoftLockPinHash(hash)
+                state.chooseSoftLockEnabled(true)
+                showSetPin = false
+            },
+            onDismiss = {
+                showSetPin = false
+            },
+        )
+    }
 
     // Two-factor auth isn't implemented yet: SOON badge instead of a fake "enabled" state.
     Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {

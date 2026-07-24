@@ -74,7 +74,7 @@
     <string name="shell_quick_snippets">Сниппеты</string>
     <string name="shell_details">Детали</string>
     <string name="shell_edit_host">Изменить хост</string>
-    <string name="shell_duplicate_host">Копировать</string>
+    <string name="shell_duplicate_host">Дублировать хост</string>
     <string name="shell_delete_host">Удалить хост</string>
 
     <!-- Mobile hosts list (MobileHostsView.kt) -->
@@ -106,4 +106,30 @@
     <string name="shell_tip_play">Воспроизвести запись</string>
     <string name="shell_tip_info">Сведения о сессии</string>
     <string name="shell_tip_disconnect">Отключить</string>
+
+    <!-- Soft lock (PIN) — SoftLockScreen.kt, SetPinDialog.kt, LockChoiceDialog.kt -->
+    <string name="shell_softlock_title">Заблокировано</string>
+    <string name="shell_softlock_subtitle">Введите PIN для продолжения</string>
+    <string name="shell_softlock_pin_placeholder">PIN быстрой разблокировки (4–8 знаков)</string>
+    <string name="shell_softlock_unlock">Разблокировать</string>
+    <string name="shell_softlock_full_lock">Полная блокировка</string>
+    <string name="shell_softlock_wrong_attempts">Неверный PIN, осталось %1$d попыток</string>
+    <string name="shell_softlock_too_many">Слишком много попыток, полная блокировка</string>
+    <string name="shell_softlock_footer">PIN не отправляется на сервер</string>
+
+    <string name="shell_softlock_set_title">Установить PIN быстрой разблокировки</string>
+    <string name="shell_softlock_change_title">Изменить PIN быстрой разблокировки</string>
+    <string name="shell_softlock_set_desc">4–8 знаков, буквы и цифры, с учётом регистра. Временно блокирует экран при отлучке; введите PIN для возврата.</string>
+    <string name="shell_softlock_pin_label">PIN быстрой разблокировки</string>
+    <string name="shell_softlock_confirm_label">Подтверждение</string>
+    <string name="shell_softlock_too_short">Минимум 4 знака</string>
+    <string name="shell_softlock_too_long">Максимум 8 знаков</string>
+    <string name="shell_softlock_mismatch">PIN не совпадают</string>
+    <string name="shell_softlock_confirm">Подтвердить</string>
+
+    <string name="shell_lock_choice_title">Блокировка Skerry</string>
+    <string name="shell_lock_choice_soft_title">Быстрая блокировка</string>
+    <string name="shell_lock_choice_soft_desc">Временно заблокировать экран, восстановить PIN</string>
+    <string name="shell_lock_choice_hard_title">Полная блокировка</string>
+    <string name="shell_lock_choice_hard_desc">Выйти и стереть ключи из памяти, потребуется мастер-пароль</string>
 </resources>

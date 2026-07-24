@@ -46,6 +46,7 @@ import app.skerry.ui.generated.resources.shell_quick_tunnels
 import app.skerry.ui.generated.resources.shell_quick_snippets
 import app.skerry.ui.generated.resources.shell_details
 import app.skerry.ui.generated.resources.shell_edit_host
+import app.skerry.ui.generated.resources.shell_duplicate_host
 import app.skerry.ui.generated.resources.shell_delete_host
 import org.jetbrains.compose.resources.stringResource
 import app.skerry.ui.app.LocalConnectHost
@@ -197,7 +198,8 @@ fun MobileHostDetailScreen(state: MobileDesignState) {
         }
 
         // Edit host: opens the New connection sheet in edit mode for this profile (unavailable
-        // outside the gate, nothing to save to). Delete: removes the profile from the live catalog and pops back.
+        // outside the gate, nothing to save to). Duplicate: the same sheet prefilled as a copy.
+        // Delete: removes the profile from the live catalog and pops back.
         Column(
             Modifier.padding(start = 22.dp, end = 22.dp, top = 20.dp, bottom = 30.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -218,6 +220,48 @@ fun MobileHostDetailScreen(state: MobileDesignState) {
                 ) {
                     Txt(stringResource(Res.string.shell_edit_host), color = Skerry.colors.cyanBright, size = 14.sp, weight = FontWeight.Medium)
                 }
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(13.dp))
+                        .border(1.dp, Skerry.colors.cyan.copy(alpha = 0.4f), RoundedCornerShape(13.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { state.openDuplicateConn(host) },
+                        )
+                        .padding(13.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Txt(stringResource(Res.string.shell_duplicate_host), color = Skerry.colors.cyanBright, size = 14.sp, weight = FontWeight.Medium)
+                }
+            }
+            val onDuplicate = controller?.let { ctrl ->
+                {
+                    ctrl.save(
+                        HostDraft(
+                            id = null,
+                            label = host.label + " Copy",
+                            address = host.address, port = host.port, username = host.username,
+                            group = host.group, credentialId = host.credentialId,
+                            tags = host.tags, aiPolicy = host.aiPolicy,
+                            connectionType = host.connectionType,
+                            jumpHostId = host.jumpHostId, keepAliveSeconds = host.keepAliveSeconds,
+                        )
+                    )
+                    Unit
+                }
+            }
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(13.dp))
+                    .border(1.dp, Skerry.colors.cyanBright.copy(alpha = 0.25f), RoundedCornerShape(13.dp))
+                    .then(if (onDuplicate != null) Modifier.clickable(onClick = onDuplicate) else Modifier)
+                    .padding(13.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Txt("创建副本", color = Skerry.colors.cyanBright, size = 14.sp, weight = FontWeight.Medium)
             }
             val onDuplicate = controller?.let { ctrl ->
                 {

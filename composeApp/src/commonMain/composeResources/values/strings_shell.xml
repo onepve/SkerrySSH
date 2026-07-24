@@ -74,7 +74,7 @@
     <string name="shell_quick_snippets">Snippets</string>
     <string name="shell_details">Details</string>
     <string name="shell_edit_host">Edit host</string>
-    <string name="shell_duplicate_host">Duplicate</string>
+    <string name="shell_duplicate_host">Duplicate host</string>
     <string name="shell_delete_host">Delete host</string>
 
     <!-- Mobile hosts list (MobileHostsView.kt) -->
@@ -106,4 +106,30 @@
     <string name="shell_tip_play">Play recording</string>
     <string name="shell_tip_info">Session details</string>
     <string name="shell_tip_disconnect">Disconnect</string>
+
+    <!-- Soft lock (PIN) — SoftLockScreen.kt, SetPinDialog.kt, LockChoiceDialog.kt -->
+    <string name="shell_softlock_title">Soft locked</string>
+    <string name="shell_softlock_subtitle">Enter your quick unlock PIN to continue</string>
+    <string name="shell_softlock_pin_placeholder">Quick unlock PIN (4–8 chars)</string>
+    <string name="shell_softlock_unlock">Unlock</string>
+    <string name="shell_softlock_full_lock">Completely lock</string>
+    <string name="shell_softlock_wrong_attempts">Wrong PIN, %1$d attempts left</string>
+    <string name="shell_softlock_too_many">Too many attempts, fully locked</string>
+    <string name="shell_softlock_footer">PIN never sent to the server</string>
+
+    <string name="shell_softlock_set_title">Set quick unlock PIN</string>
+    <string name="shell_softlock_change_title">Change quick unlock PIN</string>
+    <string name="shell_softlock_set_desc">4–8 characters, letters and numbers, case-sensitive. Briefly lock the screen when away; enter this PIN to resume.</string>
+    <string name="shell_softlock_pin_label">Quick unlock PIN</string>
+    <string name="shell_softlock_confirm_label">Confirm</string>
+    <string name="shell_softlock_too_short">At least 4 characters</string>
+    <string name="shell_softlock_too_long">At most 8 characters</string>
+    <string name="shell_softlock_mismatch">PINs don't match</string>
+    <string name="shell_softlock_confirm">Confirm</string>
+
+    <string name="shell_lock_choice_title">Lock Skerry</string>
+    <string name="shell_lock_choice_soft_title">Fast lock</string>
+    <string name="shell_lock_choice_soft_desc">Briefly lock the screen, recover with quick unlock PIN</string>
+    <string name="shell_lock_choice_hard_title">Completely lock</string>
+    <string name="shell_lock_choice_hard_desc">Quit and wipe keys from memory, requires master password</string>
 </resources>

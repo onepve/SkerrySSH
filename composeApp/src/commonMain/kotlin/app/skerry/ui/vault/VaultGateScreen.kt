@@ -126,6 +126,9 @@ fun VaultGate(
     // restarts the idle timer. `null` — idle timer off ([AutoLockDuration.Never]); background lock remains
     // (deviceMandatesAutoLock).
     autoLockIdleMs: Long? = AUTO_LOCK_IDLE_MS,
+    // Soft lock callback: invoked by the idle timer BEFORE a hard lock. If it returns true,
+    // the hard lock is skipped (soft lock handled by the caller). null — soft lock disabled.
+    onSoftLock: (() -> Boolean)? = null,
     modifier: Modifier = Modifier,
     // Teardown of everything holding the decrypted secret, run immediately before EVERY transition to
     // locked — manual lock, background (`ON_STOP`) and the idle timer alike. It lives here rather than
@@ -260,9 +263,15 @@ fun VaultGate(
     // Idle auto-lock: the delay restarts on activityTick change (user touch) and on [autoLockIdleMs]
     // threshold change from settings. null (AutoLockDuration.Never) — timer off.
     if (controller.state == VaultGateState.Unlocked && autoLockIdleMs != null) {
+        val currentOnSoftLock = rememberUpdatedState(onSoftLock)
         LaunchedEffect(controller.activityTick, autoLockIdleMs) {
             delay(autoLockIdleMs)
-            lockNow()
+            if (currentOnSoftLock.value?.invoke() == true) {
+                // Soft lock handled — skip hard lock, but re-arm the idle timer
+                // by bumping activityTick so LaunchedEffect restarts
+            } else {
+                lockNow()
+            }
         }
     }
 

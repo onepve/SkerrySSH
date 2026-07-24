@@ -1,6 +1,13 @@
 package app.skerry.server.config
 
 /**
+ * One allowed CORS origin: [host] without a scheme (Ktor's `allowHost` rejects `://`), plus the
+ * [schemes] to allow. A scheme-prefixed entry ("https://cdn.example.com") narrows to that scheme;
+ * a bare host allows both http and https.
+ */
+data class CorsHost(val host: String, val schemes: List<String>)
+
+/**
  * Server config from environment variables (single-.env model). All values have sane defaults for local runs; production only requires a stable [jwtSecret]
  * — otherwise a restart invalidates every issued token.
  *
@@ -30,7 +37,7 @@ data class ServerConfig(
     /** Hard cap on activity log rows (backstop for time-based retention). */
     val activityMaxRows: Int,
     /** Allowed CORS origins. Empty disables CORS (native clients aren't subject to it). */
-    val corsHosts: List<String>,
+    val corsHosts: List<CorsHost>,
     /** Upper bound on request body size in bytes (OOM/abuse guard). Enforced via Content-Length -> 413. */
     val maxRequestBodyBytes: Long,
     /**
@@ -110,7 +117,8 @@ data class ServerConfig(
                 activityRetentionDays = int("SKERRY_ACTIVITY_RETENTION_DAYS", 30),
                 activityMaxRows = int("SKERRY_ACTIVITY_MAX_ROWS", 10_000),
                 corsHosts = str("SKERRY_CORS_HOSTS", "")
-                    .split(",").map { it.trim().removePrefix("https://").removePrefix("http://") }.filter { it.isNotEmpty() },
+                    .split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                    .mapNotNull(::parseCorsHost),
                 maxRequestBodyBytes = long("SKERRY_MAX_BODY_BYTES", 4L * 1024 * 1024), // 4 MiB
                 trustedProxies = str("SKERRY_TRUSTED_PROXIES", "")
                     .split(",").map { it.trim() }.filter { it.isNotEmpty() },
@@ -132,6 +140,23 @@ data class ServerConfig(
                 mailConfigPath = str("SKERRY_MAIL_CONFIG_PATH", "/data/mail-config.json"),
                 publicUrl = str("SKERRY_PUBLIC_URL", "").trimEnd('/'),
             )
+        }
+
+        /**
+         * Parse one SKERRY_CORS_HOSTS entry. Users paste full origins ("https://cdn.example.com/")
+         * even though Ktor's `allowHost` wants a bare host — passing "://" through would crash the
+         * server at startup. A scheme prefix narrows the allowed schemes to it; anything after the
+         * first "/" (path, trailing slash) is dropped. Returns `null` for an entry with no host
+         * left after stripping.
+         */
+        private fun parseCorsHost(raw: String): CorsHost? {
+            val (schemes, rest) = when {
+                raw.startsWith("https://", ignoreCase = true) -> listOf("https") to raw.drop("https://".length)
+                raw.startsWith("http://", ignoreCase = true) -> listOf("http") to raw.drop("http://".length)
+                else -> listOf("http", "https") to raw
+            }
+            val host = rest.substringBefore('/').trim()
+            return if (host.isEmpty()) null else CorsHost(host, schemes)
         }
     }
 }

@@ -186,6 +186,10 @@ class DesktopDesignState(
     // callback; threaded into [app.skerry.ui.vault.VaultGate] as the timer's idleMs.
     initialAutoLock: AutoLockDuration = AutoLockDuration.DEFAULT,
     private val onAutoLockChange: (AutoLockDuration) -> Unit = {},
+    // Soft lock (PIN) toggle (Settings → Security). Read from persistence, written back via the
+    // callback. When enabled, idle timeout triggers a soft lock (PIN) instead of hard lock.
+    initialSoftLockEnabled: Boolean = false,
+    private val onSoftLockEnabledChange: (Boolean) -> Unit = {},
     // Visibility and size of the RECENT sidebar section (Settings → Appearance → Interface). Read
     // from persistence, written back via the callbacks. Defaults (shown, full cap) preserve prior
     // behavior for mock/preview/tests. [recentLimit] only trims the display: the recent-hosts store
@@ -208,6 +212,14 @@ class DesktopDesignState(
 
     var locked: Boolean by mutableStateOf(false); private set
     var modalOpen: Boolean by mutableStateOf(false); private set
+
+    // --- Soft lock (PIN) state ---
+    /** Whether the desktop quick-unlock PIN is enabled (Settings → Security). */
+    var softLockEnabled: Boolean by mutableStateOf(initialSoftLockEnabled); private set
+    /** Whether the screen is currently soft-locked (waiting for PIN input). */
+    var softLocked: Boolean by mutableStateOf(false); private set
+    /** SHA-256 hash of the current PIN (empty if never set). Stored only while the app runs. */
+    var softLockPinHash: String by mutableStateOf(""); private set
 
     /**
      * Outcome of the last finished session recording, shown as a notice; `null` when there is
@@ -339,6 +351,9 @@ class DesktopDesignState(
     /** Host open in the modal for editing (null means the modal is in "New connection" mode). */
     var editingHost: Host? by mutableStateOf(null); private set
 
+    /** Host the modal is prefilled from as a copy ("Duplicate"); saving creates a new profile. */
+    var duplicatingHost: Host? by mutableStateOf(null); private set
+
     /** Host for which the delete-confirmation dialog is shown (null means no dialog). */
     var pendingDeleteHost: Host? by mutableStateOf(null); private set
 
@@ -402,9 +417,10 @@ class DesktopDesignState(
 
     fun lock() { locked = true; hostSearchQuery = "" }
     fun unlock() { locked = false }
-    fun openModal() { editingHost = null; modalOpen = true }
-    fun openEditModal(host: Host) { editingHost = host; modalOpen = true }
-    fun closeModal() { modalOpen = false; editingHost = null }
+    fun openModal() { editingHost = null; duplicatingHost = null; modalOpen = true }
+    fun openEditModal(host: Host) { editingHost = host; duplicatingHost = null; modalOpen = true }
+    fun openDuplicateModal(host: Host) { editingHost = null; duplicatingHost = host; modalOpen = true }
+    fun closeModal() { modalOpen = false; editingHost = null; duplicatingHost = null }
     fun requestDeleteHost(host: Host) { pendingDeleteHost = host }
     fun dismissDeleteHost() { pendingDeleteHost = null }
     fun requestCloseSession(id: String) { pendingClose = PendingClose.Session(id) }
@@ -586,6 +602,25 @@ class DesktopDesignState(
         autoLock = duration
         onAutoLockChange(duration)
     }
+
+    /** Toggle soft lock (PIN) on/off and report outward (for persistence). */
+    fun chooseSoftLockEnabled(on: Boolean) {
+        if (on == softLockEnabled) return
+        softLockEnabled = on
+        onSoftLockEnabledChange(on)
+    }
+
+    /** Enter soft-locked state (shows PIN input screen). */
+    fun softLock() { softLocked = true }
+
+    /** Exit soft-locked state (return to the app). */
+    fun unlockSoft() { softLocked = false }
+
+    /**
+     * Store the PIN hash. Only stores a SHA-256 hash of the PIN (never the PIN itself).
+     * [hash] is the hex-encoded hash of `"skerry-soft-lock" + pin`.
+     */
+    fun chooseSoftLockPinHash(hash: String) { softLockPinHash = hash }
 
     /** Choose the UI language and report outward (for persistence). Repeating the same value is a no-op. */
     fun chooseUiLanguage(language: UiLanguage) {
