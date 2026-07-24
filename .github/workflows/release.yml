@@ -275,6 +275,7 @@ jobs:
         shell: bash
         env:
           VER: ${{ needs.version.outputs.name || '0.1.0' }}
+          MSYS_NO_PATHCONV: "1"
         run: |
           mkdir -p composeApp/build/compose/binaries/main/exe
           iscc composeApp/skerry.iss /DMyAppVersion="$VER" /DAppImageDir="composeApp/build/compose/binaries/main/app/Skerry"
