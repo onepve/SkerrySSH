@@ -52,7 +52,7 @@ fun LockChoiceDialog(
     ModalScrim(onDismiss = onDismiss) {
         Column(
             Modifier
-                .width(360.dp)
+                .width(400.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(Skerry.colors.surfaceDeep)
                 .border(1.dp, Skerry.colors.cyan14, RoundedCornerShape(12.dp))
