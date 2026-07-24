@@ -40,12 +40,14 @@ data class ServerConfig(
      * direct connection.
      */
     val trustedProxies: List<String>,
-    /** Whether `POST /auth/register` accepts new accounts (Vaultwarden's SIGNUPS_ALLOWED). Closed ⇒ 403. */
-    val registrationOpen: Boolean,
+    /**
+     * Registration policy: `"open"` ⇒ anyone can register without a code; `"invite"` ⇒ open but
+     * requires a valid invitation code; anything else (e.g. `"closed"`) ⇒ reject new accounts.
+     * Default: `"open"` for backward compatibility.
+     */
+    val registration: String,
     /** Hard cap on total accounts (backstop for an instance left open). 0 ⇒ unlimited. */
     val maxAccounts: Int,
-    /** Whether an invitation code is required to register (regardless of [registrationOpen]). */
-    val inviteRequired: Boolean,
     // --- CSP external sources ---
     /** Extra connect-src origins (comma-separated, joined after 'self'). */
     val cspConnectSrc: String,
@@ -113,9 +115,8 @@ data class ServerConfig(
                 trustedProxies = str("SKERRY_TRUSTED_PROXIES", "")
                     .split(",").map { it.trim() }.filter { it.isNotEmpty() },
                 // Default open for backward compatibility; anything other than "open" (case-insensitive) closes it.
-                registrationOpen = str("SKERRY_REGISTRATION", "open").equals("open", ignoreCase = true),
+                registration = str("SKERRY_REGISTRATION", "open").lowercase(),
                 maxAccounts = int("SKERRY_MAX_ACCOUNTS", 0).coerceAtLeast(0),
-                inviteRequired = str("SKERRY_INVITE_REQUIRED", "false").equals("true", ignoreCase = true),
                 cspConnectSrc = str("SKERRY_CSP_CONNECT_SRC", ""),
                 cspFontSrc = str("SKERRY_CSP_FONT_SRC", ""),
                 cspScriptSrc = str("SKERRY_CSP_SCRIPT_SRC", ""),

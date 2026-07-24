@@ -40,7 +40,7 @@ fun Route.authRoutes(services: Services) {
             // Registration policy is checked before any work: a closed instance (Vaultwarden's
             // SIGNUPS_ALLOWED=false) rejects new accounts outright; existing accounts still log in
             // and pair new devices (those paths don't hit /auth/register).
-            if (!services.config.registrationOpen) {
+            if (services.config.registration != "open" && services.config.registration != "invite") {
                 call.respond(HttpStatusCode.Forbidden, ErrorResponse("registration is closed"))
                 return@post
             }
@@ -58,7 +58,7 @@ fun Route.authRoutes(services: Services) {
                 return@post
             }
             // Invitation-code gate: only matters for accounts that don't exist yet.
-            if (services.config.inviteRequired) {
+            if (services.config.registration == "invite") {
                 val ic = req.inviteCode
                 if (ic == null || ic.isBlank()) {
                     call.respond(HttpStatusCode.Forbidden, ErrorResponse("registration requires an invitation code"))
