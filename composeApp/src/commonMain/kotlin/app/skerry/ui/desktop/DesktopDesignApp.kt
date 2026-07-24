@@ -693,6 +693,9 @@ private fun DesktopChrome(
         // Live lock on the live path (teardown itself runs in VaultGate); state.lock is mock/preview.
         // Via rememberUpdatedState so onRootKey doesn't depend on the lock lambda itself changing.
         val lockAction = rememberUpdatedState(onLockWithTunnels ?: state::lock)
+        // Lock choice dialog state — lifted to root level so the ModalScrim fills the full window,
+        // not constrained by the toolbar Row.
+        var showLockChoice by remember { mutableStateOf(false) }
         // Global shell hotkeys (⌘/Ctrl+Shift — New conn/Split/SFTP/AI-bar/Lock, Ctrl+Tab — adjacent
         // tab, Alt+digit — tab by number) are checked BEFORE the snippet hotkey. Same gate: only on a
         // live session screen (no overlay/modal/settings), so a chord from editor fields doesn't leak
@@ -739,7 +742,15 @@ private fun DesktopChrome(
                     onHardLock = { state.unlockSoft(sl); lockAction.value() },
                 )
             }
-            // Mock/preview only: with live sessions a recording opens in its own tab (SessionView.Player),
+            // Lock choice dialog: rendered at root level so ModalScrim fills the full window.
+            if (showLockChoice) {
+                LockChoiceDialog(
+                    onSoftLock = { state.softLock(); showLockChoice = false },
+                    onHardLock = { lockAction.value(); showLockChoice = false },
+                    onDismiss = { showLockChoice = false },
+                    )
+                    }
+                    // Mock/preview only: with live sessions a recording opens in its own tab (SessionView.Player),
             // and this state is never set. Esc (via ModalScrim) closes the overlay.
             state.castRecording?.let { cast -> CastPlayerOverlay(cast, onDismiss = state::closeCast) }
             if (state.castInvalid) {

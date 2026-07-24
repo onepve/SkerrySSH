@@ -561,6 +561,8 @@ fun main(args: Array<String>) {
                     onAllowServerClipboardWriteChange = { prefs.set("terminal_clipboard_write", it) },
                     initialAutoLock = prefs.id("auto_lock", AutoLockDuration.DEFAULT, AutoLockDuration::fromId),
                     onAutoLockChange = { prefs.set("auto_lock", it.id) },
+                    initialSoftLockEnabled = prefs.bool("soft_lock", false),
+                    onSoftLockEnabledChange = { prefs.set("soft_lock", it) },
                     initialShowRecent = prefs.bool("recent_show", true),
                     onShowRecentChange = { prefs.set("recent_show", it) },
                     initialRecentLimit = prefs.int("recent_limit", DesktopDesignState.MAX_RECENT_HOSTS),

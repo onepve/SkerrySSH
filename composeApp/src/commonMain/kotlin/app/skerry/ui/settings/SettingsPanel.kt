@@ -136,6 +136,7 @@ fun SettingsPanel(state: DesktopDesignState) {
                             onChangeAccountPassword = { changeAccountPwOpen = true },
                             onBiometricToggled = { securityReload++ },
                             onSetPin = { showSetPin = true },
+                            onSecurityChanged = { securityReload++ },
                         )
                         SettingsTab.Keyboard -> KeyboardSection()
                         SettingsTab.About -> AboutSection()
@@ -198,6 +199,7 @@ fun SettingsPanel(state: DesktopDesignState) {
                 onSet = { hash ->
                     state.chooseSoftLockPinHash(hash, securityLog)
                     state.chooseSoftLockEnabled(true, securityLog)
+                    securityReload++
                     showSetPin = false
                 },
                 onDismiss = { showSetPin = false },
