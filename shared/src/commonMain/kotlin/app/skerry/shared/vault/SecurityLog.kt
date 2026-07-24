@@ -28,6 +28,9 @@ enum class SecurityEventType {
     /** Successful biometric unlock. */
     UnlockedBiometric,
 
+    /** Successful soft-lock (PIN) unlock. */
+    UnlockedPin,
+
     /** New device paired (quick pairing) — [detail] carries the device name. */
     DevicePaired,
 }

@@ -5,6 +5,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import app.skerry.shared.host.Host
+import app.skerry.shared.vault.SecurityEventType
+import app.skerry.shared.vault.SecurityLog
 import app.skerry.ui.i18n.UiLanguage
 import app.skerry.ui.settings.SETTINGS_NAV
 import app.skerry.ui.vault.AutoLockDuration
@@ -614,7 +616,10 @@ class DesktopDesignState(
     fun softLock() { softLocked = true }
 
     /** Exit soft-locked state (return to the app). */
-    fun unlockSoft() { softLocked = false }
+    fun unlockSoft(securityLog: SecurityLog? = null) {
+        softLocked = false
+        securityLog?.record(SecurityEventType.UnlockedPin)
+    }
 
     /**
      * Store the PIN hash. Only stores a SHA-256 hash of the PIN (never the PIN itself).

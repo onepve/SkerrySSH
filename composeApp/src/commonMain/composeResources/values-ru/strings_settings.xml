@@ -142,9 +142,10 @@
     <string name="settings_security_no_events">Пока событий безопасности нет.</string>
     <string name="settings_event_vault_created">Хранилище создано</string>
     <string name="settings_event_password_changed">Мастер-пароль изменён</string>
-    <string name="settings_event_biometric_enabled">Включена разблокировка биометрией</string>
-    <string name="settings_event_biometric_disabled">Выключена разблокировка биометрией</string>
-    <string name="settings_event_unlocked_biometric">Разблокировка биометрией</string>
+    <string name="settings_event_biometric_enabled">Вход по биометрии включён</string>
+    <string name="settings_event_biometric_disabled">Вход по биометрии выключен</string>
+    <string name="settings_event_unlocked_biometric">Разблокировано по биометрии</string>
+    <string name="settings_event_unlocked_pin">Разблокировано по PIN-коду</string>
     <string name="settings_event_device_paired">Привязано новое устройство</string>
     <string name="settings_event_with_detail">%1$s: %2$s</string>
     <string name="settings_event_line">%1$s · %2$s</string>

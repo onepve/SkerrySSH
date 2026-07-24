@@ -145,6 +145,7 @@
     <string name="settings_event_biometric_enabled">生物识别解锁已启用</string>
     <string name="settings_event_biometric_disabled">生物识别解锁已禁用</string>
     <string name="settings_event_unlocked_biometric">通过生物识别解锁</string>
+    <string name="settings_event_unlocked_pin">通过 PIN 解锁</string>
     <string name="settings_event_device_paired">新设备已配对</string>
     <string name="settings_event_with_detail">%1$s：%2$s</string>
     <string name="settings_event_line">%1$s · %2$s</string>

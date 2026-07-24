@@ -730,9 +730,10 @@ private fun DesktopChrome(
             }
             // Soft lock overlay: shown over the entire app when PIN-enabled idle timeout fires.
             if (state.softLocked) {
+                val securityLog = LocalSecurityLog.current
                 SoftLockScreen(
                     storedHash = state.softLockPinHash,
-                    onUnlock = { state.unlockSoft() },
+                    onUnlock = { state.unlockSoft(securityLog) },
                     onHardLock = { state.unlockSoft(); lockAction.value() },
                 )
             }
