@@ -230,7 +230,8 @@ compose.desktop {
         mainClass = "app.skerry.ui.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.Msi, TargetFormat.Exe, TargetFormat.Dmg)
+            targetFormats(TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.Msi, TargetFormat.Dmg)
+            // EXE is built by Inno Setup (skerry.iss) — avoids WiX Burn bootstrapper crashes
             // jlink drops modules loaded reflectively (jdk.unsupported, java.naming, GSSAPI, …),
             // so the packaged app died on startup while `./gradlew run` worked. Bundle them all.
             includeAllModules = true

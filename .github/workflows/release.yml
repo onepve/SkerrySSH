@@ -244,6 +244,10 @@ jobs:
         # windows runners may not ship it.
         run: choco install wixtoolset -y --no-progress
 
+      - name: Install Inno Setup
+        # Replaces jpackage's WiX-Burn EXE (crashes on reinstall).
+        run: choco install innosetup -y --no-progress
+
       - name: Package msi
         id: msi
         shell: bash
@@ -266,12 +270,18 @@ jobs:
           done
           exit 1
 
-      - name: Package exe
+      - name: Build EXE with Inno Setup
         id: exe
         shell: bash
-        run: >
-          ./gradlew :composeApp:packageExe --stacktrace
-          ${{ needs.version.outputs.name && format('-Pskerry.versionName={0}', needs.version.outputs.name) || '' }}
+        env:
+          VER: ${{ needs.version.outputs.name || '0.1.0' }}
+        run: |
+          # jpackage app-image already created by packageMsi
+          APP_IMAGE="composeApp/build/compose/binaries/main/app/Skerry"
+          mkdir -p composeApp/build/compose/binaries/main/exe
+          iscc composeApp/skerry.iss \
+            /DMyAppVersion="$VER" \
+            /D"AppImageDir=$APP_IMAGE"
 
       - name: Build portable ZIP
         # Shell-based instead of the Gradle task — avoids config-cache serialization
@@ -299,7 +309,7 @@ jobs:
           cd composeApp/build/compose/binaries/main/msi
           for f in *.msi; do mv "$f" "Skerry-windows-x64.msi"; done
           cd ../exe
-          for f in *.exe; do mv "$f" "Skerry-windows-x64.exe"; done
+          for f in Skerry-*-setup.exe; do mv "$f" "Skerry-windows-x64.exe"; done
           cd ../portable
           for f in *.zip; do mv "$f" "Skerry-portable-x64.zip"; done
 
