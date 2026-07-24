@@ -26,6 +26,7 @@ class DeviceRepository(private val db: Database) {
         name: String,
         platform: String? = null,
         now: Long = System.currentTimeMillis(),
+        ip: String? = null,
     ): Boolean = dbTransaction(db) {
         // Cap to varchar(64): a longer client value would otherwise fail the insert with a 500
         // instead of silently truncating.
@@ -45,6 +46,7 @@ class DeviceRepository(private val db: Database) {
                 it[createdAt] = now
                 it[lastSeenAt] = now
                 it[revoked] = false
+                if (ip != null) it[lastIp] = ip
             }
             false
         } else {
@@ -55,10 +57,19 @@ class DeviceRepository(private val db: Database) {
                 if (plat != null) it[Devices.platform] = plat
                 it[lastSeenAt] = now
                 it[revoked] = false // re-authentication reactivates the device
+                if (ip != null) it[lastIp] = ip
             }
             // true means the device was revoked and is now reactivated — signal for the audit log.
             wasRevoked
         }
+    }
+
+    /** Get the last known IP for a device (for suspicious login detection). */
+    suspend fun getLastIp(accountId: String, deviceId: String): String? = dbTransaction(db) {
+        Devices.selectAll()
+            .where { (Devices.accountId eq accountId) and (Devices.id eq deviceId) }
+            .singleOrNull()
+            ?.get(Devices.lastIp)
     }
 
     suspend fun list(accountId: String): List<DeviceRow> = dbTransaction(db) {
@@ -71,11 +82,11 @@ class DeviceRepository(private val db: Database) {
      * never deleted, so including them would let the list grow without bound. A revoked device that
      * re-authenticates clears its revocation and reappears here.
      */
-    suspend fun listAll(limit: Int = 200): List<DeviceRow> = dbTransaction(db) {
+    suspend fun listAll(limit: Int = 20, offset: Long = 0): List<DeviceRow> = dbTransaction(db) {
         Devices.selectAll()
             .where { Devices.revoked eq false }
             .orderBy(Devices.lastSeenAt to SortOrder.DESC)
-            .limit(limit)
+            .limit(limit).offset(offset)
             .map { it.toDeviceRow() }
     }
 

@@ -38,7 +38,7 @@ object Db {
     fun createSchema(database: Database) {
         val tables = arrayOf(
             Accounts, Devices, Records, Pairing, ActivityLog,
-            AccountKeys, Teams, TeamMembers, TeamRecords,
+            AccountKeys, Teams, TeamMembers, TeamRecords, InviteCodes,
         )
         transaction(database) {
             val isSqlite = currentDialect is SQLiteDialect

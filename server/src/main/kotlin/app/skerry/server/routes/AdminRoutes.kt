@@ -11,8 +11,12 @@ import app.skerry.server.model.AdminDevicesResponse
 import app.skerry.server.model.AdminPurgeResponse
 import app.skerry.server.model.AdminRecordDto
 import app.skerry.server.model.AdminRecordsResponse
+import app.skerry.server.model.BatchDeleteRequest
 import app.skerry.server.model.ErrorResponse
+import app.skerry.server.model.GenerateInviteCodesResponse
 import app.skerry.server.model.HealthResponse
+import app.skerry.server.model.InviteCodeDto
+import app.skerry.server.model.InviteCodesResponse
 import app.skerry.server.model.StatsResponse
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
@@ -21,6 +25,7 @@ import io.ktor.server.application.Hook
 import io.ktor.server.application.call
 import io.ktor.server.application.createRouteScopedPlugin
 import io.ktor.server.application.install
+import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RouteSelector
@@ -28,6 +33,7 @@ import io.ktor.server.routing.RouteSelectorEvaluation
 import io.ktor.server.routing.RoutingResolveContext
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
+import io.ktor.server.routing.post
 import io.ktor.server.routing.route
 import java.security.MessageDigest
 
@@ -41,6 +47,20 @@ import java.security.MessageDigest
 fun Route.adminRoutes(services: Services) {
     get("/admin/health") {
         call.respond(HealthResponse("ok", SERVER_VERSION))
+    }
+
+    // Public endpoint (no admin auth): lists public invite codes for the landing page.
+    get("/invite-codes/public") {
+        val rows = services.inviteCodes.listPublic()
+        val total = rows.size.toLong()
+        val dto = rows.map { r ->
+            InviteCodeDto(
+                code = r.code, createdBy = r.createdBy, createdAt = r.createdAt,
+                expiresAt = r.expiresAt, maxUses = r.maxUses, useCount = r.useCount,
+                usedBy = r.usedBy, usedAt = r.usedAt, isPublic = r.isPublic,
+            )
+        }
+        call.respond(InviteCodesResponse(dto, total, registrationOpen = services.config.registrationOpen))
     }
 
     // Guard on a transparent child node (like authenticate {}): routing merges identical
@@ -58,9 +78,10 @@ fun Route.adminRoutes(services: Services) {
         }
 
         get("/devices") {
-            val limit = call.limitParam(default = 200, max = 500)
+            val limit = call.limitParam(default = 20, max = 500)
+            val offset = call.offsetParam()
             val total = services.devices.count()
-            val devices = services.devices.listAll(limit).map {
+            val devices = services.devices.listAll(limit, offset).map {
                 AdminDeviceDto(
                     accountId = it.accountId,
                     id = it.id,
@@ -76,9 +97,10 @@ fun Route.adminRoutes(services: Services) {
         }
 
         get("/activity") {
-            val limit = call.limitParam(default = 50, max = 2000)
+            val limit = call.limitParam(default = 20, max = 2000)
+            val offset = call.offsetParam()
             val total = services.activity.count()
-            val events = services.activity.recent(limit).map {
+            val events = services.activity.recent(limit, offset).map {
                 AdminActivityDto(it.accountId, it.deviceId, it.event, it.detail, it.createdAt)
             }
             call.respond(AdminActivityResponse(events, total))
@@ -99,9 +121,11 @@ fun Route.adminRoutes(services: Services) {
         }
 
         get("/accounts") {
-            val limit = call.limitParam(default = 100, max = 1000)
-            val total = services.admin.accountCount()
-            val accounts = services.admin.accountSummaries(limit).map {
+            val limit = call.limitParam(default = 20, max = 1000)
+            val offset = call.offsetParam()
+            val search = call.request.queryParameters["search"]?.takeIf { it.isNotBlank() }
+            val total = services.admin.accountCount(search)
+            val accounts = services.admin.accountSummaries(limit, offset, search).map {
                 AdminAccountDto(
                     id = it.id,
                     createdAt = it.createdAt,
@@ -152,6 +176,60 @@ fun Route.adminRoutes(services: Services) {
                 services.activity.record(accountId, "account.deleted", "admin-deleted account")
             }
             call.respond(if (deleted) HttpStatusCode.NoContent else HttpStatusCode.NotFound)
+        }
+
+        // --- invite codes ---
+
+        post("/invite-codes") {
+            val count = call.request.queryParameters["count"]?.toIntOrNull() ?: 5
+            val ttlDays = call.request.queryParameters["ttl_days"]?.toIntOrNull()?.takeIf { it > 0 }
+            val isPublic = call.request.queryParameters["public"]?.equals("true", ignoreCase = true) ?: false
+            if (count < 1 || count > 200) {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("count must be 1–200"))
+                return@post
+            }
+            val codes = services.inviteCodes.create(count, ttlDays, isPublic = isPublic)
+            call.respond(GenerateInviteCodesResponse(codes))
+        }
+
+        get("/invite-codes") {
+            val filter = call.request.queryParameters["filter"] ?: "unused"
+            val public = call.request.queryParameters["public"]
+            val limit = call.limitParam(default = 20, max = 500)
+            val offset = call.offsetParam()
+            val total = services.inviteCodes.count(filter, public)
+            val rows = services.inviteCodes.list(filter, public, limit, offset)
+            val dto = rows.map { r ->
+                InviteCodeDto(
+                    code = r.code, createdBy = r.createdBy, createdAt = r.createdAt,
+                    expiresAt = r.expiresAt, maxUses = r.maxUses, useCount = r.useCount,
+                    usedBy = r.usedBy, usedAt = r.usedAt, isPublic = r.isPublic,
+                )
+            }
+            call.respond(InviteCodesResponse(dto, total, registrationOpen = services.config.registrationOpen))
+        }
+
+        delete("/invite-codes/{code}") {
+            val code = call.parameters["code"] ?: ""
+            val deleted = services.inviteCodes.deleteOne(code)
+            call.respond(if (deleted) HttpStatusCode.NoContent else HttpStatusCode.NotFound)
+        }
+
+        delete("/invite-codes") {
+            val action = call.request.queryParameters["action"]
+            val deleted = when (action) {
+                "purge_used" -> services.inviteCodes.purgeUsed()
+                "purge_expired" -> services.inviteCodes.purgeExpired()
+                "ids" -> {
+                    val req = call.receive<BatchDeleteRequest>()
+                    services.inviteCodes.deleteMany(req.codes)
+                }
+                else -> {
+                    call.respond(HttpStatusCode.BadRequest, ErrorResponse("action must be ids, purge_used, or purge_expired"))
+                    return@delete
+                }
+            }
+            call.respond(mapOf("deleted" to deleted))
         }
     }
 }

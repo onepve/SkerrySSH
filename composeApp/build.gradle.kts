@@ -230,11 +230,16 @@ compose.desktop {
         mainClass = "app.skerry.ui.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.Msi, TargetFormat.Dmg)
+            targetFormats(TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.Msi, TargetFormat.Exe, TargetFormat.Dmg)
             // jlink drops modules loaded reflectively (jdk.unsupported, java.naming, GSSAPI, …),
             // so the packaged app died on startup while `./gradlew run` worked. Bundle them all.
             includeAllModules = true
             packageName = "Skerry"
+            vendor = "onepve"
+            // MUST be pure ASCII: jpackage feeds this into WiX and light.exe links
+            // the MSI with code page 1252 — any CJK character kills the link with
+            // LGHT0311 (exit 311). Both packageMsi and packageExe go through it.
+            description = "Open-source cross-platform SSH client"
             // Version from the single source (gradle.properties); the release workflow overrides it.
             val appVersion = providers.gradleProperty("skerry.versionName").orNull ?: "0.1.0"
             packageVersion = appVersion
@@ -244,7 +249,11 @@ compose.desktop {
             val macVersion = if (appVersion.substringBefore('.') == "0" && appVersion.contains('.'))
                 "1${appVersion.substring(appVersion.indexOf('.'))}" else appVersion
             // App icons per platform, rasterized from icons/skerry.svg (canonical mark, docs/design/Skerry Logo.html).
-            linux { iconFile.set(project.file("icons/skerry.png")) }
+            linux {
+                iconFile.set(project.file("icons/skerry.png"))
+                shortcut = true
+                menuGroup = "Network"
+            }
             windows {
                 iconFile.set(project.file("icons/skerry.ico"))
                 // Space-free install path (%LOCALAPPDATA%\Skerry): goterl/ionspin's isJarFile()
@@ -297,20 +306,32 @@ tasks.register<Exec>("packageAppImage") {
     environment("VERSION", providers.gradleProperty("skerry.versionName").orNull ?: "0.1.0")
 }
 
-// Portable build: zip the jpackage app-image (createDistributable) as-is — no installer, the
-// user extracts and runs Skerry.exe. Used by the release workflow for the Windows portable
-// asset (the arch suffix is appended there, like for the msi). The bundled README warns about
-// paths with spaces — libsodium's loader (goterl) fails to initialize from them.
+// Portable build: zip the jpackage app-image (createDistributable) plus a portable/ marker
+// directory so the app detects portable mode at runtime. The marker signals the app to store
+// all data (vault, keys, configuration) alongside the executable instead of the system user
+// directory — ideal for USB drives or unpack-and-run use.
+// Used by the release workflow for the Windows and Linux portable assets (the arch suffix is
+// appended in the workflow, like for the msi). The bundled README warns about paths with
+// spaces on Windows — libsodium's loader (goterl) fails to initialize from them.
 tasks.register<Zip>("packagePortableZip") {
     group = "compose desktop"
-    description = "Build a portable .zip from the jpackage app-image"
+    description = "Build a portable .zip from the jpackage app-image with a portable/ marker"
     dependsOn("createDistributable")
 
     val appVersion = providers.gradleProperty("skerry.versionName").orNull ?: "0.1.0"
     archiveFileName.set("Skerry-$appVersion-portable.zip")
     destinationDirectory.set(layout.buildDirectory.dir("compose/binaries/main/portable"))
+
+    // Create the portable/ marker directory inside the app-image so the app detects
+    // portable mode at startup. The README explains the behaviour to the user.
+    doFirst {
+        val appDir = layout.buildDirectory.dir("compose/binaries/main/app/Skerry").get().asFile
+        val portableDir = appDir.resolve("portable")
+        portableDir.mkdirs()
+        project.file("portable/README.txt").copyTo(portableDir.resolve("README.txt"), overwrite = true)
+    }
+
     from(layout.buildDirectory.dir("compose/binaries/main/app"))
-    from(project.file("portable/README.txt"))
 }
 
 // Build a single-file Skerry.flatpak via flatpak-builder. Unlike the other packaging tasks this
@@ -350,6 +371,9 @@ tasks.register<JavaExec>("screenshotDesign") {
     // Stub window chrome: draws the custom window buttons of the undecorated window in the titlebar.
     systemProperty("skerry.screenshot.windowChrome", providers.systemProperty("skerry.screenshot.windowChrome").getOrElse("false"))
 }
+
+// Repack the standard .deb for Kylin V10 / older Debian systems.
+apply(from = "kylin-deb.gradle.kts")
 
 // Kover coverage — applied via pluginManager (classpath comes from the root buildscript) so the
 // offline Flatpak build, which sets -Dskerry.offlineRepo, never resolves it. See the root build.

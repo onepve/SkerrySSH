@@ -32,6 +32,7 @@ fun syncIndicator(status: SyncStatus?, reachable: ServerReachable): SyncIndicato
         SyncStatus.Busy, is SyncStatus.NeedsPasswordReplaceConfirm -> SyncIndicator("sync", "Syncing…", SyncIndicatorLevel.WARN)
         is SyncStatus.Configured -> SyncIndicator("cloud_off", "Sync paused", SyncIndicatorLevel.WARN)
         is SyncStatus.Failed -> SyncIndicator("cloud_off", "Sync error", SyncIndicatorLevel.ERROR)
+        is SyncStatus.NeedsInviteCode -> SyncIndicator("sync", "Syncing…", SyncIndicatorLevel.WARN)
         SyncStatus.Disabled -> null
     }
 }
@@ -52,6 +53,7 @@ fun syncIndicatorLocalized(status: SyncStatus?, reachable: ServerReachable): Syn
         SyncStatus.Busy, is SyncStatus.NeedsPasswordReplaceConfirm -> stringResource(Res.string.stail_syncing)
         is SyncStatus.Configured -> stringResource(Res.string.stail_sync_paused)
         is SyncStatus.Failed -> stringResource(Res.string.stail_sync_error)
+        is SyncStatus.NeedsInviteCode -> stringResource(Res.string.stail_syncing)
         // base != null rules out Disabled/null, but the when on status must be exhaustive.
         null, SyncStatus.Disabled -> base.label
     }

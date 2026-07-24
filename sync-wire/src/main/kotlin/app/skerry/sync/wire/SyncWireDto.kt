@@ -21,6 +21,8 @@ data class RegisterRequest(
     val deviceName: String,
     // Optional (default null): older clients without this field stay wire-compatible.
     val platform: String? = null,
+    // Optional: invitation code for servers that require it.
+    val inviteCode: String? = null,
 )
 
 @Serializable

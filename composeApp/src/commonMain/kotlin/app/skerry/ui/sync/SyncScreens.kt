@@ -47,6 +47,7 @@ import app.skerry.ui.design.Sym
 import app.skerry.ui.design.Txt
 import app.skerry.ui.generated.resources.Res
 import app.skerry.ui.generated.resources.sync_back
+import app.skerry.ui.generated.resources.sync_cancel
 import app.skerry.ui.generated.resources.sync_connect
 import app.skerry.ui.generated.resources.sync_connecting
 import app.skerry.ui.generated.resources.sync_connecting_sub
@@ -64,6 +65,7 @@ import app.skerry.ui.generated.resources.sync_keep_connected_sub
 import app.skerry.ui.generated.resources.sync_link_this_device
 import app.skerry.ui.generated.resources.sync_passwords_mismatch
 import app.skerry.ui.generated.resources.sync_placeholder_account
+import app.skerry.ui.generated.resources.sync_account_email_hint
 import app.skerry.ui.generated.resources.sync_placeholder_master_password
 import app.skerry.ui.generated.resources.sync_placeholder_min_chars
 import app.skerry.ui.generated.resources.sync_placeholder_pairing_code
@@ -81,6 +83,8 @@ import app.skerry.ui.generated.resources.sync_storage_server_title
 import app.skerry.ui.generated.resources.sync_switch_later
 import app.skerry.ui.generated.resources.sync_zero_knowledge_account
 import app.skerry.ui.generated.resources.sync_zero_knowledge_password
+import app.skerry.ui.generated.resources.sync_field_invite_code
+import app.skerry.ui.generated.resources.sync_placeholder_invite_code
 import app.skerry.ui.nav.PlatformBackHandler
 import app.skerry.ui.secure.SecureScreen
 import app.skerry.ui.sync.qr.QrScannerScreen
@@ -269,18 +273,32 @@ internal fun SyncSetupBody(
 ) {
     // Prefill from the saved link (Configured after restart): only the password is needed.
     val saved = remember { sync.savedConfig }
-    var serverUrl by remember { mutableStateOf(saved?.serverUrl ?: "") }
+    var serverUrl by remember { mutableStateOf(saved?.serverUrl ?: SyncSetupForm.DEFAULT_SERVER_URL) }
     var account by remember { mutableStateOf(saved?.accountId ?: "") }
     var password by remember { mutableStateOf("") }
     var keepConnected by remember { mutableStateOf(saved?.keepConnected ?: true) }
+
+    // Collect status for the needs-invite-code flow.
+    val statusState by sync.status.collectAsState()
+    val needsInvite = statusState as? SyncStatus.NeedsInviteCode
 
     val form = SyncSetupForm(serverUrl, account)
     val canSubmit = form.canSubmit(password.length) && !busy
 
     SyncFieldLabel(stringResource(Res.string.sync_field_server_url))
-    SyncTextField(serverUrl, stringResource(Res.string.sync_placeholder_server_url), KeyboardType.Uri, icon = "dns") { serverUrl = it }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.weight(1f)) {
+            SyncTextField(serverUrl, stringResource(Res.string.sync_placeholder_server_url), KeyboardType.Uri, icon = "dns") { serverUrl = it }
+        }
+        if (serverUrl.trim() != SyncSetupForm.DEFAULT_SERVER_URL) {
+            Sym("close", size = 18.sp, color = Skerry.colors.faint, modifier = Modifier.padding(start = 6.dp).clickable { serverUrl = SyncSetupForm.DEFAULT_SERVER_URL })
+        }
+    }
     SyncFieldLabel(stringResource(Res.string.sync_field_account))
-    SyncTextField(account, stringResource(Res.string.sync_placeholder_account), KeyboardType.Text, icon = "person") { account = it }
+    SyncTextField(account, stringResource(Res.string.sync_placeholder_account), KeyboardType.Email, icon = "person") { account = it }
+    if (account.isNotEmpty() && !form.isAccountEmail) {
+        Txt(stringResource(Res.string.sync_account_email_hint), color = Skerry.colors.amber, size = 12.sp, modifier = Modifier.padding(top = 4.dp))
+    }
     SyncFieldLabel(stringResource(Res.string.sync_field_master_password))
     SyncTextField(password, stringResource(Res.string.sync_placeholder_master_password), KeyboardType.Password, masked = true, icon = "key") { password = it }
 
@@ -328,7 +346,7 @@ internal fun SyncSetupBody(
             val acc = form.normalizedAccountId
             // The coordinator owns the launch (its own scope) — a coroutine tied to this composable
             // would cancel mid-flight if the form leaves composition (navigation away). One call:
-            // the coordinator decides register vs login.
+            // the coordinator decides register vs login. Pass any stored invite code from the overlay.
             sync.connect(url, acc, pw, keepConnected)
         },
         modifier = Modifier.padding(top = 18.dp),
@@ -339,6 +357,15 @@ internal fun SyncSetupBody(
     Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         Sym("shield_lock", size = 14.sp, color = Skerry.colors.moss)
         Txt(stringResource(Res.string.sync_zero_knowledge_password), color = Skerry.colors.faint, size = 11.sp)
+    }
+
+    // Pop-up invite-code dialog when the server requires one (triggered by 403 on register).
+    if (needsInvite != null) {
+        InviteCodeOverlay(
+            error = needsInvite.error?.let { syncFailureText(it) },
+            onSubmit = { code -> sync.retryWithInviteCode(code) },
+            onDismiss = { sync.cancelInviteCode() },
+        )
     }
 }
 
@@ -551,4 +578,83 @@ private fun SyncTextField(
             }
         },
     )
+}
+/**
+ * Overlay dialog shown when the server requires an invitation code (see [SyncStatus.NeedsInviteCode]).
+ * The user enters the code here and re-submits via [SyncCoordinator.retryWithInviteCode]; on cancel,
+ * [SyncCoordinator.cancelInviteCode] cleans up the pending registration. [error] is the server message
+ * from the previous attempt, pre-localised by the caller.
+ */
+@Composable
+internal fun InviteCodeOverlay(error: String?, onSubmit: (String) -> Unit, onDismiss: () -> Unit) {
+    var code by remember { mutableStateOf("") }
+    // System back closes the overlay (mobile), not the underlying screen.
+    PlatformBackHandler(onBack = onDismiss)
+    Box(
+        Modifier.fillMaxSize().background(Color(0x99000000)).clickable(onClick = {}),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            Modifier.widthIn(max = 380.dp).fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp)).background(Skerry.colors.surfaceDeep)
+                .border(1.dp, Skerry.colors.cyan14, RoundedCornerShape(12.dp))
+                .padding(22.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Sym("vpn_key", size = 18.sp, color = Skerry.colors.cyanBright)
+                Txt(stringResource(Res.string.sync_field_invite_code), color = Skerry.colors.text, size = 15.sp, weight = FontWeight.SemiBold)
+            }
+            Txt(
+                stringResource(Res.string.sync_placeholder_invite_code),
+                color = Skerry.colors.faint, size = 12.sp, modifier = Modifier.padding(top = 6.dp, bottom = 14.dp),
+            )
+            val ui = LocalFonts.current.ui
+            val textColor = Skerry.colors.text
+            val style = remember(ui) { TextStyle(color = textColor, fontSize = 14.sp, fontFamily = ui) }
+            BasicTextField(
+                value = code,
+                onValueChange = { code = it },
+                singleLine = true,
+                textStyle = style,
+                cursorBrush = SolidColor(Skerry.colors.cyan),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                modifier = Modifier.fillMaxWidth(),
+                decorationBox = { inner ->
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(Skerry.colors.bg)
+                            .border(1.dp, Skerry.colors.cyan14, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(Modifier.weight(1f)) {
+                            if (code.isEmpty()) Txt("XXX-XXXXX", color = Skerry.colors.faint, size = 14.sp)
+                            inner()
+                        }
+                    }
+                },
+            )
+            if (error != null) {
+                Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Sym("error", size = 14.sp, color = Skerry.colors.sunset)
+                    Txt(error, color = Skerry.colors.sunset, size = 12.sp)
+                }
+            }
+            Row(
+                Modifier.fillMaxWidth().padding(top = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Box(Modifier.weight(1f))
+                Box(Modifier.clip(RoundedCornerShape(7.dp)).clickable(onClick = onDismiss).padding(horizontal = 16.dp, vertical = 9.dp)) {
+                    Txt(stringResource(Res.string.sync_cancel), color = Skerry.colors.dim, size = 12.5.sp)
+                }
+                PrimaryButton(
+                    stringResource(Res.string.sync_connect),
+                    onClick = { if (code.isNotBlank()) onSubmit(code.trim()) },
+                    enabled = code.isNotBlank(),
+                    bg = if (code.isNotBlank()) Skerry.colors.cyan else Skerry.colors.cyan.copy(alpha = 0.4f),
+                )
+            }
+        }
+    }
 }
