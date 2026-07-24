@@ -133,6 +133,9 @@
     <string name="settings_autolock_15m">After 15 minutes</string>
     <string name="settings_autolock_30m">After 30 minutes</string>
     <string name="settings_autolock_never">Never</string>
+    <string name="settings_security_soft_lock">Desktop quick unlock</string>
+    <string name="settings_security_soft_lock_desc">Lock with a short PIN instead of the master password.</string>
+    <string name="settings_softlock_manage">Set PIN</string>
     <string name="settings_security_2fa">Two-factor authentication</string>
     <string name="settings_security_2fa_desc">TOTP via an authenticator app.</string>
     <string name="settings_recent_security_events">RECENT SECURITY EVENTS</string>

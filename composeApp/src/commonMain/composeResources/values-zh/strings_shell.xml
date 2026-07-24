@@ -106,4 +106,30 @@
     <string name="shell_tip_play">播放录制</string>
     <string name="shell_tip_info">会话详情</string>
     <string name="shell_tip_disconnect">断开连接</string>
+
+    <!-- 软锁 (PIN) — SoftLockScreen.kt, SetPinDialog.kt, LockChoiceDialog.kt -->
+    <string name="shell_softlock_title">已锁定</string>
+    <string name="shell_softlock_subtitle">输入快速解锁密码继续使用</string>
+    <string name="shell_softlock_pin_placeholder">快速解锁密码（4–8 位）</string>
+    <string name="shell_softlock_unlock">解锁</string>
+    <string name="shell_softlock_full_lock">完全锁定</string>
+    <string name="shell_softlock_wrong_attempts">密码错误，还剩 %1$d 次尝试</string>
+    <string name="shell_softlock_too_many">尝试次数过多，已完全锁定</string>
+    <string name="shell_softlock_footer">密码不会发送至服务器</string>
+
+    <string name="shell_softlock_set_title">设置快速解锁密码</string>
+    <string name="shell_softlock_change_title">修改快速解锁密码</string>
+    <string name="shell_softlock_set_desc">4–8 位，可包含字母、数字，区分大小写。离开电脑时临时锁屏，回来后输此密码快速恢复。</string>
+    <string name="shell_softlock_pin_label">快速解锁密码</string>
+    <string name="shell_softlock_confirm_label">再次输入</string>
+    <string name="shell_softlock_too_short">至少 4 位</string>
+    <string name="shell_softlock_too_long">最多 8 位</string>
+    <string name="shell_softlock_mismatch">两次输入不一致</string>
+    <string name="shell_softlock_confirm">确认</string>
+
+    <string name="shell_lock_choice_title">锁定 Skerry</string>
+    <string name="shell_lock_choice_soft_title">快速锁定</string>
+    <string name="shell_lock_choice_soft_desc">临时锁屏，用快速解锁密码恢复</string>
+    <string name="shell_lock_choice_hard_title">完全锁定</string>
+    <string name="shell_lock_choice_hard_desc">退出并抹掉内存中的密钥，需要主密码解锁</string>
 </resources>

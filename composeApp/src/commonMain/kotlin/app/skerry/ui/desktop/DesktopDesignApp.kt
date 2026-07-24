@@ -196,6 +196,7 @@ import app.skerry.ui.app.LocalUpdates
 import app.skerry.ui.app.LocalVault
 import app.skerry.ui.app.LocalVaultBiometrics
 import app.skerry.ui.vault.LockScreen
+import app.skerry.ui.vault.SoftLockScreen
 import app.skerry.ui.host.NewConnectionModal
 import app.skerry.ui.sync.PairingShowDialog
 import app.skerry.ui.app.PendingClose
@@ -287,6 +288,9 @@ fun DesktopDesignApp(
     // Idle auto-lock threshold (Settings → Security) — persisted externally (desktop main).
     initialAutoLock: AutoLockDuration = AutoLockDuration.DEFAULT,
     onAutoLockChange: (AutoLockDuration) -> Unit = {},
+    // Desktop quick unlock (PIN) toggle — persisted externally (desktop main).
+    initialSoftLockEnabled: Boolean = false,
+    onSoftLockEnabledChange: (Boolean) -> Unit = {},
     // Visibility and size of the RECENT section (Settings → Appearance → Interface) — persisted externally (desktop main).
     initialShowRecent: Boolean = true,
     onShowRecentChange: (Boolean) -> Unit = {},
@@ -308,6 +312,7 @@ fun DesktopDesignApp(
             initialCustomTerminalTheme, onCustomTerminalThemeChange,
             initialThemeMode, onThemeModeChange,
             initialAutoLock, onAutoLockChange,
+            initialSoftLockEnabled, onSoftLockEnabledChange,
             initialShowRecent, onShowRecentChange,
             initialRecentLimit, onRecentLimitChange,
         )
@@ -501,6 +506,11 @@ fun DesktopDesignApp(
                 // Idle auto-lock threshold from settings: changing it in the UI recomposes VaultGate
                 // and restarts the idle timer; Never (idleMs == null) turns it off.
                 autoLockIdleMs = state.autoLock.idleMs,
+                // Soft lock callback: invoked by idle timer before hard lock. When PIN is enabled,
+                // triggers soft lock and returns true (skip hard lock); otherwise proceeds to hard lock.
+                onSoftLock = if (state.softLockEnabled) {
+                    { state.softLock(); true }
+                } else null,
                 // Runs on EVERY lock, including the two automatic ones that bypass the lock action.
                 onBeforeLock = { tearDownForLock(tunnels, sessions, sync, snippets) },
                 onReset = onVaultReset,
@@ -695,6 +705,14 @@ private fun DesktopChrome(
                 }
                 HLine()
                 StatusBar()
+            }
+            // Soft lock overlay: shown over the entire app when PIN-enabled idle timeout fires.
+            if (state.softLocked) {
+                SoftLockScreen(
+                    storedHash = state.softLockPinHash,
+                    onUnlock = { state.unlockSoft() },
+                    onHardLock = { state.unlockSoft(); lockAction.value() },
+                )
             }
             // Mock/preview only: with live sessions a recording opens in its own tab (SessionView.Player),
             // and this state is never set. Esc (via ModalScrim) closes the overlay.
@@ -1091,18 +1109,33 @@ private fun TitleBarRow(state: DesktopDesignState, onLock: (() -> Unit)?, window
             )
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            // Lock button: when PIN is enabled, show choice dialog; otherwise hard lock directly.
+            var showLockChoice by remember { mutableStateOf(false) }
             Row(
                 Modifier
                     .clip(RoundedCornerShape(6.dp))
                     .background(Skerry.colors.cyan08)
                     .border(1.dp, Skerry.colors.cyan20, RoundedCornerShape(6.dp))
-                    .clickable(onClick = onLock ?: state::lock)
+                    .clickable {
+                        if (state.softLockEnabled) {
+                            showLockChoice = true
+                        } else {
+                            (onLock ?: state::lock)()
+                        }
+                    }
                     .padding(horizontal = 10.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Sym("lock_open", size = 14.sp, color = Skerry.colors.cyan)
                 Txt(stringResource(Res.string.shell_lock), color = Skerry.colors.cyan, size = 11.sp, weight = FontWeight.Medium)
+            }
+            if (showLockChoice) {
+                LockChoiceDialog(
+                    onSoftLock = { state.softLock() },
+                    onHardLock = { (onLock ?: state::lock)() },
+                    onDismiss = { showLockChoice = false },
+                )
             }
             if (windowChrome != null) WindowButtons(windowChrome, Modifier.padding(start = 8.dp))
         }
