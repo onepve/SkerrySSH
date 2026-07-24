@@ -34,10 +34,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.skerry.ui.design.LocalFonts
 import app.skerry.ui.design.ModalScrim
-import app.skerry.ui.design.consumeClicks
 import app.skerry.ui.design.PrimaryButton
 import app.skerry.ui.design.Sym
 import app.skerry.ui.design.Txt
+import app.skerry.ui.design.consumeClicks
 import app.skerry.ui.theme.Skerry
 import app.skerry.ui.vault.sha256
 import app.skerry.ui.generated.resources.Res
@@ -84,7 +84,7 @@ fun SetPinDialog(
     ModalScrim(onDismiss = onDismiss) {
         Column(
             Modifier
-                .width(360.dp)
+                .width(400.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(Skerry.colors.surfaceDeep)
                 .border(1.dp, Skerry.colors.cyan14, RoundedCornerShape(12.dp))

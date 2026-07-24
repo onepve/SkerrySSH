@@ -5,10 +5,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import app.skerry.shared.host.Host
-import app.skerry.shared.vault.SecurityEventType
-import app.skerry.shared.vault.SecurityLog
 import app.skerry.ui.i18n.UiLanguage
 import app.skerry.ui.settings.SETTINGS_NAV
+import app.skerry.shared.vault.SecurityEventType
+import app.skerry.shared.vault.SecurityLog
 import app.skerry.ui.vault.AutoLockDuration
 import app.skerry.ui.session.BroadcastController
 import app.skerry.ui.session.SessionView
@@ -356,6 +356,15 @@ class DesktopDesignState(
     /** Host the modal is prefilled from as a copy ("Duplicate"); saving creates a new profile. */
     var duplicatingHost: Host? by mutableStateOf(null); private set
 
+    /**
+     * ssh_config import: hosts parsed from a picked file, awaiting the user's selection in the import
+     * modal; `null` means the modal is closed. Held on the state (not local Compose state) so the
+     * sidebar coroutine that picks and parses the file can hand the result to the modal rendered at
+     * the app root.
+     */
+    var sshImport: app.skerry.shared.ssh.SshConfigParseResult? by mutableStateOf(null); private set
+    val sshImportOpen: Boolean get() = sshImport != null
+
     /** Host for which the delete-confirmation dialog is shown (null means no dialog). */
     var pendingDeleteHost: Host? by mutableStateOf(null); private set
 
@@ -423,6 +432,8 @@ class DesktopDesignState(
     fun openEditModal(host: Host) { editingHost = host; duplicatingHost = null; modalOpen = true }
     fun openDuplicateModal(host: Host) { editingHost = null; duplicatingHost = host; modalOpen = true }
     fun closeModal() { modalOpen = false; editingHost = null; duplicatingHost = null }
+    fun beginSshImport(result: app.skerry.shared.ssh.SshConfigParseResult) { sshImport = result }
+    fun closeSshImport() { sshImport = null }
     fun requestDeleteHost(host: Host) { pendingDeleteHost = host }
     fun dismissDeleteHost() { pendingDeleteHost = null }
     fun requestCloseSession(id: String) { pendingClose = PendingClose.Session(id) }
@@ -606,16 +617,20 @@ class DesktopDesignState(
     }
 
     /** Toggle soft lock (PIN) on/off and report outward (for persistence). */
-    fun chooseSoftLockEnabled(on: Boolean) {
+    fun chooseSoftLockEnabled(on: Boolean, securityLog: SecurityLog? = null) {
         if (on == softLockEnabled) return
         softLockEnabled = on
         onSoftLockEnabledChange(on)
+        securityLog?.record(
+            if (on) SecurityEventType.PinEnabled else SecurityEventType.PinDisabled
+        )
     }
 
     /** Enter soft-locked state (shows PIN input screen). */
     fun softLock() { softLocked = true }
 
-    /** Exit soft-locked state (return to the app). */
+    /** Exit soft-locked state (return to the app). Records [SecurityEventType.UnlockedPin] when
+     * [securityLog] is provided. */
     fun unlockSoft(securityLog: SecurityLog? = null) {
         softLocked = false
         securityLog?.record(SecurityEventType.UnlockedPin)
@@ -625,7 +640,11 @@ class DesktopDesignState(
      * Store the PIN hash. Only stores a SHA-256 hash of the PIN (never the PIN itself).
      * [hash] is the hex-encoded hash of `"skerry-soft-lock" + pin`.
      */
-    fun chooseSoftLockPinHash(hash: String) { softLockPinHash = hash }
+    fun chooseSoftLockPinHash(hash: String, securityLog: SecurityLog? = null) {
+        val changed = hash.isNotEmpty() && softLockPinHash.isNotEmpty() && hash != softLockPinHash
+        softLockPinHash = hash
+        if (changed && securityLog != null) securityLog.record(SecurityEventType.PinEnabled)
+    }
 
     /** Choose the UI language and report outward (for persistence). Repeating the same value is a no-op. */
     fun chooseUiLanguage(language: UiLanguage) {

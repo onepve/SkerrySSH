@@ -198,6 +198,7 @@ import app.skerry.ui.app.LocalVaultBiometrics
 import app.skerry.ui.vault.LockScreen
 import app.skerry.ui.vault.SoftLockScreen
 import app.skerry.ui.host.NewConnectionModal
+import app.skerry.ui.host.SshConfigImportModal
 import app.skerry.ui.sync.PairingShowDialog
 import app.skerry.ui.app.PendingClose
 import app.skerry.ui.settings.SettingsPanel
@@ -692,6 +693,9 @@ private fun DesktopChrome(
         // Live lock on the live path (teardown itself runs in VaultGate); state.lock is mock/preview.
         // Via rememberUpdatedState so onRootKey doesn't depend on the lock lambda itself changing.
         val lockAction = rememberUpdatedState(onLockWithTunnels ?: state::lock)
+        // Lock choice dialog state — lifted to root level so the ModalScrim fills the full window,
+        // not constrained by the toolbar Row.
+        var showLockChoice by remember { mutableStateOf(false) }
         // Global shell hotkeys (⌘/Ctrl+Shift — New conn/Split/SFTP/AI-bar/Lock, Ctrl+Tab — adjacent
         // tab, Alt+digit — tab by number) are checked BEFORE the snippet hotkey. Same gate: only on a
         // live session screen (no overlay/modal/settings), so a chord from editor fields doesn't leak
@@ -702,6 +706,7 @@ private fun DesktopChrome(
                 if (event.type != KeyEventType.KeyDown) false
                 else if (
                     state.appOverlay != null || state.modalOpen || state.settingsOpen ||
+                    state.sshImportOpen ||
                     state.commandPaletteOpen || state.broadcastOpen || state.castRecording != null ||
                     // The snippet-variable confirmation dialog is modal too: a hotkey firing over it
                     // would type into the terminal under the dialog or race the pending run.
@@ -730,14 +735,26 @@ private fun DesktopChrome(
             }
             // Soft lock overlay: shown over the entire app when PIN-enabled idle timeout fires.
             if (state.softLocked) {
-                val securityLog = LocalSecurityLog.current
+                val sl = LocalSecurityLog.current
                 SoftLockScreen(
                     storedHash = state.softLockPinHash,
-                    onUnlock = { state.unlockSoft(securityLog) },
-                    onHardLock = { state.unlockSoft(); lockAction.value() },
+                    onUnlock = { state.unlockSoft(sl) },
+                    onHardLock = { state.unlockSoft(sl); lockAction.value() },
                 )
             }
+<<<<<<< HEAD
             // Mock/preview only: with live sessions a recording opens in its own tab (SessionView.Player),
+=======
+            // Lock choice dialog: rendered at root level so ModalScrim fills the full window.
+            if (showLockChoice) {
+                LockChoiceDialog(
+                    onSoftLock = { state.softLock(); showLockChoice = false },
+                    onHardLock = { lockAction.value(); showLockChoice = false },
+                    onDismiss = { showLockChoice = false },
+                    )
+                    }
+                    // Mock/preview only: with live sessions a recording opens in its own tab (SessionView.Player),
+>>>>>>> custom
             // and this state is never set. Esc (via ModalScrim) closes the overlay.
             state.castRecording?.let { cast -> CastPlayerOverlay(cast, onDismiss = state::closeCast) }
             if (state.castInvalid) {
@@ -776,6 +793,7 @@ private fun DesktopChrome(
                 )
             }
             if (state.modalOpen) NewConnectionModal(state, editHost = state.editingHost, duplicateOf = state.duplicatingHost)
+            state.sshImport?.let { SshConfigImportModal(state, it) }
             if (state.settingsOpen) SettingsPanel(state)
             // Sync onboarding modal over settings: appears via "Set up sync", closes itself on a
             // successful connect. Only when the coordinator is supplied (the mock path with no backend has none).

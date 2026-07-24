@@ -259,8 +259,13 @@ compose.desktop {
                 // Space-free install path (%LOCALAPPDATA%\Skerry): goterl/ionspin's isJarFile()
                 // throws on the space in "C:\Program Files" and then crashes libsodium init.
                 perUserInstall = true
+                dirChooser = false
                 menu = true
                 shortcut = true
+                // Fixed upgrade UUID — ties all versions to the same product line so the
+                // WiX Burn bootstrapper recognises existing installations and auto-upgrades
+                // without showing a (potentially crashy) upgrade prompt.
+                upgradeUuid = "a3f8b2c1-4d5e-6f7a-8b9c-0d1e2f3a4b5c"
             }
             macOS {
                 iconFile.set(project.file("icons/skerry.icns"))

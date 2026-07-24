@@ -84,6 +84,7 @@ fun SettingsPanel(state: DesktopDesignState) {
     var securityReload by remember { mutableStateOf(0) }
     var changePwOpen by remember { mutableStateOf(false) }
     var changeAccountPwOpen by remember { mutableStateOf(false) }
+    var showSetPin by remember { mutableStateOf(false) }
     ModalScrim(onDismiss = state::closeSettings, scrimColor = Skerry.colors.modalScrim) {
         Box(
             Modifier
@@ -134,6 +135,11 @@ fun SettingsPanel(state: DesktopDesignState) {
                             onChangeMasterPassword = { changePwOpen = true },
                             onChangeAccountPassword = { changeAccountPwOpen = true },
                             onBiometricToggled = { securityReload++ },
+                            onSetPin = { showSetPin = true },
+<<<<<<< HEAD
+=======
+                            onSecurityChanged = { securityReload++ },
+>>>>>>> custom
                         )
                         SettingsTab.Keyboard -> KeyboardSection()
                         SettingsTab.About -> AboutSection()
@@ -185,6 +191,24 @@ fun SettingsPanel(state: DesktopDesignState) {
                 sync = sync,
                 onClose = { changeAccountPwOpen = false },
                 onChanged = { securityReload++ },
+            )
+        }
+        // Set PIN dialog for desktop quick unlock — rendered at panel level as a true modal
+        // overlay (outside the scrollable content area) so the scrim fills the full card.
+        if (showSetPin) {
+            val securityLog = LocalSecurityLog.current
+            SetPinDialog(
+                currentHash = state.softLockPinHash,
+                onSet = { hash ->
+                    state.chooseSoftLockPinHash(hash, securityLog)
+                    state.chooseSoftLockEnabled(true, securityLog)
+<<<<<<< HEAD
+=======
+                    securityReload++
+>>>>>>> custom
+                    showSetPin = false
+                },
+                onDismiss = { showSetPin = false },
             )
         }
         }
