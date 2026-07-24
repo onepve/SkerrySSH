@@ -276,12 +276,8 @@ jobs:
         env:
           VER: ${{ needs.version.outputs.name || '0.1.0' }}
         run: |
-          # jpackage app-image already created by packageMsi
-          APP_IMAGE="composeApp/build/compose/binaries/main/app/Skerry"
           mkdir -p composeApp/build/compose/binaries/main/exe
-          iscc composeApp/skerry.iss \
-            /DMyAppVersion="$VER" \
-            /D"AppImageDir=$APP_IMAGE"
+          iscc composeApp/skerry.iss /DMyAppVersion="$VER" /DAppImageDir="composeApp/build/compose/binaries/main/app/Skerry"
 
       - name: Build portable ZIP
         # Shell-based instead of the Gradle task — avoids config-cache serialization
