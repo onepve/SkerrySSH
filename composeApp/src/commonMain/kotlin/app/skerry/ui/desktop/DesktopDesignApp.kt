@@ -742,9 +742,6 @@ private fun DesktopChrome(
                     onHardLock = { state.unlockSoft(sl); lockAction.value() },
                 )
             }
-<<<<<<< HEAD
-            // Mock/preview only: with live sessions a recording opens in its own tab (SessionView.Player),
-=======
             // Lock choice dialog: rendered at root level so ModalScrim fills the full window.
             if (showLockChoice) {
                 LockChoiceDialog(
@@ -754,7 +751,6 @@ private fun DesktopChrome(
                     )
                     }
                     // Mock/preview only: with live sessions a recording opens in its own tab (SessionView.Player),
->>>>>>> custom
             // and this state is never set. Esc (via ModalScrim) closes the overlay.
             state.castRecording?.let { cast -> CastPlayerOverlay(cast, onDismiss = state::closeCast) }
             if (state.castInvalid) {

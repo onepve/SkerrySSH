@@ -140,10 +140,7 @@ internal fun SecuritySection(
     onChangeAccountPassword: () -> Unit,
     onBiometricToggled: () -> Unit,
     onSetPin: () -> Unit,
-<<<<<<< HEAD
-=======
     onSecurityChanged: () -> Unit,
->>>>>>> custom
 ) {
 
     // Master password subtitle is the real "last changed" from the log (or a neutral fallback).
@@ -250,10 +247,7 @@ internal fun SecuritySection(
             // Disabling: turn off directly, clear PIN hash, log the event
             state.chooseSoftLockEnabled(false, securityLog)
             state.chooseSoftLockPinHash("")
-<<<<<<< HEAD
-=======
             onSecurityChanged()
->>>>>>> custom
         }
     })
     HLine()
