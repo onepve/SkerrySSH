@@ -11,10 +11,8 @@ WORKDIR /app
 COPY --from=build /src/server/build/install/server/ /app/
 
 # Unprivileged user (least privilege): RCE in the process must not grant root in the container.
-# The /data volume belongs to it so the SQLite file is created without root.
-RUN groupadd --system skerry && useradd --system --gid skerry --home /app skerry \
-    && mkdir -p /data && chown -R skerry:skerry /app /data
-USER skerry
+# Runs as nobody (uid 65534) — fixed uid across rebuilds for consistent bind-mount permissions.
+USER nobody
 
 # SQLite file lives in the /data volume by default; mount a volume for persistence.
 ENV SKERRY_HOST=0.0.0.0 \
