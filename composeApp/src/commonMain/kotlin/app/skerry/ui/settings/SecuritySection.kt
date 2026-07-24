@@ -32,6 +32,7 @@ import app.skerry.shared.vault.SecurityEvent
 import app.skerry.shared.vault.SecurityEventType
 import app.skerry.shared.vault.securityMoment
 import app.skerry.ui.app.DesktopDesignState
+import app.skerry.ui.app.LocalSecurityLog
 import app.skerry.ui.design.Badge
 import app.skerry.ui.design.DropdownField
 import app.skerry.ui.design.FieldLabel
@@ -67,6 +68,9 @@ import app.skerry.ui.generated.resources.settings_event_device_paired
 import app.skerry.ui.generated.resources.settings_event_line
 import app.skerry.ui.generated.resources.settings_event_password_changed
 import app.skerry.ui.generated.resources.settings_event_unlocked_biometric
+import app.skerry.ui.generated.resources.settings_event_unlocked_pin
+import app.skerry.ui.generated.resources.settings_event_pin_enabled
+import app.skerry.ui.generated.resources.settings_event_pin_disabled
 import app.skerry.ui.generated.resources.settings_event_vault_created
 import app.skerry.ui.generated.resources.settings_event_with_detail
 import app.skerry.ui.generated.resources.settings_manage
@@ -135,6 +139,7 @@ internal fun SecuritySection(
     onChangeMasterPassword: () -> Unit,
     onChangeAccountPassword: () -> Unit,
     onBiometricToggled: () -> Unit,
+    onSetPin: () -> Unit,
 ) {
 
     // Master password subtitle is the real "last changed" from the log (or a neutral fallback).
@@ -232,32 +237,18 @@ internal fun SecuritySection(
     HLine()
 
     // Desktop quick unlock (PIN): when enabled, idle timeout triggers a soft lock instead of hard lock.
-    var showSetPin by remember { mutableStateOf(false) }
+    val securityLog = LocalSecurityLog.current
     SettingToggleRow(stringResource(Res.string.settings_security_soft_lock), stringResource(Res.string.settings_security_soft_lock_desc), on = state.softLockEnabled, onToggle = {
         if (!state.softLockEnabled) {
-            // Enabling PIN: show set-PIN dialog first
-            showSetPin = true
+            // Enabling PIN: show set-PIN dialog (rendered at panel level as a modal overlay)
+            onSetPin()
         } else {
-            // Disabling: turn off directly, clear PIN hash
-            state.chooseSoftLockEnabled(false)
+            // Disabling: turn off directly, clear PIN hash, log the event
+            state.chooseSoftLockEnabled(false, securityLog)
             state.chooseSoftLockPinHash("")
         }
     })
     HLine()
-
-    if (showSetPin) {
-        SetPinDialog(
-            currentHash = state.softLockPinHash,
-            onSet = { hash ->
-                state.chooseSoftLockPinHash(hash)
-                state.chooseSoftLockEnabled(true)
-                showSetPin = false
-            },
-            onDismiss = {
-                showSetPin = false
-            },
-        )
-    }
 
     // Two-factor auth isn't implemented yet: SOON badge instead of a fake "enabled" state.
     Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -319,6 +310,9 @@ private fun SecurityEventType.eventLabel(): String = stringResource(
         SecurityEventType.BiometricEnabled -> Res.string.settings_event_biometric_enabled
         SecurityEventType.BiometricDisabled -> Res.string.settings_event_biometric_disabled
         SecurityEventType.UnlockedBiometric -> Res.string.settings_event_unlocked_biometric
+        SecurityEventType.UnlockedPin -> Res.string.settings_event_unlocked_pin
+        SecurityEventType.PinEnabled -> Res.string.settings_event_pin_enabled
+        SecurityEventType.PinDisabled -> Res.string.settings_event_pin_disabled
         SecurityEventType.DevicePaired -> Res.string.settings_event_device_paired
     },
 )

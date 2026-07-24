@@ -7,6 +7,8 @@ import androidx.compose.runtime.setValue
 import app.skerry.shared.host.Host
 import app.skerry.ui.i18n.UiLanguage
 import app.skerry.ui.settings.SETTINGS_NAV
+import app.skerry.shared.vault.SecurityEventType
+import app.skerry.shared.vault.SecurityLog
 import app.skerry.ui.vault.AutoLockDuration
 import app.skerry.ui.session.BroadcastController
 import app.skerry.ui.session.SessionView
@@ -604,10 +606,13 @@ class DesktopDesignState(
     }
 
     /** Toggle soft lock (PIN) on/off and report outward (for persistence). */
-    fun chooseSoftLockEnabled(on: Boolean) {
+    fun chooseSoftLockEnabled(on: Boolean, securityLog: SecurityLog? = null) {
         if (on == softLockEnabled) return
         softLockEnabled = on
         onSoftLockEnabledChange(on)
+        securityLog?.record(
+            if (on) SecurityEventType.PinEnabled else SecurityEventType.PinDisabled
+        )
     }
 
     /** Enter soft-locked state (shows PIN input screen). */
@@ -620,7 +625,11 @@ class DesktopDesignState(
      * Store the PIN hash. Only stores a SHA-256 hash of the PIN (never the PIN itself).
      * [hash] is the hex-encoded hash of `"skerry-soft-lock" + pin`.
      */
-    fun chooseSoftLockPinHash(hash: String) { softLockPinHash = hash }
+    fun chooseSoftLockPinHash(hash: String, securityLog: SecurityLog? = null) {
+        val changed = hash.isNotEmpty() && softLockPinHash.isNotEmpty() && hash != softLockPinHash
+        softLockPinHash = hash
+        if (changed && securityLog != null) securityLog.record(SecurityEventType.PinEnabled)
+    }
 
     /** Choose the UI language and report outward (for persistence). Repeating the same value is a no-op. */
     fun chooseUiLanguage(language: UiLanguage) {

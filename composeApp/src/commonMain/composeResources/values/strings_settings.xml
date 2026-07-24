@@ -145,6 +145,9 @@
     <string name="settings_event_biometric_enabled">Biometric unlock enabled</string>
     <string name="settings_event_biometric_disabled">Biometric unlock disabled</string>
     <string name="settings_event_unlocked_biometric">Unlocked with biometrics</string>
+    <string name="settings_event_unlocked_pin">Unlocked via PIN</string>
+    <string name="settings_event_pin_enabled">Quick unlock PIN set</string>
+    <string name="settings_event_pin_disabled">Quick unlock PIN disabled</string>
     <string name="settings_event_device_paired">New device paired</string>
     <string name="settings_event_with_detail">%1$s: %2$s</string>
     <string name="settings_event_line">%1$s · %2$s</string>

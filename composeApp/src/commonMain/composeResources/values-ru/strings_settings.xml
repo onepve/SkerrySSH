@@ -145,6 +145,9 @@
     <string name="settings_event_biometric_enabled">Включена разблокировка биометрией</string>
     <string name="settings_event_biometric_disabled">Выключена разблокировка биометрией</string>
     <string name="settings_event_unlocked_biometric">Разблокировка биометрией</string>
+    <string name="settings_event_unlocked_pin">Разблокировано по PIN-коду</string>
+    <string name="settings_event_pin_enabled">PIN-код быстрой разблокировки установлен</string>
+    <string name="settings_event_pin_disabled">PIN-код быстрой разблокировки отключён</string>
     <string name="settings_event_device_paired">Привязано новое устройство</string>
     <string name="settings_event_with_detail">%1$s: %2$s</string>
     <string name="settings_event_line">%1$s · %2$s</string>
