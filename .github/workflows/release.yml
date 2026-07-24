@@ -244,6 +244,16 @@ jobs:
         # windows runners may not ship it.
         run: choco install wixtoolset -y --no-progress
 
+      - name: Install Inno Setup
+        # Replaces jpackage's WiX-Burn EXE (crashes on reinstall).
+        run: |
+          choco install innosetup -y --no-progress
+          # Download Chinese Simplified language file (not included in choco package)
+          $langDir = "C:\Program Files (x86)\Inno Setup 6\Languages"
+          if (-not (Test-Path "$langDir\ChineseSimplified.isl")) {
+            Invoke-WebRequest -Uri "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/ChineseSimplified.isl" -OutFile "$langDir\ChineseSimplified.isl"
+          }
+
       - name: Package msi
         id: msi
         shell: bash
@@ -266,12 +276,17 @@ jobs:
           done
           exit 1
 
-      - name: Package exe
+      - name: Build EXE with Inno Setup
         id: exe
         shell: bash
-        run: >
-          ./gradlew :composeApp:packageExe --stacktrace
-          ${{ needs.version.outputs.name && format('-Pskerry.versionName={0}', needs.version.outputs.name) || '' }}
+        env:
+          VER: ${{ needs.version.outputs.name || '0.1.0' }}
+          MSYS_NO_PATHCONV: "1"
+        run: |
+          # Ensure app-image exists (independent of packageMsi success)
+          ./gradlew :composeApp:createDistributable -Pskerry.versionName="$VER" --stacktrace
+          mkdir -p composeApp/build/compose/binaries/main/exe
+          iscc composeApp/skerry.iss /DMyAppVersion="$VER" /DAppImageDir="build/compose/binaries/main/app/Skerry"
 
       - name: Build portable ZIP
         # Shell-based instead of the Gradle task — avoids config-cache serialization
@@ -299,7 +314,7 @@ jobs:
           cd composeApp/build/compose/binaries/main/msi
           for f in *.msi; do mv "$f" "Skerry-windows-x64.msi"; done
           cd ../exe
-          for f in *.exe; do mv "$f" "Skerry-windows-x64.exe"; done
+          for f in Skerry-*-setup.exe; do mv "$f" "Skerry-windows-x64.exe"; done
           cd ../portable
           for f in *.zip; do mv "$f" "Skerry-portable-x64.zip"; done
 
