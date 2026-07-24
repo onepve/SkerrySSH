@@ -618,8 +618,12 @@ class DesktopDesignState(
     /** Enter soft-locked state (shows PIN input screen). */
     fun softLock() { softLocked = true }
 
-    /** Exit soft-locked state (return to the app). */
-    fun unlockSoft() { softLocked = false }
+    /** Exit soft-locked state (return to the app). Records [SecurityEventType.UnlockedPin] when
+     * [securityLog] is provided. */
+    fun unlockSoft(securityLog: SecurityLog? = null) {
+        softLocked = false
+        securityLog?.record(SecurityEventType.UnlockedPin)
+    }
 
     /**
      * Store the PIN hash. Only stores a SHA-256 hash of the PIN (never the PIN itself).
