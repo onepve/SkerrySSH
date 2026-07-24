@@ -283,6 +283,8 @@ jobs:
           VER: ${{ needs.version.outputs.name || '0.1.0' }}
           MSYS_NO_PATHCONV: "1"
         run: |
+          # Ensure app-image exists (independent of packageMsi success)
+          ./gradlew :composeApp:createDistributable -Pskerry.versionName="$VER" --stacktrace
           mkdir -p composeApp/build/compose/binaries/main/exe
           iscc composeApp/skerry.iss /DMyAppVersion="$VER" /DAppImageDir="build/compose/binaries/main/app/Skerry"
 
