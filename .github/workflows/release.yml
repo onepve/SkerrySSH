@@ -246,7 +246,13 @@ jobs:
 
       - name: Install Inno Setup
         # Replaces jpackage's WiX-Burn EXE (crashes on reinstall).
-        run: choco install innosetup -y --no-progress
+        run: |
+          choco install innosetup -y --no-progress
+          # Download Chinese Simplified language file (not included in choco package)
+          $langDir = "C:\Program Files (x86)\Inno Setup 6\Languages"
+          if (-not (Test-Path "$langDir\ChineseSimplified.isl")) {
+            Invoke-WebRequest -Uri "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/ChineseSimplified.isl" -OutFile "$langDir\ChineseSimplified.isl"
+          }
 
       - name: Package msi
         id: msi
