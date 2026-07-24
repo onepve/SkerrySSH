@@ -16,6 +16,7 @@ import app.skerry.ui.generated.resources.stail_sync_fail_detail
 import app.skerry.ui.generated.resources.stail_sync_fail_key_adopt
 import app.skerry.ui.generated.resources.stail_sync_fail_rekey
 import app.skerry.ui.generated.resources.sync_fail_revoke
+import app.skerry.ui.generated.resources.sync_fail_forbidden
 import app.skerry.ui.generated.resources.sync_fail_save_settings
 import app.skerry.ui.generated.resources.sync_fail_sync
 import app.skerry.ui.generated.resources.sync_fail_unauthorized
@@ -50,6 +51,7 @@ fun syncFailureText(failed: SyncStatus.Failed): String {
             SyncFailureReason.SaveSettingsFailed -> Res.string.sync_fail_save_settings
             SyncFailureReason.SyncFailed -> Res.string.sync_fail_sync
             SyncFailureReason.RevokeFailed -> Res.string.sync_fail_revoke
+            SyncFailureReason.Forbidden -> Res.string.sync_fail_forbidden
         },
     )
     val detail = failed.detail?.takeIf { it.isNotBlank() } ?: return base

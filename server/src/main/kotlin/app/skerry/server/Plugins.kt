@@ -2,6 +2,7 @@ package app.skerry.server
 
 import app.skerry.server.auth.TokenService
 import app.skerry.server.model.ErrorResponse
+import app.skerry.server.model.HealthResponse
 import app.skerry.server.routes.adminRoutes
 import app.skerry.server.routes.authRoutes
 import app.skerry.server.routes.deviceRoutes
@@ -10,6 +11,8 @@ import app.skerry.server.routes.pairingStartRoute
 import app.skerry.server.routes.syncWebSocket
 import app.skerry.server.routes.teamRoutes
 import app.skerry.server.routes.vaultRoutes
+import io.ktor.http.CacheControl
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
@@ -38,13 +41,17 @@ import io.ktor.server.http.content.staticResources
 import io.ktor.server.request.contentLength
 import io.ktor.server.request.header
 import io.ktor.server.request.httpMethod
+import io.ktor.server.response.cacheControl
 import io.ktor.server.response.respond
+import io.ktor.server.response.respondBytes
 import io.ktor.server.response.respondRedirect
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
+import io.ktor.server.routing.head
 import io.ktor.server.routing.routing
 import io.ktor.server.websocket.WebSockets
 import kotlin.time.Duration.Companion.seconds
+import app.skerry.server.config.ServerConfig
 import kotlinx.serialization.json.Json
 import org.slf4j.event.Level
 
@@ -59,13 +66,12 @@ object RateLimits {
     val ADMIN = RateLimitName("admin")
 }
 
+/** Server version for /healthz and the admin console — populated from gradle.properties at build time. */
+const val SERVER_VERSION = ServerBuild.VERSION
+
 /**
- * Server version for /admin/health and the admin console. Stamped into version.properties by
- * Gradle (processResources) from the version in build.gradle.kts — the single bump point.
+ * Root for operator-overridable data files. Kept for mail-config.json (loaded elsewhere).
  */
-val SERVER_VERSION: String = RateLimits::class.java.getResource("/version.properties")
-    ?.readText()?.substringAfter("version=")?.trim()
-    ?: error("version.properties missing from server resources")
 
 val JWTPrincipal.accountId: String get() = payload.subject
 val JWTPrincipal.deviceId: String get() = payload.getClaim(TokenService.CLAIM_DEVICE).asString()
@@ -104,7 +110,7 @@ fun Application.configureServer(services: Services) {
         header("Referrer-Policy", "no-referrer")
         header(
             "Content-Security-Policy",
-            "default-src 'self'; font-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
+            buildCsp(services.config),
         )
     }
     // Rate-limit by client IP: throttles brute force/flooding on register, SRP, and pairing claim.
@@ -200,13 +206,49 @@ fun Application.configureServer(services: Services) {
     }
 
     routing {
-        get("/healthz") { call.respondText("ok") }
+        get("/healthz") {
+            call.respond(HealthResponse("ok", SERVER_VERSION))
+        }
 
-        // Root redirects to the admin console so opening the server in a browser isn't a 404.
-        get("/") { call.respondRedirect("/console/") }
+        // Landing page: serve the bundled static index.html directly.
+        get("/") {
+            val consolePath = services.config.consolePath
+            val html = this::class.java.classLoader.getResource("static/index.html")?.readText()
+                ?: "<html><body><h1>Skerry Sync</h1><p><a href='${consolePath}/'>Admin Console</a></p></body></html>"
+            call.respondText(html, ContentType.Text.Html)
+        }
 
-        // Static admin console (self-hosted): /console -> resources/admin/index.html.
-        staticResources("/console", "admin")
+        get("/favicon.ico") {
+            val ico = this::class.java.classLoader.getResourceAsStream("favicon.ico")
+            if (ico != null) {
+                call.response.cacheControl(CacheControl.MaxAge(maxAgeSeconds = 86400))
+                call.respondBytes(ico.readBytes(), ContentType.Image.XIcon)
+            } else {
+                call.respond(HttpStatusCode.NotFound)
+            }
+        }
+        head("/favicon.ico") {
+            call.response.cacheControl(CacheControl.MaxAge(maxAgeSeconds = 86400))
+            call.respond(HttpStatusCode.OK)
+        }
+
+        // Static admin console (self-hosted): served from resources/admin bundled in the JAR.
+        staticResources(services.config.consolePath, "admin")
+        // Screenshots referenced by the landing page index.html — served from classpath.
+        get("/screenshots/{name}") {
+            val name = call.parameters["name"] ?: ""
+            val ico = this::class.java.classLoader.getResourceAsStream("static/screenshots/$name")
+            if (ico != null) {
+                call.response.cacheControl(CacheControl.MaxAge(maxAgeSeconds = 86400))
+                call.respondBytes(ico.readBytes(), ContentType.Image.PNG)
+            } else {
+                call.respond(HttpStatusCode.NotFound)
+            }
+        }
+        head("/screenshots/{name}") {
+            call.response.cacheControl(CacheControl.MaxAge(maxAgeSeconds = 86400))
+            call.respond(HttpStatusCode.OK)
+        }
 
         authRoutes(services)
         pairingClaimRoute(services)   // no JWT: the new device hasn't logged in yet
@@ -222,4 +264,21 @@ fun Application.configureServer(services: Services) {
             syncWebSocket(services)
         }
     }
+}
+
+/**
+ * Builds Content-Security-Policy from [ServerConfig] CSP fields. Base directives ('self',
+ * 'unsafe-inline', 'data:') are always included; external origins come from the env vars.
+ */
+internal fun buildCsp(config: ServerConfig): String {
+    fun extra(directive: String, sources: String): String =
+        if (sources.isBlank()) directive else "$directive $sources"
+    return listOfNotNull(
+        "default-src 'self'",
+        extra("connect-src 'self'", config.cspConnectSrc),
+        extra("font-src 'self'", config.cspFontSrc),
+        "img-src 'self' data:",
+        extra("script-src 'self' 'unsafe-inline'", config.cspScriptSrc),
+        extra("style-src 'self' 'unsafe-inline'", config.cspStyleSrc),
+    ).joinToString("; ")
 }

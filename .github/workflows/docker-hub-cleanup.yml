@@ -1,0 +1,62 @@
+name: Docker Hub cleanup
+
+# Manual-only utility: delete a tag from the Docker Hub repository. Values pass through
+# env, never interpolated into the shell (injection-safe).
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to delete (e.g. 0.1.15). Must exist on the Hub."
+        required: true
+        type: string
+      confirm:
+        description: "Type the image name 'onepve/skerry-sync' to confirm"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: onepve/skerry-sync
+
+jobs:
+  delete-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify confirmation
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [[ "$CONFIRM" != "$IMAGE" ]]; then
+            echo "::error::Confirmation mismatch — type '$IMAGE' exactly."
+            exit 1
+          fi
+
+      - name: Delete tag from Docker Hub
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          JWT=$(curl -sf -H 'Content-Type: application/json' \
+            -d "{\"username\": \"$DH_USER\", \"password\": \"$DH_TOKEN\"}" \
+            https://hub.docker.com/v2/users/login/ | python3 -c "import sys,json;print(json.load(sys.stdin)['token'])")
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X DELETE \
+            -H "Authorization: JWT $JWT" \
+            "https://hub.docker.com/v2/repositories/$IMAGE/tags/$TAG/")
+          echo "DELETE $IMAGE:$TAG -> HTTP $code"
+          [[ "$code" == "204" ]]
+
+      - name: List remaining tags
+        env:
+          DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          JWT=$(curl -sf -H 'Content-Type: application/json' \
+            -d "{\"username\": \"$DH_USER\", \"password\": \"$DH_TOKEN\"}" \
+            https://hub.docker.com/v2/users/login/ | python3 -c "import sys,json;print(json.load(sys.stdin)['token'])")
+          curl -sf -H "Authorization: JWT $JWT" \
+            "https://hub.docker.com/v2/repositories/$IMAGE/tags/?page_size=100" \
+            | python3 -c "import sys,json;print('remaining tags:', ', '.join(t['name'] for t in json.load(sys.stdin)['results']))"

@@ -53,6 +53,7 @@ fun accountCardModel(status: SyncStatus?, serverUrl: String? = null): AccountCar
     )
     // Sync error is shown by a separate Sync section; the card falls back to local vault.
     is SyncStatus.Failed -> localVaultCard("Sync error")
+    is SyncStatus.NeedsInviteCode -> localVaultCard("Syncing…")
 }
 
 private fun localVaultCard(subtitle: String) =
@@ -82,6 +83,7 @@ fun accountCardModelLocalized(status: SyncStatus?, serverUrl: String? = null): A
         linked = true,
     )
     is SyncStatus.Failed -> localizedLocalVaultCard(stringResource(Res.string.stail_sync_error))
+    is SyncStatus.NeedsInviteCode -> localizedLocalVaultCard(stringResource(Res.string.stail_syncing))
 }
 
 @Composable

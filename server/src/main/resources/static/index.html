@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title data-l10n="pageTitle">Skerry · 开源跨平台 SSH 客户端</title>
+<meta name="description" content="Skerry — 开源 SSH 客户端：终端、SFTP、隧道和加密密钥库。Linux、Windows、macOS、Android。">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Onest:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body{overflow-x:hidden;max-width:100vw}
+  :root{
+	--bg:#050b11;
+	--blue:#2bbdee;--blue2:#6fd4f4;--teal:#34d3c0;--teal2:#5fe6d6;
+	--green:#0ea365;--green2:#14b870;
+	--text:#dbe7ee;--head:#f0f7fb;--muted:#93a7b3;--dim:#8299a6;
+	--border1:rgba(255,255,255,0.06);
+	--border2:rgba(255,255,255,0.13);
+	--card-bg:rgba(255,255,255,0.04);
+	--glow:rgba(43,189,238,0.22);
+  }
+  body{font-family:'Onest',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;line-height:1.6;-webkit-font-smoothing:antialiased}
+  ::selection{background:rgba(43,189,238,0.30);color:#eaf7fd}
+  a{color:var(--blue);text-decoration:none;transition:color .2s}
+  a:hover{color:var(--blue2)}
+
+  @keyframes up{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes drift{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(40px,24px) scale(1.06)}}
+  @keyframes aurora{0%,100%{transform:translate(0,0) rotate(0deg) scale(1);opacity:.75}33%{transform:translate(6%,4%) rotate(3.5deg) scale(1.16);opacity:1}66%{transform:translate(-5%,-3%) rotate(-3deg) scale(.9);opacity:.45}}
+
+  /* Reduce motion for mobile / low-power */
+  @media (prefers-reduced-motion:reduce){
+    .aur1,.aur2,.aur3,.glow-hero,.glow-side,.device-glow,.cta-glow{animation:none!important}
+    *{transition:none!important}
+  }
+  @media (max-width:768px){
+    .aur1,.aur2,.aur3{display:none}
+    .glow-hero,.glow-side,.device-glow,.cta-glow{display:none}
+  }
+
+  /* Atmosphere */
+  .aurora{position:fixed;pointer-events:none;z-index:0;max-width:100vw}
+  .aur1{top:-30%;left:-15%;width:130%;height:80%;background:linear-gradient(115deg,transparent 28%,rgba(43,189,238,0.10) 45%,rgba(52,211,192,0.07) 55%,transparent 72%);filter:blur(50px);animation:aurora 22s ease-in-out infinite}
+  .aur2{bottom:-35%;right:-20%;width:140%;height:85%;background:linear-gradient(245deg,transparent 30%,rgba(52,211,192,0.08) 48%,rgba(43,189,238,0.07) 58%,transparent 74%);filter:blur(60px);animation:aurora 30s ease-in-out infinite reverse}
+  .aur3{top:20%;left:-10%;width:120%;height:70%;background:linear-gradient(160deg,transparent 34%,rgba(43,189,238,0.06) 50%,transparent 66%);filter:blur(70px);animation:aurora 17s ease-in-out infinite;animation-delay:-8s}
+  .glow-hero{position:absolute;top:-140px;left:50%;margin-left:-720px;width:1440px;height:1100px;background:radial-gradient(ellipse 680px 520px at 50% 42%,rgba(43,189,238,0.16),transparent 65%);animation:drift 14s ease-in-out infinite;pointer-events:none}
+  .glow-side{position:absolute;top:-160px;right:-260px;width:820px;height:820px;background:radial-gradient(closest-side,rgba(52,211,192,0.10),transparent 68%);animation:drift 18s ease-in-out infinite reverse;pointer-events:none}
+
+  /* Nav */
+  .nav{position:sticky;top:0;z-index:50;background:rgba(5,11,17,0.75);border-bottom:1px solid var(--border1)}
+  @supports (backdrop-filter:blur(16px)) or (-webkit-backdrop-filter:blur(16px)){
+    .nav{backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+  }
+  @media (max-width:768px){
+    .nav{background:rgba(5,11,17,0.92)}
+  }
+  .nav-inner{max-width:1180px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px clamp(20px,4vw,40px)}
+  .nav-logo{display:flex;align-items:center;gap:10px;color:var(--text);font-family:'Manrope',sans-serif;font-weight:700;font-size:18px}
+  .nav-links{display:flex;align-items:center;gap:22px}
+  .nav-links a{font-size:14px;color:var(--muted);transition:color .2s}
+  .nav-links a:hover{color:var(--blue)}
+  
+
+  /* Lang switch */
+  .lang-drop{position:relative}
+  .lang-btn{display:flex;align-items:center;gap:4px;border:1px solid var(--border2);border-radius:8px;padding:6px 12px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;background:transparent;color:var(--muted);transition:all .2s}
+  .lang-btn:hover{border-color:var(--blue);color:var(--blue)}
+  .lang-arrow{font-size:9px;transition:transform .2s}
+  .lang-btn.open .lang-arrow{transform:rotate(180deg)}
+  .lang-menu{position:absolute;top:calc(100% + 6px);right:0;min-width:130px;background:var(--card-bg);border:1px solid var(--border2);border-radius:10px;box-shadow:0 12px 36px rgba(0,0,0,.35);padding:5px;display:none;z-index:200}
+  .lang-menu.open{display:block}
+  .lang-item{display:block;width:100%;text-align:left;background:none;border:none;padding:8px 12px;font-size:13px;font-weight:500;color:var(--muted);border-radius:7px;cursor:pointer;transition:all .15s}
+  .lang-item:hover{background:var(--card-bg);color:var(--text)}
+  .lang-item.active{color:var(--blue);font-weight:700;background:rgba(43,189,238,.08)}
+  /* Remove old lang-sw style */
+  .lang-sw{display:none}
+
+  /* Hero */
+  .hero{position:relative;max-width:1180px;margin:0 auto;padding:clamp(60px,8vw,104px) clamp(20px,4vw,40px) 0;text-align:center;z-index:1}
+  .hero-badge{animation:up .7s ease both;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--blue2);margin-bottom:24px}
+  .hero-title{animation:up .7s .08s ease both;font-family:'Manrope',sans-serif;font-weight:700;font-size:clamp(42px,6.4vw,84px);line-height:1.05;letter-spacing:-.035em;margin:0 auto 24px;max-width:1100px;white-space:nowrap;color:var(--head)}
+  .hero-title span{background:linear-gradient(100deg,var(--teal2) 0%,var(--blue) 70%);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero-sub{animation:up .7s .16s ease both;font-size:clamp(16px,1.7vw,19px);line-height:1.62;color:var(--muted);margin:0 auto 36px;max-width:680px}
+  .hero-sub p{margin:0;text-wrap:balance}
+
+  /* Platform download accordion */
+  .platform-grid{animation:up .7s .24s ease both;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;max-width:960px;margin:0 auto;align-items:start}
+  .pf-card{padding:16px 20px;border-radius:12px;background:var(--card-bg);border:1px solid var(--border2);color:var(--text);text-align:left;transition:border-color .25s}
+  .pf-card:hover{border-color:rgba(43,189,238,0.4)}
+  .pf-card-header{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;background:none;border:none;padding:0;cursor:pointer;color:var(--text);outline:none}
+  .pf-card-header span{display:flex;align-items:center;gap:12px}
+  .pf-name{font-family:'Manrope',sans-serif;font-weight:600;font-size:17px}
+  .pf-chev{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--blue);transition:transform .35s cubic-bezier(0.22,1,0.36,1)}
+  .pf-chev.open{transform:rotate(180deg)}
+  .pf-links{display:flex;flex-wrap:wrap;gap:7px;overflow:hidden;max-height:0;opacity:0;margin-top:0;transform:translateY(-6px);transition:max-height .4s cubic-bezier(0.22,1,0.36,1),opacity .3s ease,margin-top .4s ease,transform .4s cubic-bezier(0.22,1,0.36,1)}
+  .pf-links.open{max-height:360px;opacity:1;margin-top:14px;transform:translateY(0)}
+  .pf-dl{padding:6px 12px;border-radius:7px;background:rgba(43,189,238,0.08);border:1px solid rgba(43,189,238,0.25);font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--blue2);transition:all .2s;display:inline-block}
+  .pf-dl:hover{background:rgba(43,189,238,0.18);border-color:rgba(43,189,238,0.55);color:var(--blue2)}
+
+  /* Hero device composite */
+  .device-comp{animation:up .9s .34s ease both;position:relative;margin:clamp(52px,6vw,80px) auto 0;max-width:1020px}
+  .device-glow{position:absolute;inset:6% -8% -6%;background:radial-gradient(ellipse 60% 55% at 50% 45%,var(--glow),transparent 70%);filter:blur(20px);pointer-events:none}
+  @media (max-width:768px){
+    .device-glow{display:none}
+  }
+  .device-desktop{border-radius:14px;overflow:hidden;border:1px solid rgba(120,200,240,0.22);background:#0b1822;box-shadow:0 60px 130px rgba(0,0,0,0.7),0 0 90px rgba(43,189,238,0.10)}
+  .device-desktop img{width:100%;display:block;aspect-ratio:1280/820;object-fit:cover}
+  .device-phone{position:absolute;right:clamp(-24px,-2vw,-36px);bottom:-48px;width:clamp(180px,23vw,260px);border-radius:22px;overflow:hidden;border:1px solid rgba(120,200,240,0.28);background:#0e1b25;box-shadow:0 34px 80px rgba(0,0,0,0.75)}
+  .device-phone img{width:100%;display:block;aspect-ratio:780/1688;object-fit:cover}
+
+  .divider{height:1px;max-width:960px;margin:clamp(60px,8vw,100px) auto 0;background:linear-gradient(90deg,transparent,rgba(43,189,238,0.35),transparent)}
+
+  /* Sections */
+  .sec{padding:clamp(50px,7vw,90px) clamp(20px,4vw,40px);max-width:1180px;margin:0 auto;position:relative;z-index:1}
+  .sec-label{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--blue2);margin-bottom:16px;display:inline-block}
+  .sec-title{font-family:'Manrope',sans-serif;font-weight:700;font-size:clamp(28px,3.6vw,46px);letter-spacing:-.03em;color:var(--head);line-height:1.08;margin-bottom:16px;text-align:center}
+  .sec-sub{font-size:16px;line-height:1.65;color:var(--muted);margin:0 auto 40px;max-width:640px;text-align:center;text-wrap:pretty}
+
+  /* Feature tabs */
+  .feat-showcase{position:relative}
+  .feat-tabs-desktop{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:clamp(28px,3.5vw,44px)}
+  .feat-tab-btn{padding:8px 18px;border-radius:999px;font-family:'JetBrains Mono',monospace;font-size:13px;cursor:pointer;transition:all .3s ease;border:1px solid var(--border2);background:var(--card-bg);color:var(--dim)}
+  .feat-tab-btn:hover{border-color:rgba(43,189,238,0.3);color:var(--blue)}
+  .feat-tab-btn.active{background:var(--blue);color:#04121b;border-color:var(--blue);font-weight:500}
+  .feat-row{display:none;grid-template-columns:minmax(0,0.72fr) minmax(0,1.28fr);gap:clamp(28px,4vw,56px);align-items:center}
+  .feat-row.active{display:grid}
+  .feat-text{animation:up .5s ease both}
+  .feat-text h3{font-family:'Manrope',sans-serif;font-weight:700;font-size:clamp(22px,2.6vw,34px);letter-spacing:-.025em;color:#eef5f9;line-height:1.12;margin-bottom:14px}
+  .feat-text p{color:var(--muted);font-size:16px;line-height:1.65;margin-bottom:20px;text-wrap:pretty}
+  .feat-points{display:flex;flex-direction:column;gap:10px}
+  .feat-point{display:flex;gap:11px;align-items:flex-start;color:#a8bac4;font-size:14.5px;line-height:1.55}
+  .feat-point span:first-child{width:5px;height:5px;border-radius:50%;background:var(--blue);flex-shrink:0;margin-top:7px}
+  .feat-shot-wrap{position:relative;align-self:center}
+  .feat-shot-wrap .bg-glow{position:absolute;inset:-14% -18%;background:radial-gradient(closest-side,var(--glow),transparent 72%);filter:blur(20px);pointer-events:none}
+  @media (max-width:768px){
+    .feat-shot-wrap .bg-glow{display:none}
+  }
+  .feat-shot{border-radius:12px;overflow:hidden;border:1px solid rgba(120,200,240,0.18);background:#0b1822;box-shadow:0 36px 90px rgba(0,0,0,0.6),0 0 70px rgba(43,189,238,0.16);position:relative}
+  .feat-shot img{width:100%;display:block;aspect-ratio:1280/820;max-height:min(62vh,620px);object-fit:cover}
+  .feat-shot.extra{border:1px solid rgba(120,200,240,0.18);background:#0a141d}
+  .feat-shot.extra .fake-titlebar{display:flex;align-items:center;gap:8px;padding:11px 14px;background:#0d1a24;border-bottom:1px solid var(--border1)}
+  .feat-shot.extra .fake-titlebar span{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.12)}
+  .feat-shot.extra .fake-titlebar code{margin-left:8px;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#5e7482}
+  .feat-shot.extra .fake-term{padding:20px 22px 24px;font-family:'JetBrains Mono',monospace;font-size:13.5px;line-height:2.0}
+  .feat-shot.extra .fake-term .prompt{color:var(--blue2)}
+  .feat-shot.extra .fake-term .check{color:var(--teal2)}
+  .feat-shot.extra .fake-term .cursor{display:inline-block;width:8px;height:15px;background:var(--blue2);vertical-align:-2px;animation:blink 1.1s steps(1) infinite}
+  @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+
+  /* Mobile tabs */
+  .feat-tabs-mobile{display:none;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:16px}
+  .feat-tabs-mobile button{padding:7px 14px;border:1px solid var(--border2);background:var(--card-bg);border-radius:999px;font-size:13px;font-weight:500;color:var(--dim);cursor:pointer;transition:all .2s}
+  .feat-tabs-mobile button.active{background:var(--blue);color:#04121b;border-color:var(--blue)}
+
+  /* Cards grid */
+  .cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+  .card{background:linear-gradient(165deg,rgba(43,189,238,0.06),rgba(255,255,255,0.012) 60%);border:1px solid rgba(120,200,240,0.14);border-radius:16px;padding:24px;text-decoration:none;color:inherit;transition:all .25s;display:block}
+  .card:hover{border-color:rgba(43,189,238,0.4);transform:translateY(-3px);box-shadow:0 14px 36px rgba(43,189,238,0.10)}
+  .card-icon{margin-bottom:12px;color:var(--blue2)}
+  .card-title{font-family:'Manrope',sans-serif;font-weight:600;font-size:16.5px;color:#eaf3f8;letter-spacing:-.01em;margin-bottom:8px}
+  .card-desc{color:var(--dim);font-size:14px;line-height:1.6}
+
+  /* Platform download cards */
+  .plat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+  .plat-card{padding:16px 20px;border-radius:12px;background:var(--card-bg);border:1px solid var(--border2);color:var(--text);text-align:center;transition:all .25s;text-decoration:none;display:block;cursor:pointer}
+  .plat-card:hover{border-color:rgba(43,189,238,0.4);transform:translateY(-4px);box-shadow:0 14px 36px rgba(43,189,238,0.14)}
+  .plat-card .p-icon{margin-bottom:8px;color:var(--blue2)}
+  .plat-card .p-name{font-family:'Manrope',sans-serif;font-weight:600;font-size:17px;color:var(--text)}
+  .plat-card .p-fmt{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--dim);margin-top:4px}
+
+  /* Guide cards */
+  .guide-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:start}
+  .guide-card{padding:28px 24px 24px;border-radius:16px;background:linear-gradient(165deg,rgba(43,189,238,0.06),rgba(255,255,255,0.012) 60%);border:1px solid rgba(120,200,240,0.14);transition:all .25s;display:flex;flex-direction:column;height:100%}
+  .guide-card:hover{border-color:rgba(43,189,238,0.4);transform:translateY(-4px);box-shadow:0 14px 36px rgba(43,189,238,0.10)}
+  .guide-badge{width:44px;height:44px;border-radius:12px;background:rgba(43,189,238,0.12);border:1px solid rgba(43,189,238,0.25);display:flex;align-items:center;justify-content:center;margin-bottom:14px;color:var(--blue2)}
+  .guide-title{font-family:'Manrope',sans-serif;font-weight:600;font-size:17px;color:#eaf3f8;letter-spacing:-.01em;margin-bottom:14px}
+  .guide-steps{margin:0;padding-left:20px;list-style:decimal}
+  .guide-sub{font-family:'Manrope',sans-serif;font-weight:600;font-size:13px;color:var(--blue2);margin:16px 0 8px;letter-spacing:.01em}
+  .guide-sub:first-of-type{margin-top:0}
+  .guide-steps li{font-size:14px;color:var(--dim);line-height:1.85;padding-left:2px}
+  .guide-steps li::marker{color:var(--blue);font-weight:600;font-size:13px}
+  .guide-note{margin-top:auto;padding:12px 14px;border-radius:10px;background:rgba(43,189,238,0.06);border:1px solid rgba(43,189,238,0.15);font-size:13px;color:var(--dim);line-height:1.6}
+  .guide-note strong{color:var(--blue2);font-weight:600}
+
+  @media(max-width:1200px){
+    .guide-grid{grid-template-columns:1fr 1fr}
+    .guide-card-wide{grid-column:1/-1}
+  }
+  @media(max-width:900px){
+    .guide-grid{grid-template-columns:1fr}
+    .guide-card-wide{grid-column:auto}
+  }
+
+  /* Android section */
+  .mob-grid{display:grid;grid-template-columns:minmax(0,1.1fr) auto auto;gap:clamp(28px,4vw,52px);align-items:center}
+  .mob-text h2{font-family:'Manrope',sans-serif;font-weight:700;font-size:clamp(26px,3.2vw,42px);letter-spacing:-.028em;color:#eef5f9;line-height:1.1;margin-bottom:14px}
+  .mob-text p{color:var(--muted);font-size:16px;line-height:1.65;margin-bottom:20px;text-wrap:pretty}
+  .mob-points{display:flex;flex-direction:column;gap:12px;margin-bottom:26px}
+  .mob-point{display:flex;align-items:center;gap:12px}
+  .mob-point span:last-child{color:#b7c9d3;font-size:15px;line-height:1.5}
+  .mob-cta{display:inline-flex;align-items:center;gap:9px;padding:12px 22px;border-radius:10px;background:var(--card-bg);border:1px solid var(--border2);color:#e6f0f5;font-weight:500;font-size:14.5px;transition:all .2s;text-decoration:none}
+  .mob-cta:hover{background:rgba(255,255,255,0.1);color:#e6f0f5}
+  .mob-phone{width:clamp(190px,21vw,270px);border-radius:24px;overflow:hidden;border:1px solid rgba(120,200,240,0.22);background:#0e1b25;box-shadow:0 34px 80px rgba(0,0,0,0.6);transition:transform .3s}
+  .mob-phone:hover{transform:translateY(-6px)}
+  .mob-phone img{width:100%;display:block;aspect-ratio:780/1688;object-fit:cover}
+
+  /* Sync section */
+  .sync-card-wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:clamp(32px,4vw,44px)}
+  .sync-card{padding:24px;border-radius:16px;background:linear-gradient(165deg,rgba(43,189,238,0.06),rgba(255,255,255,0.012) 60%);border:1px solid rgba(120,200,240,0.14);transition:all .25s}
+  .sync-card:hover{border-color:rgba(43,189,238,0.4);transform:translateY(-3px)}
+  .sync-card .sc-icon{margin-bottom:12px;color:var(--blue2)}
+  .sync-card h3{font-family:'Manrope',sans-serif;font-weight:600;font-size:16.5px;color:#eaf3f8;letter-spacing:-.01em;margin-bottom:8px}
+  .sync-card p{color:var(--dim);font-size:14px;line-height:1.6}
+  .sync-shot{position:relative;max-width:720px;margin:0 auto}
+  .sync-shot .bg-glow{position:absolute;inset:-6% -10%;background:radial-gradient(ellipse 55% 60% at 50% 50%,rgba(43,189,238,0.12),transparent 72%);filter:blur(20px);pointer-events:none}
+  @media (max-width:768px){
+    .sync-shot .bg-glow{display:none}
+  }
+  .sync-shot img{width:100%;border-radius:12px;border:1px solid rgba(120,200,240,0.18);box-shadow:0 40px 100px rgba(0,0,0,0.6);display:block}
+
+  /* CTA */
+  .cta{position:relative;z-index:1;text-align:center;padding:clamp(80px,10vw,140px) clamp(20px,4vw,40px) clamp(80px,10vw,130px)}
+  .cta-glow{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:1000px;height:640px;background:radial-gradient(ellipse 50% 45% at 50% 50%,rgba(43,189,238,0.14),transparent 70%);pointer-events:none}
+  @media (max-width:768px){
+    .cta-glow{display:none}
+  }
+  .cta h2{font-family:'Manrope',sans-serif;font-weight:700;font-size:clamp(30px,4vw,54px);letter-spacing:-.03em;color:var(--head);line-height:1.06;margin-bottom:14px}
+  .cta p{font-size:16.5px;line-height:1.6;color:var(--muted);margin:0 auto 32px;max-width:560px;text-wrap:balance}
+  .cta-btn{display:inline-flex;align-items:center;gap:9px;padding:15px 30px;border-radius:12px;background:var(--blue);color:#03131c;font-weight:600;font-size:16px;box-shadow:0 14px 38px rgba(43,189,238,0.35);transition:all .2s;text-decoration:none}
+  .cta-btn:hover{transform:translateY(-2px);box-shadow:0 18px 46px rgba(43,189,238,0.45);background:#4ccdf6;color:#03131c}
+
+  /* Credit */
+  .credit{font-size:13px;color:var(--dim);margin-top:12px;text-align:center}
+  .credit a{color:var(--green2);transition:color .2s}
+  .credit a:hover{color:var(--green)}
+
+  /* Footer */
+  .footer{border-top:1px solid var(--border1);position:relative;z-index:1}
+
+  /* invite code chip — fixed-length codes, pack several per row, wrap as needed */
+  #invite-grid{display:flex;flex-wrap:wrap;gap:10px}
+  .invite-card{background:var(--card-bg);border:1px solid var(--border2);border-radius:9px;padding:8px 14px;display:inline-flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .25s,box-shadow .25s}
+  .invite-card:hover{border-color:var(--green);box-shadow:0 4px 14px rgba(14,163,101,.12)}
+  .invite-card .ic-code{font-family:"SF Mono","Cascadia Code","JetBrains Mono",monospace;font-size:.9rem;font-weight:700;color:var(--text);letter-spacing:.5px;white-space:nowrap}
+  .invite-card .ic-copy{font-size:.7rem;font-weight:600;color:var(--green);opacity:0;transition:opacity .2s;white-space:nowrap}
+  .invite-card:hover .ic-copy{opacity:1}
+  .ic-copied{color:var(--green)!important;opacity:1!important}
+  .footer-inner{max-width:1180px;margin:0 auto;padding:26px clamp(20px,4vw,40px);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px}
+  .footer-left{display:flex;align-items:center;gap:9px;font-family:'Manrope',sans-serif;font-weight:600;font-size:14.5px}
+  .footer-left .tag{color:#4b5f6b;font-size:13px;font-family:'Onest',sans-serif;font-weight:400}
+  .footer-links{display:flex;gap:20px;font-size:13.5px}
+  .footer-links a{color:var(--dim)}
+  .footer-links a:hover{color:var(--blue)}
+
+  /* Responsive */
+  /* ===== Widescreen & Ultra-wide ===== */
+  @media(min-width:1201px){
+	.nav-inner,.hero,.sec,.footer-inner{max-width:1400px}
+	.hero-title{font-size:clamp(56px,5.5vw,96px);max-width:1200px}
+	.hero-sub{max-width:820px}
+	.platform-grid{max-width:1300px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:20px;align-items:start}
+	.device-comp{max-width:1260px}
+	.divider{max-width:1300px}
+  }
+  @media(min-width:1600px){
+	.nav-inner,.hero,.sec,.footer-inner{max-width:1600px}
+	.hero-title{font-size:clamp(64px,5vw,104px);max-width:1400px}
+	.hero-sub{max-width:920px;font-size:20px}
+	.platform-grid{max-width:1500px;grid-template-columns:repeat(5,1fr);gap:22px;align-items:start}
+	.device-comp{max-width:1440px}
+	.divider{max-width:1500px}
+  }
+  /* ===== Tablet landscape / small desktop ===== */
+  @media(max-width:1024px) and (min-width:769px){
+	.feat-row.active{grid-template-columns:1fr}
+	.feat-tabs-desktop{display:none}
+	.feat-tabs-mobile{display:flex}
+	.mob-grid{grid-template-columns:1fr 1fr}
+	.mob-grid>div:first-child{grid-column:1/-1}
+	.mob-phone{width:100%}
+	.hero-title{font-size:clamp(38px,5vw,56px)}
+	.platform-grid{grid-template-columns:repeat(2,1fr)}
+	.sec{padding:clamp(40px,5vw,60px) clamp(24px,3vw,32px)}
+  }
+  /* ===== Tablet portrait ===== */
+  @media(max-width:768px) and (min-width:481px){
+	.nav-links{gap:12px}
+	.nav-links a{font-size:13px}
+	.feat-row.active{grid-template-columns:1fr}
+	.feat-tabs-desktop{display:none}
+	.feat-tabs-mobile{display:flex}
+	.device-phone{width:140px;bottom:-30px;right:-10px;border-radius:18px}
+	.platform-grid{grid-template-columns:1fr 1fr}
+	.guide-grid{grid-template-columns:1fr}
+	.mob-grid{grid-template-columns:1fr 1fr}
+	.mob-grid>div:first-child{grid-column:1/-1}
+	.mob-phone{width:100%}
+	.hero-title{font-size:clamp(32px,6vw,44px)}
+	.sec{padding:clamp(30px,5vw,50px) clamp(20px,3vw,28px)}
+	.sync-card-wrap{grid-template-columns:1fr}
+	.footer-inner{flex-direction:column;text-align:center}
+  }
+  /* ===== Phone ===== */
+  @media(max-width:480px){
+	.nav-links{display:none}
+	.nav-inner{padding:12px 16px}
+	.lang-menu{right:auto;left:0;min-width:unset;width:max-content}
+	.nav-logo{font-size:16px}
+	.hero{padding:clamp(40px,10vw,60px) 16px 0}
+		.hero-title{font-size:clamp(28px,7vw,36px);margin-bottom:16px;white-space:normal}
+	.hero-sub{font-size:14px;margin-bottom:24px;max-width:100%}
+	.hero-sub p{margin-bottom:4px}
+	.platform-grid{grid-template-columns:1fr}
+	.pf-card{padding:12px 16px}
+	.pf-name{font-size:15px}
+	.device-comp{margin-top:32px}
+	.device-phone{width:100px;bottom:-18px;right:-4px;border-radius:14px}
+	.divider{margin-top:40px}
+	.sec{padding:30px 16px}
+	.sec-title{font-size:clamp(22px,5vw,28px)}
+	.sec-label{font-size:11px}
+	.feat-row.active{grid-template-columns:1fr}
+	.feat-tabs-desktop{display:none}
+	.feat-tabs-mobile{display:flex}
+	.feat-tab-btn{font-size:11px;padding:6px 12px}
+	.feat-text h3{font-size:20px}
+	.feat-text p{font-size:14px}
+	.feat-point{font-size:13px}
+	.feat-shot img{max-height:min(40vh,300px)}
+	.guide-grid{grid-template-columns:1fr}
+	.guide-card{padding:20px 18px}
+	.guide-title{font-size:15px}
+	.guide-steps li{font-size:13px;line-height:1.7}
+	.mob-grid{grid-template-columns:1fr;gap:20px}
+	.mob-phone{width:70%;margin:0 auto}
+	.sync-card-wrap{grid-template-columns:1fr}
+	.cta{padding:50px 16px}
+	.cta h2{font-size:26px}
+	.cta p{font-size:14px;max-width:100%}
+	.footer-inner{flex-direction:column;text-align:center;gap:12px}
+		.footer-links{gap:14px;font-size:12px}
+			.lang-btn{padding:4px 8px;font-size:11px}
+	/* Prevent overflow */
+		.glow-hero{width:100vw!important;left:0!important;margin-left:0!important}
+		.glow-side{width:100vw!important;right:0!important}
+		.aur1,.aur2,.aur3{width:100vw!important;left:0!important;right:0!important}
+		.cta-glow{width:100vw!important}
+		.device-glow{inset:0!important}
+	  }
+</style>
+</head>
+<body>
+
+<div class="aurora aur1"></div>
+<div class="aurora aur2"></div>
+<div class="aurora aur3"></div>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#top" class="nav-logo">
+      <svg viewBox="0 0 120 120" width="30" height="30" style="border-radius:8px"><rect width="120" height="120" rx="24" fill="#0a141b"/><g fill="none" stroke-linecap="round"><path d="M75 40 A26 26 0 0 1 75 80" stroke="#34d3c0" stroke-width="6.5" opacity="0.85"/><path d="M84 29 A40 40 0 0 1 84 91" stroke="#34d3c0" stroke-width="6.5" opacity="0.45"/><path d="M60 44 C60 37 53 34 46 34 C36 34 31 40 31 47 C31 60 60 54 60 68 C60 77 53 81 45 81 C36 81 31 77 31 70" stroke="#5fe6d6" stroke-width="10.5"/></g></svg>
+      <span>Skerry</span>
+    </a>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="nav-links">
+        <a href="#features" data-l10n="navFeatures">功能</a>
+        <a href="https://github.com/onepve/SkerrySSH" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </div>
+      <div class="lang-drop" id="langDrop">
+        <button class="lang-btn" id="langBtn"><span id="langCur">中文</span><span class="lang-arrow">▾</span></button>
+        <div class="lang-menu" id="langMenu">
+          <button class="lang-item" data-lang="zh">中文</button>
+          <button class="lang-item" data-lang="ru">Русский</button>
+          <button class="lang-item" data-lang="en">English</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header id="top" style="overflow:hidden">
+  <div class="glow-hero"></div>
+  <div class="glow-side"></div>
+  <div class="hero">
+    <h1 class="hero-title"><span data-l10n="heroTitleA">SSH 客户端</span> <span data-l10n="heroTitleB">— 该有的样子</span></h1>
+    <div class="hero-badge" id="heroBadge"></div>
+    <div class="hero-sub">
+      <p data-l10n="heroSub1">终端、SFTP、隧道和加密密钥库。</p>
+      <p data-l10n="heroSub2">Kotlin Multiplatform 统一核心 — Linux、Windows、macOS、Android 体验一致。</p>
+      <p data-l10n="heroSub3">完全开源。无需注册、无需云、无需订阅。</p>
+    </div>
+
+    <!-- Platform downloads -->
+    <div class="platform-grid" id="pfGrid"></div>
+    <p style="font-size:12.5px;color:var(--dim);text-align:center;margin-top:12px"><span data-l10n="relNote"></span></p>
+
+    <!-- Device composition -->
+    <div class="device-comp">
+      <div class="device-glow"></div>
+      <div class="device-desktop">
+        <img src="screenshots/feature-terminal.png" alt="Skerry Terminal">
+      </div>
+      <div class="device-phone">
+        <img src="screenshots/mobile-terminal.png" alt="Skerry Android">
+      </div>
+    </div>
+  </div>
+  <div class="divider"></div>
+</header>
+
+<!-- FEATURES -->
+<section class="sec" id="features">
+  <div style="text-align:center">
+    <h2 class="sec-title" data-l10n="featTitle">远程连接所需的一切</h2>
+  </div>
+  <div class="feat-showcase">
+    <div class="feat-tabs-desktop" id="featTabsDesktop"></div>
+    <div id="featRows"></div>
+    <div class="feat-tabs-mobile" id="featTabsMobile"></div>
+  </div>
+</section>
+
+
+<section class="sec" id="guide">
+  <div style="text-align:center">
+    <h2 class="sec-title" data-l10n="guideTitle">使用说明</h2>
+  </div>
+  <div class="guide-grid">
+    <div class="guide-card">
+      <div class="guide-badge">
+        <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      </div>
+      <h3 class="guide-title" data-l10n="guideFirstTitle">第一次使用</h3>
+      <h4 class="guide-sub" data-l10n="guideLocalTitle">本机离线使用</h4>
+      <ol class="guide-steps">
+        <li data-l10n="guideLocalStep1">打开 Skerry，设置主密码</li>
+        <li data-l10n="guideLocalStep2">选「本地加密存储」</li>
+        <li data-l10n="guideLocalStep3">进入主界面，开始用</li>
+      </ol>
+      <h4 class="guide-sub" data-l10n="guideSyncTitle">联网云同步使用</h4>
+      <ol class="guide-steps">
+        <li data-l10n="guideSyncStep1">设置主密码</li>
+        <li data-l10n="guideSyncStep2">选「自托管同步服务器」</li>
+        <li data-l10n="guideSyncStep3">填服务器地址和邮箱</li>
+        <li data-l10n="guideSyncStep4">输入主密码，点「连接」</li>
+        <li data-l10n="guideSyncStep5">自动注册账号，开始使用</li>
+      </ol>
+    </div>
+    <div class="guide-card">
+      <div class="guide-badge">
+        <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+      </div>
+      <h3 class="guide-title" data-l10n="guideSwitchTitle">本机转云同步</h3>
+      <h4 class="guide-sub" data-l10n="guideSwitchSub">已用一段时间，现在开同步</h4>
+      <ol class="guide-steps">
+        <li data-l10n="guideSwitchStep1">设置 → 同步</li>
+        <li data-l10n="guideSwitchStep2">选「自托管同步服务器」</li>
+        <li data-l10n="guideSwitchStep3">填服务器地址和邮箱</li>
+        <li data-l10n="guideSwitchStep4">输入本机主密码，点「连接」</li>
+        <li data-l10n="guideSwitchStep5">自动注册账号，本机数据原样保留并上传</li>
+      </ol>
+      <div class="guide-note" data-l10n="guideSwitchNote"><strong>注意</strong>：只有新注册账号时本机数据才会上传。如果账号已存在，云端数据会覆盖本地，本地数据丢失。</div>
+    </div>
+    <div class="guide-card guide-card-wide">
+      <div class="guide-badge">
+        <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+      </div>
+      <h3 class="guide-title" data-l10n="guidePairTitle">加新设备</h3>
+      <h4 class="guide-sub" data-l10n="guidePairSub1">设备二刚装好，还没用过</h4>
+      <ol class="guide-steps">
+        <li data-l10n="guidePairStep1">设备一：设置 → 同步 → 关联设备</li>
+        <li data-l10n="guidePairStep2">设备一：弹出二维码和配对码</li>
+        <li data-l10n="guidePairStep3">设备二：打开 Skerry →「我有配对码」</li>
+        <li data-l10n="guidePairStep4">设备二：粘贴配对码（或扫码）</li>
+        <li data-l10n="guidePairStep5">设备二：设本设备新主密码 + 重复确认</li>
+        <li data-l10n="guidePairStep6">设备二：点「关联此设备」</li>
+        <li data-l10n="guidePairStep7">两台设备自动同步</li>
+      </ol>
+      <h4 class="guide-sub" data-l10n="guidePairSub2">设备二本机已有数据，切换到云同步</h4>
+      <ol class="guide-steps">
+        <li data-l10n="guidePair2Step1">设备一：设置 → 同步 → 关联设备</li>
+        <li data-l10n="guidePair2Step2">设备一：弹出二维码和配对码</li>
+        <li data-l10n="guidePair2Step3">设备二：设置 → 同步 →「我有配对码」</li>
+        <li data-l10n="guidePair2Step4">设备二：粘贴配对码（或扫码）</li>
+        <li data-l10n="guidePair2Step5">设备二：输入本机现有主密码解锁</li>
+        <li data-l10n="guidePair2Step6">设备二：点「关联此设备」</li>
+        <li data-l10n="guidePair2Step7">设备二数据被云端覆盖，两台设备自动同步</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ANDROID -->
+<section class="sec" id="android">
+  <div class="mob-grid">
+    <div class="mob-text">
+      <h2 data-l10n="mobTitle">一样的客户端 — 放进口袋</h2>
+      <p data-l10n="mobDesc">不是精简版 — 完整 Skerry。</p>
+      <div class="mob-points" id="mobPoints"></div>
+      <a class="mob-cta" href="https://dl.onepve.com/Skerry/latest/Skerry-android.apk" target="_blank" rel="noopener noreferrer">
+        <span style="font-family:'JetBrains Mono',monospace;color:var(--blue2)">↓</span>
+        <span data-l10n="mobCta">下载 .apk</span>
+      </a>
+    </div>
+    <div class="mob-phone">
+      <img src="screenshots/mobile-terminal.png" alt="Terminal">
+    </div>
+    <div class="mob-phone">
+      <img src="screenshots/mobile-hosts.png" alt="Hosts">
+    </div>
+  </div>
+</section>
+
+<!-- SYNC -->
+<section class="sec" id="sync">
+  <div style="text-align:center;max-width:680px;margin:0 auto clamp(40px,5vw,56px)">
+    <h2 class="sec-title" style="text-align:center">
+      <span data-l10n="syncTitleA">你的密钥 — 在所有设备上。</span>
+      <span data-l10n="syncTitleB" style="display:block">而且只在你自己的服务器上。</span>
+    </h2>
+    <p class="sec-sub" data-l10n="syncSub">Skerry 完全不需要服务器也能用。需要多设备同步时，运行你自己的同步服务器。</p>
+  </div>
+  <div class="sync-card-wrap" id="syncCards"></div>
+  <div class="sync-shot">
+    <div class="bg-glow"></div>
+    <img src="screenshots/server-console-v2.png" alt="Server console">
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta" id="downloads">
+  <div class="cta-glow"></div>
+  <svg viewBox="0 0 120 120" width="56" height="56" style="border-radius:14px;box-shadow:0 12px 34px rgba(43,189,238,0.3);margin-bottom:26px"><rect width="120" height="120" rx="24" fill="#0a141b"/><g fill="none" stroke-linecap="round"><path d="M75 40 A26 26 0 0 1 75 80" stroke="#34d3c0" stroke-width="6.5" opacity="0.85"/><path d="M84 29 A40 40 0 0 1 84 91" stroke="#34d3c0" stroke-width="6.5" opacity="0.45"/><path d="M60 44 C60 37 53 34 46 34 C36 34 31 40 31 47 C31 60 60 54 60 68 C60 77 53 81 45 81 C36 81 31 77 31 70" stroke="#5fe6d6" stroke-width="10.5"/></g></svg>
+  <h2 data-l10n="ctaTitle">Skerry 完全开源</h2>
+  <p data-l10n="ctaSub1">源代码 GPL-3.0 和 AGPL-3.0 协议。</p>
+  <p data-l10n="ctaSub2">查看源码、自己构建、或加入开发。</p>
+  <p class="credit">
+    <span data-l10n="creditBased">基于</span>
+    <a href="https://github.com/SeCherkasov/SkerrySSH" target="_blank">SeCherkasov/SkerrySSH</a>
+    <span data-l10n="creditFork">二次开发</span>
+  </p>
+</div>
+
+<!-- INVITE CODES -->
+<section class="sec" id="invite-codes" style="display:none">
+  <span class="sec-label" data-l10n="inviteLabel">邀请码</span>
+  <h2 class="sec-title" data-l10n="inviteTitle">公开邀请码</h2>
+  <p class="sec-sub" data-l10n="inviteSub">以下邀请码可直接用于注册同步账户，数量有限，先到先得。</p>
+  <p class="sec-sub" id="invite-msg" style="display:none"></p>
+  <div id="invite-grid"></div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-left">
+      <svg viewBox="0 0 120 120" width="22" height="22" style="border-radius:6px"><rect width="120" height="120" rx="24" fill="#0a141b"/><g fill="none" stroke-linecap="round"><path d="M75 40 A26 26 0 0 1 75 80" stroke="#34d3c0" stroke-width="6.5" opacity="0.85"/><path d="M84 29 A40 40 0 0 1 84 91" stroke="#34d3c0" stroke-width="6.5" opacity="0.45"/><path d="M60 44 C60 37 53 34 46 34 C36 34 31 40 31 47 C31 60 60 54 60 68 C60 77 53 81 45 81 C36 81 31 77 31 70" stroke="#5fe6d6" stroke-width="10.5"/></g></svg>
+      <span>Skerry</span>
+      <span class="tag" data-l10n="footerTag">· 跨平台 SSH 客户端</span>
+    </div>
+    <div class="footer-links">
+      <a href="https://github.com/onepve/SkerrySSH" target="_blank" rel="noopener noreferrer">GitHub</a>
+      <a href="https://github.com/onepve/SkerrySSH/releases" target="_blank" rel="noopener noreferrer" data-l10n="footerReleases">发布</a>
+      <a href="https://github.com/onepve/SkerrySSH/issues" target="_blank" rel="noopener noreferrer">Issues</a>
+      <a href="https://github.com/SeCherkasov/SkerrySSH/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">License</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+// === I18N ===
+const L = {
+  zh: {
+    pageTitle:"Skerry · 开源跨平台 SSH 客户端",
+    navFeatures:"功能", navSync:"同步", navDownload:"下载",
+    badgeText:" · 开源",
+    heroTitleA:"SSH 客户端", heroTitleB:"— 该有的样子",
+    heroSub1:"终端、SFTP、隧道和加密密钥库。",
+    heroSub2:"Kotlin Multiplatform 统一核心 — Linux、Windows、macOS、Android 体验一致。",
+    heroSub3:"完全开源。无需注册、无需云、无需订阅。",
+    relNote:"",
+    featLabel:"全部功能", featTitle:"远程连接所需的一切",
+    ftTerminal:{l:"终端",t:"终端 · 多标签会话",d:"内置终端模拟器。SSH / Mosh / Serial / Telnet 全支持。",p:["多标签 + 分屏视图 — 会话并排","自动重连 — 断线无需手动","滚动搜索 — 输出历史快速查找","实时主机指标 — 延迟/上行可视"]},
+    ftConnections:{l:"连接",t:"连接 · 不止 SSH",d:"SFTP 文件管理、端口转发、跳板机 — 一键搞定。",p:["SFTP 双栏文件管理器 — 同一条加密连接","本地/远程/SOCKS 端口转发 — 可视化配置","SSH ProxyJump 跳板机 + SSH 证书","Telnet + 串口 — 桌面和 Android USB-OTG"]},
+    ftVault:{l:"保险库",t:"保险库 · 别人读不了",d:"密钥、密码和证书在设备上加密。Argon2id + XChaCha20-Poly1305。",p:["主密码不会发送至服务器","Android 指纹解锁","SSH 证书与密钥同等待遇"]},
+    ftTeams:{l:"团队",t:"团队 · 端到端加密共享",d:"和同事共享主机与片段，全程加密 — 服务器也看不到。",p:["E2E 加密 — 仅在成员设备上解密","共享主机 + 片段 — 统一管理","团队角色管理 — 控制访问权限"]},
+    ftSnippet:{l:"片段",t:"片段 · ${{动态变量}}",d:"命令库带终端自动补全。支持 ${{...}} 占位符，发送前实时替换并弹出确认窗口预览。",p:["${{date:format}} / ${{time:format}} — 日期/时间，支持 strftime 格式","${{timestamp}} — Unix 秒级时间戳 · ${{uuid}} — 随机 UUID","${{random:N}} — N 位随机字符 · ${{clipboard}} — 系统剪贴板内容","${{vault:标签名}} — 从保险库取密码（预览时掩码）","${{param:名称}} — 运行时弹出输入框提示"]},
+    ftAi:{l:"AI",t:"AI · 在你控制之下",d:"终端内 AI 助手，不经过确认不执行任何命令。",p:["自有 OpenAI Key — 或纯本地模型","每个主机单独设置信任等级","离线也能用（本地模型）","AI 回复使用当前 UI 语言"]},
+    ftMore:{l:"更多",t:"更多 · 精益求精",d:"每天节省时间的小细节。",p:["VNC 远程桌面","SFTP 内置文件查看/编辑（F3/F4）","会话录像回放","Windows 安装器（.exe / .msi）"]},
+    extras:["VNC 远程桌面","SFTP 内置文件查看/编辑（F3/F4）","会话录像回放","Windows 安装器（.exe / .msi）"],
+    snippetComments:["strftime 格式","24 小时","Unix 秒","UUID v4","N 位随机字符","系统剪贴板","按标签取密码（预览掩码）","运行时提示输入"], snippetNote:"// 含变量的片段发送前弹出确认窗口 — 所见即所发",
+    connComments:["SSH、SFTP、隧道、串口","支持 ProxyJump 跳板机与 SSH 证书","内置双栏 SFTP 文件管理器","本地转发","远程转发","SOCKS 代理"],
+    teamComments:["共享主机和片段，端到端加密","起个名字，邀请成员","所有成员可见","在共享主机上运行","按团队轮换密钥"],
+guideLabel:"快速上手", guideTitle:"使用说明",
+    guideFirstTitle:"第一次使用",
+    guideLocalTitle:"本机离线使用", guideLocalStep1:"打开 Skerry，设置主密码", guideLocalStep2:"选「本地加密存储」", guideLocalStep3:"进入主界面，开始用",
+    guideSyncTitle:"联网云同步使用", guideSyncStep1:"设置主密码", guideSyncStep2:"选「自托管同步服务器」", guideSyncStep3:"填服务器地址和邮箱", guideSyncStep4:"输入主密码，点「连接」", guideSyncStep5:"自动注册账号，开始使用",
+    guideSwitchTitle:"本机转云同步", guideSwitchSub:"已用一段时间，现在开同步", guideSwitchStep1:"设置 → 同步", guideSwitchStep2:"选「自托管同步服务器」", guideSwitchStep3:"填服务器地址和邮箱", guideSwitchStep4:"输入本机主密码，点「连接」", guideSwitchStep5:"自动注册账号，本机数据原样保留并上传",
+    guideSwitchNote:"<strong>注意</strong>：只有新注册账号时本机数据才会上传。如果账号已存在，云端数据会覆盖本地，本地数据丢失。",
+    guidePairTitle:"加新设备",
+    guidePairSub1:"设备二刚装好，还没用过", guidePairStep1:"设备一：设置 → 同步 → 关联设备", guidePairStep2:"设备一：弹出二维码和配对码", guidePairStep3:"设备二：打开 Skerry →「我有配对码」", guidePairStep4:"设备二：粘贴配对码（或扫码）", guidePairStep5:"设备二：设本设备新主密码 + 重复确认", guidePairStep6:"设备二：点「关联此设备」", guidePairStep7:"两台设备自动同步",
+    guidePairSub2:"设备二本机已有数据，切换到云同步", guidePair2Step1:"设备一：设置 → 同步 → 关联设备", guidePair2Step2:"设备一：弹出二维码和配对码", guidePair2Step3:"设备二：设置 → 同步 →「我有配对码」", guidePair2Step4:"设备二：粘贴配对码（或扫码）", guidePair2Step5:"设备二：输入本机现有主密码解锁", guidePair2Step6:"设备二：点「关联此设备」", guidePair2Step7:"设备二数据被云端覆盖，两台设备自动同步",
+    mobTitle:"一样的客户端 — 放进口袋", mobDesc:"不是精简版 — 完整 Skerry。",
+    mobPoints:["同一核心、同一终端、同一保险库","指纹解锁","所有主机，随时在手边"],
+    mobCta:"下载 .apk",
+    syncTitleA:"你的密钥 — 在所有设备上。", syncTitleB:"而且只在你自己的服务器上。",
+    syncSub:"Skerry 完全不需要服务器也能用。需要多设备同步时，运行你自己的同步服务器。",
+    syncCards:[
+      {t:"服务器对你的密钥一无所知",d:"只存储加密数据 — 只能在你的设备上解密。"},
+      {t:"密码不会离开设备",d:"服务器永远不会收到主密码 — 登录时也不会上传。"},
+      {t:"即时同步，完全控制",d:"改动立刻到达所有设备。一键撤销任意设备。"}
+    ],
+    ctaTitle:"Skerry 完全开源",
+    ctaSub1:"源代码 GPL-3.0 和 AGPL-3.0 协议。",
+    ctaSub2:"查看源码、自己构建、或加入开发。",
+    ctaSource:"查看源码",
+    creditBased:"基于", creditFork:"二次开发",
+    footerTag:"· 跨平台 SSH 客户端", footerReleases:"发布",
+    inviteLabel:"邀请码", inviteTitle:"公开邀请码",
+    inviteSub:"以下邀请码可直接用于注册同步账户，数量有限，先到先得。",
+    inviteRegClosed:"当前未开放注册。",
+    inviteNone:"暂无公开邀请码，请关注后续发放。",
+    inviteClickToCopy:"点击复制", inviteCopyBtn:"复制", inviteCopied:"已复制！"
+  },
+  en: {
+    pageTitle:"Skerry · Open-source Cross-platform SSH Client",
+    navFeatures:"Features", navSync:"Sync", navDownload:"Download",
+    badgeText:" · open-source",
+    heroTitleA:"The SSH client", heroTitleB:"— the way it should be",
+    heroSub1:"Terminal, SFTP, tunnels and an encrypted key vault.",
+    heroSub2:"A single Kotlin Multiplatform core — no compromises between Linux, Windows, macOS and Android.",
+    heroSub3:"Open source. No clouds, no accounts, no subscriptions.",
+    relNote:"",
+    featLabel:"Features", featTitle:"Everything you need for remote connections",
+    ftTerminal:{l:"Terminal",t:"Terminal · Tabbed sessions",d:"Built-in terminal emulator. SSH / Mosh / Serial / Telnet — all in one.",p:["Tabbed + split view — sessions side by side","Auto-reconnect — hands-free after network loss","Scrollback search — find anything in output history","Live host metrics — latency/uplink at a glance"]},
+    ftConnections:{l:"Connections",t:"Connections · Beyond SSH",d:"SFTP, port forwarding, jump hosts — one click away.",p:["SFTP dual-pane file manager — same secure connection","Local / remote / SOCKS port forwarding — visual setup","SSH ProxyJump + SSH certificates","Telnet + Serial — desktop & Android USB-OTG"]},
+    ftVault:{l:"Vault",t:"A vault nobody else can read",d:"Keys, passwords and certificates encrypted on-device. Argon2id + XChaCha20-Poly1305.",p:["Master password never sent to the server","Biometric unlock on Android","SSH certificates alongside keys"]},
+    ftTeams:{l:"Teams",t:"Teams · E2E encrypted sharing",d:"Share hosts and snippets with your team, encrypted end-to-end — invisible to the server.",p:["E2E encryption — decrypted only on member devices","Shared hosts + snippets — unified management","Team roles — control access permissions"]},
+    ftSnippet:{l:"Snippets",t:"Snippets · ${{dynamic vars}}",d:"Command library with terminal type-ahead. Supports ${{...}} placeholders resolved at runtime behind a confirmation dialog.",p:["${{date:format}} / ${{time:format}} — date & time, strftime syntax","${{timestamp}} — Unix seconds · ${{uuid}} — random UUID","${{random:N}} — N random chars · ${{clipboard}} — system clipboard","${{vault:label}} — password from vault (masked in preview)","${{param:name}} — prompted at runtime"]},
+    ftAi:{l:"AI",t:"AI, kept on a leash",d:"An in-terminal assistant that does nothing without your permission.",p:["Your own OpenAI key — or fully local models","Trust level configurable per host","Works offline (local models)","Assistant replies in your UI language"]},
+    ftMore:{l:"More",t:"More · the finishing touches",d:"Small things that save time every day.",p:["VNC remote desktop","Built-in SFTP file viewer/editor (F3/F4)","Session recording playback","Windows installer (.exe / .msi)"]},
+    extras:["VNC remote desktop","built-in SFTP file viewer/editor (F3/F4)","session recording playback","Windows installer (.exe / .msi)"],
+    snippetComments:["strftime format","24-hour","Unix seconds","UUID v4","N random chars","system clipboard","password by label (masked)","prompted at runtime"], snippetNote:"// confirmation dialog preview before sending — what you see is what gets sent",
+    connComments:["SSH, SFTP, tunnels, serial","with ProxyJump & SSH certificates","dual-pane SFTP right in the app","local forward","remote forward","SOCKS proxy"],
+    teamComments:["share hosts & snippets E2E encrypted","name it, invite members","visible to all members","run on shared hosts","per-team key rotation"],
+    guideLabel:"Get Started", guideTitle:"How it works",
+    guideFirstTitle:"First time using Skerry",
+    guideLocalTitle:"Offline local use", guideLocalStep1:"Open Skerry, set your master password", guideLocalStep2:"Choose \"Local encrypted storage\"", guideLocalStep3:"Start connecting to servers",
+    guideSyncTitle:"Cloud sync (online)", guideSyncStep1:"Set your master password", guideSyncStep2:"Choose \"Self-hosted sync server\"", guideSyncStep3:"Enter server URL and email", guideSyncStep4:"Enter master password, tap Connect", guideSyncStep5:"Account auto-registers, start using",
+    guideSwitchTitle:"Local to cloud sync", guideSwitchSub:"Been using it locally, now enabling sync", guideSwitchStep1:"Settings → Sync", guideSwitchStep2:"Choose \"Self-hosted sync server\"", guideSwitchStep3:"Enter server URL and email", guideSwitchStep4:"Enter your local master password, tap Connect", guideSwitchStep5:"Account auto-registers, local data is preserved and uploaded",
+    guideSwitchNote:"<strong>Note</strong>: Only when registering a new account will local data be uploaded. If the account already exists, cloud data will overwrite local data — local data is lost.",
+    guidePairTitle:"Add a new device",
+    guidePairSub1:"Device 2 fresh install, not used yet", guidePairStep1:"Device 1: Settings → Sync → Link a device", guidePairStep2:"Device 1: QR code & pairing code appear", guidePairStep3:"Device 2: Open Skerry → \"I have a pairing code\"", guidePairStep4:"Device 2: Paste code (or scan QR)", guidePairStep5:"Device 2: Set a new master password for this device + confirm", guidePairStep6:"Device 2: Tap \"Link this device\"", guidePairStep7:"Both devices now sync",
+    guidePairSub2:"Device 2 has local data, switching to cloud sync", guidePair2Step1:"Device 1: Settings → Sync → Link a device", guidePair2Step2:"Device 1: QR code & pairing code appear", guidePair2Step3:"Device 2: Settings → Sync → \"I have a pairing code\"", guidePair2Step4:"Device 2: Paste code (or scan QR)", guidePair2Step5:"Device 2: Enter your existing local master password to unlock", guidePair2Step6:"Device 2: Tap \"Link this device\"", guidePair2Step7:"Device 2 data is replaced by the cloud copy, both devices now sync",
+    mobTitle:"The same client — in your pocket", mobDesc:"Not a cut-down mobile build — the full Skerry.",
+    mobPoints:["The same core, the same terminal, the same vault","Unlock with your fingerprint","All your hosts, always at hand"],
+    mobCta:"Get the .apk",
+    syncTitleA:"Your keys — on every device.", syncTitleB:"And only on your server.",
+    syncSub:"Skerry works fully without any server. And when you need your keys on more than one device — run your own sync server.",
+    syncCards:[
+      {t:"The server knows nothing about your secrets",d:"It stores only encrypted data — it can be decrypted solely on your devices."},
+      {t:"Your password never leaves the device",d:"The server never receives the unlock password — not even at sign-in."},
+      {t:"Instant and under control",d:"Changes reach every device immediately. Revoke any device in one click."}
+    ],
+    ctaTitle:"Skerry is open source",
+    ctaSub1:"Source code under GPL-3.0 and AGPL-3.0.",
+    ctaSub2:"See how it all works, build it yourself, or join the development.",
+    ctaSource:"View source",
+    creditBased:"Based on", creditFork:"fork by onepve",
+    footerTag:"· cross-platform SSH client", footerReleases:"Releases",
+    inviteLabel:"Invite codes", inviteTitle:"Public invite codes",
+    inviteSub:"Use an invite code below to register a sync account — first come, first served.",
+    inviteRegClosed:"Registration is currently closed.",
+    inviteNone:"No public invite codes available at this time.",
+    inviteClickToCopy:"Click to copy", inviteCopyBtn:"Copy", inviteCopied:"Copied!"
+  },
+  ru: {
+    pageTitle:"Skerry · Кроссплатформенный SSH-клиент",
+    navFeatures:"Возможности", navSync:"Синхронизация", navDownload:"Скачать",
+    badgeText:" · open-source",
+    heroTitleA:"SSH-клиент", heroTitleB:"— каким он должен быть",
+    heroSub1:"Терминал, SFTP, туннели и зашифрованное хранилище ключей.",
+    heroSub2:"Единое ядро на Kotlin Multiplatform — без компромиссов между Linux, Windows, macOS и Android.",
+    heroSub3:"Открытый исходный код. Никаких облаков, аккаунтов и подписок.",
+    relNote:"",
+    featLabel:"Возможности", featTitle:"Всё, что нужно для удалённого подключения",
+    ftTerminal:{l:"Терминал",t:"Терминал · Вкладки",d:"Встроенный эмулятор терминала. SSH / Mosh / Serial / Telnet — всё в одном.",p:["Вкладки + Split view — сессии бок о бок","Автоподключение — без рук после обрыва связи","Поиск по истории — в выводе терминала","Метрики хоста — задержка/канал наглядно"]},
+    ftConnections:{l:"Подключения",t:"Подключения · Не только SSH",d:"SFTP, проброс портов, jump-хосты — в один клик.",p:["SFTP — двухпанельный файловый менеджер","Локальный / удалённый / SOCKS проброс — наглядная настройка","SSH ProxyJump + SSH сертификаты","Telnet + Serial — настольный и Android USB-OTG"]},
+    ftVault:{l:"Хранилище",t:"Хранилище, которое никто не прочитает",d:"Ключи, пароли и сертификаты зашифрованы. Argon2id + XChaCha20-Poly1305.",p:["Мастер-пароль не отправляется на сервер","Биометрическая разблокировка на Android","SSH-сертификаты наравне с ключами"]},
+    ftTeams:{l:"Команды",t:"Команды · Сквозное шифрование",d:"Делитесь хостами и фрагментами с коллегами — сервер не видит содержимого.",p:["E2E шифрование — расшифровка только на устройствах участников","Общие хосты + фрагменты — единое управление","Роли команды — контроль доступа"]},
+    ftSnippet:{l:"Фрагменты",t:"Фрагменты · ${{переменные}}",d:"Библиотека команд с автодополнением. Поддержка ${{...}} с заменой при выполнении и диалогом подтверждения.",p:["${{date:format}} / ${{time:format}} — дата и время, синтаксис strftime","${{timestamp}} — Unix-секунды · ${{uuid}} — случайный UUID","${{random:N}} — N случайных символов · ${{clipboard}} — буфер обмена","${{vault:метка}} — пароль из хранилища (в предпросмотре скрыт)","${{param:имя}} — запрос при выполнении"]},
+    ftAi:{l:"AI",t:"AI, который под контролем",d:"Ассистент в терминале — ничего не делает без вашего разрешения.",p:["Свой ключ OpenAI — или полностью локальные модели","Уровень доверия настраивается для каждого хоста","Работает офлайн (локальные модели)","Ассистент отвечает на языке интерфейса"]},
+    ftMore:{l:"Прочее",t:"Прочее · последние штрихи",d:"Мелочи, которые каждый день экономят время.",p:["VNC удалённый рабочий стол","Встроенный просмотр/редактор файлов SFTP (F3/F4)","Воспроизведение записей сессий","Установщик Windows (.exe / .msi)"]},
+    extras:["VNC удалённый рабочий стол","встроенный просмотр/редактор файлов SFTP (F3/F4)","воспроизведение записей сессий","установщик Windows (.exe / .msi)"],
+    snippetComments:["формат strftime","24 часа","Unix-сек","UUID v4","N случ. симв.","буфер обмена","пароль по метке (скрыт)","запрос при выполнении"], snippetNote:"// диалог подтверждения перед отправкой — что видите, то и отправляется",
+    connComments:["SSH, SFTP, туннели, serial","с ProxyJump и SSH-сертификатами","двухпанельный SFTP в приложении","локальный проброс","удалённый проброс","SOCKS-прокси"],
+    teamComments:["делитесь хостами и фрагментами (E2E)","назовите, пригласите участников","видно всем участникам","запуск на общих хостах","ротация ключей команды"],
+    guideLabel:"Начало работы", guideTitle:"Как использовать",
+    guideFirstTitle:"Первое использование",
+    guideLocalTitle:"Локально (офлайн)", guideLocalStep1:"Откройте Skerry, задайте мастер-пароль", guideLocalStep2:"Выберите «Локальное хранилище»", guideLocalStep3:"Начинайте подключаться",
+    guideSyncTitle:"Облачная синхронизация (онлайн)", guideSyncStep1:"Задайте мастер-пароль", guideSyncStep2:"Выберите «Свой сервер синхронизации»", guideSyncStep3:"Введите адрес сервера и email", guideSyncStep4:"Введите мастер-пароль, нажмите «Подключить»", guideSyncStep5:"Аккаунт регистрируется автоматически, начинайте использовать",
+    guideSwitchTitle:"Переход с локального на облачную синхронизацию", guideSwitchSub:"Уже использовали локально, теперь включаем синхронизацию", guideSwitchStep1:"Настройки → Синхронизация", guideSwitchStep2:"Выберите «Свой сервер синхронизации»", guideSwitchStep3:"Введите адрес сервера и email", guideSwitchStep4:"Введите локальный мастер-пароль, нажмите «Подключить»", guideSwitchStep5:"Аккаунт регистрируется автоматически, локальные данные сохраняются и загружаются",
+    guideSwitchNote:"<strong>Внимание</strong>: Локальные данные загружаются только при регистрации нового аккаунта. Если аккаунт уже существует, облачные данные перезапишут локальные — локальные данные будут потеряны.",
+    guidePairTitle:"Добавить новое устройство",
+    guidePairSub1:"Устройство 2 — свежая установка, ещё не использовалось", guidePairStep1:"Устройство 1: Настройки → Синхронизация → Привязать", guidePairStep2:"Устройство 1: QR-код и код сопряжения", guidePairStep3:"Устройство 2: Откройте Skerry → «У меня есть код»", guidePairStep4:"Устройство 2: Вставьте код (или отсканируйте QR)", guidePairStep5:"Устройство 2: Задайте новый мастер-пароль для этого устройства + подтвердите", guidePairStep6:"Устройство 2: Нажмите «Привязать это устройство»", guidePairStep7:"Устройства синхронизированы",
+    guidePairSub2:"Устройство 2 имеет локальные данные, переключаемся на облачную синхронизацию", guidePair2Step1:"Устройство 1: Настройки → Синхронизация → Привязать", guidePair2Step2:"Устройство 1: QR-код и код сопряжения", guidePair2Step3:"Устройство 2: Настройки → Синхронизация → «У меня есть код»", guidePair2Step4:"Устройство 2: Вставьте код (или отсканируйте QR)", guidePair2Step5:"Устройство 2: Введите текущий локальный мастер-пароль для разблокировки", guidePair2Step6:"Устройство 2: Нажмите «Привязать это устройство»", guidePair2Step7:"Данные устройства 2 заменяются облачной копией, устройства синхронизированы",
+    mobTitle:"Тот же клиент — в кармане", mobDesc:"Не урезанная мобильная версия — полноценный Skerry.",
+    mobPoints:["То же ядро, тот же терминал, то же хранилище","Разблокировка по отпечатку пальца","Все ваши хосты — всегда под рукой"],
+    mobCta:"Скачать .apk",
+    syncTitleA:"Ваши ключи — на всех устройствах.", syncTitleB:"И только на вашем сервере.",
+    syncSub:"Skerry полностью работает без сервера. А когда ключи нужны на нескольких устройствах — поднимите свой сервер синхронизации.",
+    syncCards:[
+      {t:"Сервер ничего не знает о ваших секретах",d:"Он хранит только зашифрованные данные — расшифровать их можно лишь на ваших устройствах."},
+      {t:"Пароль не покидает устройство",d:"Сервер никогда не получает пароль — даже при входе."},
+      {t:"Мгновенно и под контролем",d:"Изменения сразу на всех устройствах. Любое устройство можно отключить в один клик."}
+    ],
+    ctaTitle:"Skerry — открытый проект",
+    ctaSub1:"Исходный код под GPL-3.0 и AGPL-3.0.",
+    ctaSub2:"Посмотрите, как всё устроено, соберите сами или присоединяйтесь к разработке.",
+    ctaSource:"Исходный код",
+    creditBased:"На основе", creditFork:"форк onepve",
+    footerTag:"· кроссплатформенный SSH-клиент", footerReleases:"Релизы",
+    inviteLabel:"Коды", inviteTitle:"Публичные коды",
+    inviteSub:"Используйте код ниже для регистрации — количество ограничено.",
+    inviteRegClosed:"Регистрация в данный момент закрыта.",
+    inviteNone:"Публичных пригласительных кодов пока нет.",
+    inviteClickToCopy:"Нажмите, чтобы скопировать", inviteCopyBtn:"Копировать", inviteCopied:"Скопировано!"
+  }
+};
+
+// === Download links (static — no GitHub API dep) ===
+const BASE = 'https://dl.onepve.com/Skerry/latest/';
+const PLATFORMS = [
+  { name:'Android', links:[
+    {l:'.apk', u:BASE+'Skerry-android.apk'}
+  ]},
+  { name:'Windows', links:[
+    {l:'.exe 安装器 · x64', u:BASE+'Skerry-windows-x64.exe'},
+    {l:'.msi 安装器 · x64', u:BASE+'Skerry-windows-x64.msi'},
+    {l:'.zip 便携版 · x64', u:BASE+'Skerry-portable-x64.zip'}
+  ]},
+  { name:'Linux', links:[
+    {l:'.deb · x86_64', u:BASE+'Skerry-linux-amd64.deb'},
+    {l:'.deb · arm64', u:BASE+'Skerry-linux-arm64.deb'},
+    {l:'.rpm · x86_64', u:BASE+'Skerry-linux-x86_64.rpm'},
+    {l:'.rpm · arm64', u:BASE+'Skerry-linux-aarch64.rpm'},
+    {l:'.AppImage · x86_64', u:BASE+'Skerry-linux-x86_64.AppImage'},
+    {l:'.AppImage · arm64', u:BASE+'Skerry-linux-aarch64.AppImage'},
+    {l:'.flatpak', u:BASE+'Skerry-linux.flatpak'}
+  ]},
+  { name:'信创', links:[
+    {l:'.deb · 麒麟/统信/南瑞', u:BASE+'Skerry-xinchuang-amd64.deb'},
+    {l:'.deb · 麒麟/统信/南瑞 ARM64', u:BASE+'Skerry-xinchuang-arm64.deb'},
+    {l:'.zip 免安装 · x86_64', u:BASE+'skerry-xinchuang-amd64-portable.zip'},
+    {l:'.zip 免安装 · ARM64', u:BASE+'skerry-xinchuang-arm64-portable.zip'}
+  ]},
+  { name:'macOS', links:[
+    {l:'.dmg · Apple Silicon', u:BASE+'Skerry-macos-arm64.dmg'},
+    {l:'.dmg · Intel x64', u:BASE+'Skerry-macos-x64.dmg'}
+  ]}
+];
+
+// === Feature data ===
+function getFeats(lang){
+  const t = L[lang];
+  const keys = ['ftTerminal','ftConnections','ftVault','ftTeams','ftSnippet','ftAi','ftMore'];
+  return keys.map(k => t[k]);
+}
+
+// === SVG icons ===
+const PF_ICONS = {
+  Linux: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#6fd4f4" stroke-width="1.6" stroke-linecap="round"><path d="M12 3c-2.6 0-4 2-4 4.5 0 1.8-.6 3-1.6 4.4C5.2 13.6 4.5 15.2 4.5 17c0 .9.4 1.6 1.1 1.9 1 .5 2.2-.1 3.1.4.9.5 2 .7 3.3.7s2.4-.2 3.3-.7c.9-.5 2.1.1 3.1-.4.7-.3 1.1-1 1.1-1.9 0-1.8-.7-3.4-1.9-5.1-1-1.4-1.6-2.6-1.6-4.4C16 5 14.6 3 12 3Z"/><circle cx="10" cy="8.6" r="0.5" fill="#6fd4f4"/><circle cx="14" cy="8.6" r="0.5" fill="#6fd4f4"/><path d="M10.8 11h2.4l-1.2 1.4Z"/></svg>',
+  Windows: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#6fd4f4" stroke-width="1.6" stroke-linecap="round"><path d="M4 6.5 11 5.4v6.1H4V6.5Z"/><path d="M13 5.1 20 4v7.5h-7V5.1Z"/><path d="M4 13.5h7v6.1l-7-1.1v-5Z"/><path d="M13 13.5h7V21l-7-1.1v-6.4Z"/></svg>',
+  macOS: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#6fd4f4" stroke-width="1.6" stroke-linecap="round"><path d="M15.6 8.4c-1.6 0-2.4 1-3.4 1s-1.7-1-3.3-1C6.8 8.4 5 10.2 5 13c0 3.1 2.2 6.8 3.9 6.8.9 0 1.5-.6 2.8-.6s1.9.6 2.9.6c1.7 0 3.4-3.2 3.9-5.2-1.5-.6-2.4-2-2.4-3.5 0-1.2.6-2.3 1.5-2.9-.6-.5-1.4-.8-2-.8Z"/><path d="M12.2 8c0-1.9 1.4-3.4 3-3.6.1 1.9-1.5 3.6-3 3.6Z"/></svg>',
+  Android: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#6fd4f4" stroke-width="1.6" stroke-linecap="round"><path d="M5 16.2c0-3.9 3.1-7 7-7s7 3.1 7 7H5Z"/><path d="M8 6.5 9.4 9M16 6.5 14.6 9"/><circle cx="9.5" cy="13.5" r="0.5" fill="#6fd4f4"/><circle cx="14.5" cy="13.5" r="0.5" fill="#6fd4f4"/></svg>',
+  '信创': '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#6fd4f4" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.4-3 8.4-7 10-4-1.6-7-5.6-7-10V6l7-3Z"/><path d="M9 12l2 2 4-4"/></svg>'
+};
+
+const MOB_ICONS = [
+  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6fd4f4" stroke-width="1.7" stroke-linecap="round"><path d="M4 17l6-5-6-5"/><path d="M12 19h8"/></svg>',
+  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6fd4f4" stroke-width="1.7" stroke-linecap="round"><path d="M12 11a4 4 0 0 0-4 4v3"/><path d="M12 11a4 4 0 0 1 4 4v1.5"/><path d="M12 14.5V20"/><path d="M5.5 8.5A8 8 0 0 1 18.5 8.5"/></svg>',
+  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6fd4f4" stroke-width="1.7" stroke-linecap="round"><rect x="4" y="5" width="12" height="14" rx="2"/><path d="M20 9v6"/><path d="M10 16h.01"/></svg>'
+];
+
+const SYNC_ICONS = [
+  '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6fd4f4" stroke-width="1.7" stroke-linecap="round"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15" r="1.2" fill="#6fd4f4"/></svg>',
+  '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6fd4f4" stroke-width="1.7" stroke-linecap="round"><circle cx="8.5" cy="9.5" r="3.5"/><path d="M11 12l7 7"/><path d="M15 16l2-2M18 19l2-2"/></svg>',
+  '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6fd4f4" stroke-width="1.7" stroke-linecap="round"><path d="M4 12a8 8 0 0 1 13.6-5.7L20 8.5"/><path d="M20 12a8 8 0 0 1-13.6 5.7L4 15.5"/><path d="M20 4v4.5h-4.5M4 20v-4.5h4.5"/></svg>'
+];
+
+// === App state ===
+let openPf = null;
+let activeFeat = 0;
+let curLang = 'zh';
+
+// === RENDER ===
+function renderAll(){
+  applyL10N();
+  renderPlatforms();
+  renderFeats();
+  renderMobPoints();
+  renderSyncCards();
+}
+
+// Re-render only i18n text (for language switch)
+function renderI18nOnly(){
+  applyL10N();
+  renderMobPoints();
+  renderSyncCards();
+  loadInviteCodes();
+}
+
+function t(k){
+  if(typeof k === 'string') return L[curLang][k] || k;
+  return k;
+}
+
+function applyL10N(){
+  document.querySelectorAll('[data-l10n]').forEach(el => {
+    const key = el.getAttribute('data-l10n');
+    const val = L[curLang][key];
+    if(val && typeof val === 'string'){
+      if(val.indexOf('<') !== -1){ el.innerHTML = val; } else { el.textContent = val; }
+    }
+  });
+  document.title = L[curLang].pageTitle;
+}
+
+function renderPlatforms(){
+  const grid = document.getElementById('pfGrid');
+  let html = '';
+  PLATFORMS.forEach((pf,i) => {
+    const isOpen = openPf === i;
+    let linksHtml = '';
+    pf.links.forEach(lk => {
+      linksHtml += `<a class="pf-dl" href="${lk.u}" target="_blank" rel="noopener noreferrer">${lk.l}</a>`;
+    });
+    html += `<div class="pf-card">
+      <button class="pf-card-header" onclick="togglePf(${i})">
+        <span>${PF_ICONS[pf.name] || ''}<span class="pf-name">${pf.name}</span></span>
+        <span class="pf-chev${isOpen?' open':''}">▾</span>
+      </button>
+      <div class="pf-links${isOpen?' open':''}">${linksHtml}</div>
+    </div>`;
+  });
+  grid.innerHTML = html;
+}
+
+function togglePf(i){
+  const cards = document.querySelectorAll('.pf-card');
+  cards.forEach((card, idx) => {
+    const links = card.querySelector('.pf-links');
+    const chev = card.querySelector('.pf-chev');
+    if(!links || !chev) return;
+    if(idx === i){
+      const isOpen = links.classList.contains('open');
+      links.classList.toggle('open', !isOpen);
+      chev.classList.toggle('open', !isOpen);
+      openPf = isOpen ? null : i;
+    } else {
+      links.classList.remove('open');
+      chev.classList.remove('open');
+    }
+  });
+}
+
+function renderFeats(){
+  const feats = getFeats(curLang);
+  // Desktop tabs
+  let tabsHtml = '';
+  feats.forEach((f,i) => {
+    tabsHtml += `<button class="feat-tab-btn${i===activeFeat?' active':''}" onclick="setFeat(${i})">${f.l}</button>`;
+  });
+  document.getElementById('featTabsDesktop').innerHTML = tabsHtml;
+
+  // Rows
+  let rowsHtml = '';
+  feats.forEach((f,i) => {
+    const active = i === activeFeat;
+    const featText = `<div class="feat-text"><span class="sec-label">${f.l}</span><h3>${f.t}</h3><p>${f.d}</p><div class="feat-points">${f.p.map(p => `<div class="feat-point"><span></span><span>${p}</span></div>`).join('')}</div></div>`;
+    // i=0:Terminal, i=1:Connections, i=2:Vault, i=3:Teams, i=4:Snippet, i=5:AI, i=6:More
+    if (i === 4) {
+      // Snippet card — show variable syntax in a terminal window
+      const sc = L[curLang].snippetComments;
+      const snippetVars = [
+        `date:  <span style="color:#34d3c0">\${{date:YYYY-MM-DD}}</span>  <span style="color:#5e7482">// ${sc[0]}</span>`,
+        `time:  <span style="color:#34d3c0">\${{time:HH:mm:ss}}</span>  <span style="color:#5e7482">// ${sc[1]}</span>`,
+        `ts:    <span style="color:#34d3c0">\${{timestamp}}</span>  <span style="color:#5e7482">// ${sc[2]}</span>`,
+        `uuid:  <span style="color:#34d3c0">\${{uuid}}</span>  <span style="color:#5e7482">// ${sc[3]}</span>`,
+        `rnd:   <span style="color:#34d3c0">\${{random:16}}</span>  <span style="color:#5e7482">// ${sc[4]}</span>`,
+        `clip:  <span style="color:#34d3c0">\${{clipboard}}</span>  <span style="color:#5e7482">// ${sc[5]}</span>`,
+        `vault: <span style="color:#34d3c0">\${{vault:MySecret}}</span>  <span style="color:#5e7482">// ${sc[6]}</span>`,
+        `param: <span style="color:#34d3c0">\${{param:username}}</span>  <span style="color:#5e7482">// ${sc[7]}</span>`
+      ];
+      const snippetLis = snippetVars.map(v => `<div style="color:#a8bac4;display:flex;gap:10px;line-height:1.9"><span style="color:#2bbdee;font-family:'JetBrains Mono',monospace;font-size:12px">▸</span><code style="font-family:'JetBrains Mono',monospace;font-size:12.5px">${v}</code></div>`).join('');
+      const snippetNote = L[curLang].snippetNote || '// 含变量的片段发送前弹出确认窗口 — 所见即所发';
+      rowsHtml += `<div class="feat-row${active?' active':''}">${featText}
+        <div class="feat-shot-wrap"><div class="bg-glow"></div><div class="feat-shot extra"><div class="fake-titlebar"><span></span><span></span><span></span><code>snippet — template</code></div><div class="fake-term">${snippetLis}<div style="color:var(--dim);margin-top:10px;font-size:11.5px;border-top:1px solid var(--border1);padding-top:10px">${snippetNote}</div></div></div></div></div>`;
+    } else if (i === 1 || i === 3) {
+      // Connections & Teams — code card
+      const cmts = i === 1 ? L[curLang].connComments : L[curLang].teamComments;
+      const prefixes = i === 1
+        ? ['<span style="color:#5e7482"># </span>', '<span style="color:#34d3c0">ssh</span> user@host <span style="color:#5e7482">— </span>', '<span style="color:#34d3c0">sftp</span> host <span style="color:#5e7482">— </span>', '<span style="color:#34d3c0">-L 8080:localhost:80</span> <span style="color:#5e7482">— </span>', '<span style="color:#34d3c0">-R 3000:localhost:3000</span> <span style="color:#5e7482">— </span>', '<span style="color:#34d3c0">-D 1080</span> <span style="color:#5e7482">— </span>']
+        : ['<span style="color:#5e7482"># </span>', '<span style="color:#34d3c0">create team</span> <span style="color:#5e7482">— </span>', '<span style="color:#34d3c0">share host</span> <span style="color:#5e7482">— </span>', '<span style="color:#34d3c0">share snippet</span> <span style="color:#5e7482">— </span>', '<span style="color:#34d3c0">rotate keys</span> <span style="color:#5e7482">— </span>'];
+      const codeLines = cmts.map((c,j) => prefixes[j] + c);
+      const codeLis = codeLines.map(v => `<div style="color:#a8bac4;display:flex;gap:10px;line-height:1.85"><span style="color:#2bbdee;font-family:'JetBrains Mono',monospace;font-size:11px">$</span><code style="font-family:'JetBrains Mono',monospace;font-size:13px">${v}</code></div>`).join('');
+      rowsHtml += `<div class="feat-row${active?' active':''}">${featText}
+        <div class="feat-shot-wrap"><div class="bg-glow"></div><div class="feat-shot extra"><div class="fake-titlebar"><span></span><span></span><span></span><code>skerry</code></div><div class="fake-term">${codeLis}<div class="prompt">$ <span class="cursor"></span></div></div></div></div></div>`;
+    } else {
+      // Screenshot cards
+      const srcMap = {0:'screenshots/feature-terminal.png',2:'screenshots/feature-vault.png',5:'screenshots/feature-ai.png',6:'screenshots/feature-sftp.png'};
+      const src = srcMap[i] || 'screenshots/feature-terminal.png';
+      rowsHtml += `<div class="feat-row${active?' active':''}">
+        <div class="feat-text"><span class="sec-label">${f.l}</span><h3>${f.t}</h3><p>${f.d}</p><div class="feat-points">${f.p.map(p => `<div class="feat-point"><span></span><span>${p}</span></div>`).join('')}</div></div>
+        <div class="feat-shot-wrap"><div class="bg-glow"></div><div class="feat-shot"><img src="${src}" alt="${f.l}" loading="lazy"></div></div>
+      </div>`;
+    }
+  });
+  document.getElementById('featRows').innerHTML = rowsHtml;
+
+  // Mobile tabs
+  let mobHtml = '';
+  feats.forEach((f,i) => {
+    mobHtml += `<button class="${i===activeFeat?'active':''}" onclick="setFeat(${i})">${f.l}</button>`;
+  });
+  document.getElementById('featTabsMobile').innerHTML = mobHtml;
+}
+
+function setFeat(i){
+  if(i === activeFeat) return;
+  activeFeat = i;
+  renderFeats();
+}
+
+function renderMobPoints(){
+  const points = L[curLang].mobPoints;
+  let html = '';
+  points.forEach((p,i) => {
+    html += `<div class="mob-point">${MOB_ICONS[i]||MOB_ICONS[0]}<span>${p}</span></div>`;
+  });
+  document.getElementById('mobPoints').innerHTML = html;
+}
+
+function renderSyncCards(){
+  const cards = L[curLang].syncCards;
+  let html = '';
+  cards.forEach((c,i) => {
+    html += `<div class="sync-card"><div class="sc-icon">${SYNC_ICONS[i]||SYNC_ICONS[0]}</div><h3>${c.t}</h3><p>${c.d}</p></div>`;
+  });
+  document.getElementById('syncCards').innerHTML = html;
+}
+
+// === Lang switcher (dropdown) ===
+document.getElementById('langBtn').addEventListener('click', function(e){
+  e.stopPropagation();
+  const menu = document.getElementById('langMenu');
+  const btn = document.getElementById('langBtn');
+  menu.classList.toggle('open');
+  btn.classList.toggle('open');
+});
+document.addEventListener('click', function(){
+  document.getElementById('langMenu').classList.remove('open');
+  document.getElementById('langBtn').classList.remove('open');
+});
+document.getElementById('langMenu').addEventListener('click', function(e){
+  if(e.target.classList.contains('lang-item')){
+    curLang = e.target.getAttribute('data-lang');
+    renderI18nOnly();  // only re-render text, not platforms/features
+    loadVersion();
+    updateLangUI();
+    try{ localStorage.setItem('skerry-lang', curLang); }catch(e){}
+  }
+});
+function updateLangUI(){
+  const names = {zh:'中文',en:'English',ru:'Русский'};
+  document.getElementById('langCur').textContent = names[curLang] || curLang;
+  document.querySelectorAll('.lang-item').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-lang') === curLang);
+  });
+}
+
+// === Init ===
+// Auto-detect browser language
+try{
+  const saved = localStorage.getItem('skerry-lang');
+  if(saved && (saved==='zh'||saved==='en'||saved==='ru')){
+    curLang = saved;
+  } else {
+    const bl = navigator.language || '';
+    if(bl.startsWith('zh')) curLang = 'zh';
+    else if(bl.startsWith('ru')) curLang = 'ru';
+    else curLang = 'en';
+  }
+}catch(e){}
+updateLangUI();
+
+// === Invite codes ===
+function maskCode(code){
+  const idx = code.indexOf('-');
+  if(idx < 0) return code.substring(0,3) + '-*****';
+  return code.substring(0, idx+1) + '*****';
+}
+function renderInviteCodes(codes){
+  var grid = document.getElementById('invite-grid');
+  var sec = document.getElementById('invite-codes');
+  if(!codes || !codes.length){ sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  grid.innerHTML = codes.map(function(c){
+    var masked = maskCode(c.code);
+    return '<div class="invite-card" onclick="copyInviteCode(this,\'' + c.code + '\')" title="' + t('inviteClickToCopy') + '">'
+      + '<div class="ic-code">' + masked + '</div>'
+      + '<div class="ic-copy">' + t('inviteCopyBtn') + '</div>'
+      + '</div>';
+  }).join('');
+}
+function copyInviteCode(el, code){
+  navigator.clipboard.writeText(code).then(function(){
+    var lbl = el.querySelector('.ic-copy');
+    if(lbl){ lbl.textContent = t('inviteCopied'); lbl.classList.add('ic-copied'); }
+    setTimeout(function(){
+      if(lbl){ lbl.textContent = t('inviteCopyBtn'); lbl.classList.remove('ic-copied'); }
+    }, 2000);
+  });
+}
+function loadInviteCodes(){
+  var sec = document.getElementById('invite-codes');
+  var grid = document.getElementById('invite-grid');
+  var msg = document.getElementById('invite-msg');
+  fetch('/invite-codes/public')
+    .then(function(r){ if(!r.ok) return null; return r.json(); })
+    .then(function(j){
+      if(!j || !j.registrationOpen){
+        sec.style.display = '';
+        msg.style.display = '';
+        msg.textContent = t('inviteRegClosed') || '当前未开放注册';
+        grid.innerHTML = '';
+        return;
+      }
+      if(!j.codes || !j.codes.length){
+        sec.style.display = '';
+        msg.style.display = '';
+        msg.textContent = t('inviteNone') || '暂无公开邀请码';
+        grid.innerHTML = '';
+        return;
+      }
+      sec.style.display = '';
+      msg.style.display = 'none';
+      renderInviteCodes(j.codes);
+    })
+    .catch(function(){});
+}
+loadInviteCodes();
+function loadVersion(){
+  var badge = document.getElementById('heroBadge');
+  if(!badge) return;
+  fetch('https://dl.onepve.com/Skerry/latest/version.json?t=' + Date.now())
+    .then(function(r){ if(!r.ok) return null; return r.json(); })
+    .then(function(j){
+      if(!j || !j.version) return;
+      badge.textContent = 'v' + j.version + L[curLang].badgeText;
+    })
+    .catch(function(){});
+}
+loadVersion();
+
+renderAll();
+</script>
+</body>
+</html>

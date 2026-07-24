@@ -33,9 +33,13 @@ import com.ionspin.kotlin.crypto.util.LibsodiumRandom
  */
 suspend fun initializeVaultCrypto() {
     if (!LibsodiumInitializer.isInitialized()) {
+        preloadNativeLibIfNeeded()
         LibsodiumInitializer.initialize()
     }
 }
+
+/** Desktop actual pre-loads the bundled .so (non-ASCII path workaround); other targets are no-ops. */
+internal expect fun preloadNativeLibIfNeeded()
 
 /**
  * Single [VaultCrypto] implementation on ionspin multiplatform-crypto-libsodium-bindings — same

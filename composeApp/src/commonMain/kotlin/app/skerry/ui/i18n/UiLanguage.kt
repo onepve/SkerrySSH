@@ -11,14 +11,14 @@ enum class UiLanguage(val id: String, val localeTag: String?, val displayName: S
     /** Follows the system language (default). */
     System("system", null, "System"),
 
-    /** English — source language for strings and the general fallback. */
-    English("en", "en", "English"),
+    /** Simplified Chinese. */
+    Chinese("zh", "zh", "简体中文"),
 
     /** Russian. */
     Russian("ru", "ru", "Русский"),
 
-    /** Simplified Chinese. */
-    Chinese("zh", "zh", "简体中文");
+    /** English — source language for strings and the general fallback. */
+    English("en", "en", "English");
 
     companion object {
         val DEFAULT = System

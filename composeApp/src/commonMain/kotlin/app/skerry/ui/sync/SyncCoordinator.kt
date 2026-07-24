@@ -100,6 +100,9 @@ sealed interface SyncStatus {
      */
     data class NeedsPasswordReplaceConfirm(val serverUrl: String, val accountId: String) : SyncStatus
 
+    /** Server requires an invitation code to complete setup. */
+    data class NeedsInviteCode(val error: Failed? = null) : SyncStatus
+
     /**
      * Failure: [reason] is a typed cause (localized in the UI layer), [detail] an optional technical
      * detail (exception message) for cases where it aids diagnosis; the UI appends it after the
@@ -153,6 +156,7 @@ enum class SyncFailureReason {
     SaveSettingsFailed,    // sync settings didn't save (detail: cause)
     SyncFailed,            // sync cycle failure (detail: cause)
     RevokeFailed,          // device revoke failed (detail: cause)
+    Forbidden,             // server rejected request (e.g. no invitation code)
 }
 
 /**
@@ -412,7 +416,7 @@ class SyncCoordinator(
      * Register makes the local dataKey the account key; logging into an existing account instead adopts
      * the account key (see [doConnect]).
      */
-    fun connect(serverUrl: String, accountId: String, masterPassword: CharArray, keepConnected: Boolean = false) {
+    fun connect(serverUrl: String, accountId: String, masterPassword: CharArray, keepConnected: Boolean = false, inviteCode: String? = null) {
         // Guard against a double launch: a repeat click while the previous connect/claim is in flight
         // would spawn a second Ktor client (pool/socket leak) and a status race. Calls come from UI
         // handlers on the main thread, so check-then-set without CAS is enough (like panel busy flags).
@@ -420,6 +424,9 @@ class SyncCoordinator(
             masterPassword.fill(' ')
             return
         }
+        // Consume any stored invite code (from retryWithInviteCode) so it's only used once.
+        val effectiveInviteCode = inviteCode ?: pendingInviteCode
+        pendingInviteCode = null
         // Set Busy synchronously, before launch: the onboarding form disables "Skip" on Busy. If we set
         // Busy only in doConnect's first line, a dispatch window would remain where the status is still
         // Disabled and Skip is active: proceeding to biometric enroll, the user would wrap it under a key
@@ -433,11 +440,11 @@ class SyncCoordinator(
         // wiped in its finally.
         val owned = masterPassword.copyOf()
         masterPassword.fill(' ')
-        scope.launch { opMutex.withLock { doConnect(serverUrl, accountId, owned, keepConnected) } }
+        scope.launch { opMutex.withLock { doConnect(serverUrl, accountId, owned, keepConnected, effectiveInviteCode) } }
     }
 
     // Under [opMutex] (see connect): session activation must not race with disconnect.
-    private suspend fun doConnect(serverUrl: String, accountId: String, masterPassword: CharArray, keepConnected: Boolean, allowPasswordReplace: Boolean = false) {
+    private suspend fun doConnect(serverUrl: String, accountId: String, masterPassword: CharArray, keepConnected: Boolean, inviteCode: String? = null, allowPasswordReplace: Boolean = false) {
         _status.value = SyncStatus.Busy
         val dataKey = vault.exportDataKey()
         if (dataKey == null) {
@@ -449,6 +456,10 @@ class SyncCoordinator(
         // Argon2id output, authKey is SRP material; no reason to hold them in heap until GC).
         var masterKey: MasterKey? = null
         var authKey: ByteArray? = null
+        // Bug 2 fix: track the locally-created client so we can close it on failure paths.
+        // activateSession assigns it to the member [client]; before that, a throw (e.g. 403 on
+        // register) would leak the Ktor pool/sockets/dispatcher for the process lifetime.
+        var openedClient: SyncClient? = null
         try {
             // Argon2id inside try: heavy and may throw (up to OutOfMemoryError) — otherwise the password
             // wouldn't be wiped (finally) and the status would be stuck on Busy forever.
@@ -456,7 +467,7 @@ class SyncCoordinator(
             val ak = crypto.deriveAuthKey(mk).also { authKey = it }
             val deviceId = configStore.load()?.takeIf { it.accountId == accountId }?.deviceId ?: deviceIdProvider()
             val device = DeviceInfo(deviceId, deviceName, platformName)
-            val syncClient = clientFactory(serverUrl)
+            val syncClient = clientFactory(serverUrl).also { openedClient = it }
 
             // The account (remote) password is the single source of truth: every device shares one
             // account dataKey wrapped under it, so a synced device MUST unlock with the account password.
@@ -474,7 +485,7 @@ class SyncCoordinator(
                 // dataKey), or on CONFLICT log into our existing account and adopt its key. Adopting here
                 // never changes the unlock password (same password, at most a new dataKey → full re-pull).
                 try {
-                    syncClient.register(accountId, ak, crypto.wrapDataKey(mk, dataKey), device)
+                    syncClient.register(accountId, ak, crypto.wrapDataKey(mk, dataKey), device, inviteCode)
                 } catch (e: SyncException) {
                     if (e.kind != SyncException.Kind.CONFLICT) throw e
                     val s = syncClient.login(accountId, ak, device)
@@ -565,12 +576,27 @@ class SyncCoordinator(
         } catch (e: CancellationException) {
             throw e // don't swallow cancellation — it would break structured concurrency
         } catch (e: SyncException) {
-            _status.value = syncFailure(e)
+            if (e.kind == SyncException.Kind.FORBIDDEN) {
+                // Bug 1 fix: always surface NeedsInviteCode on 403, even when a code was already
+                // supplied. The overlay stays open so the user sees the server error (e.g. "invalid
+                // or expired invitation code") and can retry — previously a wrong code dropped to
+                // Failed, closing the overlay and losing the retry path.
+                _status.value = SyncStatus.NeedsInviteCode(SyncStatus.Failed(SyncFailureReason.Forbidden, e.message))
+            } else {
+                runCatching { client?.close() }
+                _status.value = syncFailure(e)
+            }
         } catch (e: Exception) {
             // Unexpected (e.g. vault.unlockWithDataKey threw I/O while adopting the key) — otherwise the
             // exception would go silently to the SupervisorJob and the status stuck on Busy forever.
             _status.value = SyncStatus.Failed(SyncFailureReason.ConnectFailed, e.message)
         } finally {
+            // Bug 2 fix: close a locally-created client that never became the active session client.
+            // activateSession assigns [syncClient] to the member [client]; on failure paths before that
+            // point, [openedClient] still holds it and must be closed (Ktor pool/sockets/dispatcher).
+            if (openedClient != null && openedClient !== client) {
+                runCatching { openedClient?.close() }
+            }
             // Wipe all derived key material and the password (zero-knowledge): masterKey/authKey are
             // subkeys, dataKey a copy from exportDataKey (the live key stays with the vault). Idempotent.
             masterPassword.fill(' ')
@@ -723,6 +749,25 @@ class SyncCoordinator(
         val pending = pendingReplace ?: return
         pendingReplace = null
         pending.password.fill(' ')
+        _status.value = configStore.load()?.let { SyncStatus.Configured(it.serverUrl, it.accountId) } ?: SyncStatus.Disabled
+    }
+
+    /** Dismiss the invite-code prompt and return to idle state. */
+    fun cancelInviteCode() {
+        if (_status.value is SyncStatus.NeedsInviteCode) {
+            pendingInviteCode = null
+            _status.value = configStore.load()?.let { SyncStatus.Configured(it.serverUrl, it.accountId) } ?: SyncStatus.Disabled
+        }
+    }
+
+    /** Store the invite code so the UI can re-submit via [connect] with it. */
+    @Volatile
+    var pendingInviteCode: String? = null
+        private set
+
+    /** Store the code for the next connect attempt, then reset status so the form re-enables. */
+    fun retryWithInviteCode(code: String) {
+        pendingInviteCode = code
         _status.value = configStore.load()?.let { SyncStatus.Configured(it.serverUrl, it.accountId) } ?: SyncStatus.Disabled
     }
 
@@ -1576,6 +1621,7 @@ class SyncCoordinator(
         SyncException.Kind.GONE -> SyncStatus.Failed(SyncFailureReason.PairingCodeExpired)
         SyncException.Kind.NETWORK -> SyncStatus.Failed(SyncFailureReason.Network, e.message)
         SyncException.Kind.PROTOCOL -> SyncStatus.Failed(SyncFailureReason.Protocol, e.message)
+        SyncException.Kind.FORBIDDEN -> SyncStatus.Failed(SyncFailureReason.Forbidden, e.message)
     }
 }
 

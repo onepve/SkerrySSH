@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.skerry.shared.host.Host
+import app.skerry.ui.host.HostDraft
 import app.skerry.ui.generated.resources.Res
 import app.skerry.ui.generated.resources.shtail_host_address
 import app.skerry.ui.generated.resources.shtail_host_ask_on_connect
@@ -217,6 +218,33 @@ fun MobileHostDetailScreen(state: MobileDesignState) {
                 ) {
                     Txt(stringResource(Res.string.shell_edit_host), color = Skerry.colors.cyanBright, size = 14.sp, weight = FontWeight.Medium)
                 }
+            }
+            val onDuplicate = controller?.let { ctrl ->
+                {
+                    ctrl.save(
+                        HostDraft(
+                            id = null,
+                            label = host.label + " Copy",
+                            address = host.address, port = host.port, username = host.username,
+                            group = host.group, credentialId = host.credentialId,
+                            tags = host.tags, aiPolicy = host.aiPolicy,
+                            connectionType = host.connectionType,
+                            jumpHostId = host.jumpHostId, keepAliveSeconds = host.keepAliveSeconds,
+                        )
+                    )
+                    Unit
+                }
+            }
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(13.dp))
+                    .border(1.dp, Skerry.colors.cyanBright.copy(alpha = 0.25f), RoundedCornerShape(13.dp))
+                    .then(if (onDuplicate != null) Modifier.clickable(onClick = onDuplicate) else Modifier)
+                    .padding(13.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Txt("创建副本", color = Skerry.colors.cyanBright, size = 14.sp, weight = FontWeight.Medium)
             }
             val onDelete = controller?.let { ctrl -> { ctrl.delete(host.id); state.pop() } }
             Box(

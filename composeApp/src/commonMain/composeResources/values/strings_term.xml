@@ -6,6 +6,7 @@
     <string name="term_search_hosts_placeholder">Search hosts, tags, IPs…</string>
     <string name="term_menu_run_snippet">Run snippet…</string>
     <string name="term_menu_edit">Edit</string>
+    <string name="term_menu_duplicate">Duplicate</string>
     <string name="term_menu_delete">Delete</string>
     <string name="term_no_active_session">No active session</string>
     <string name="term_run_snippet_placeholder">Run a snippet…</string>
@@ -30,6 +31,7 @@
     <string name="term_notice_pick_side_by_side">Pick a host to open it side by side.</string>
     <string name="term_no_hosts_in_catalog">No hosts in catalog</string>
     <string name="term_info_host">Host</string>
+    <string name="term_info_panel">Host Info</string>
     <string name="term_info_address">Address</string>
     <string name="term_info_user">User</string>
     <string name="term_info_auth">Auth</string>

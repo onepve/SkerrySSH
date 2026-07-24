@@ -50,6 +50,7 @@ import app.skerry.ui.ai.aiProviderFactory
 import app.skerry.ui.ai.AiAssistantController
 import app.skerry.ui.sync.SyncCoordinator
 import app.skerry.ui.app.DesktopDesignState
+import app.skerry.ui.app.HostClickConnectMode
 import app.skerry.ui.host.HostManagerController
 import app.skerry.ui.i18n.AppLocaleProvider
 import app.skerry.ui.i18n.UiLanguage
@@ -70,7 +71,6 @@ import app.skerry.ui.terminal.TerminalThemes
 import app.skerry.ui.tunnel.TunnelManager
 import app.skerry.ui.tunnel.resolveTunnelHost
 import app.skerry.ui.vault.AutoLockDuration
-import app.skerry.ui.app.HostClickConnectMode
 import app.skerry.ui.vault.ResetScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -84,22 +84,91 @@ import java.time.Instant
 import java.util.UUID
 
 /**
- * Skerry config directory. Defaults to `~/.config/skerry`; honors XDG_CONFIG_HOME. Created with
- * mode 0700 (and upgraded if an old install left 0755), so UI prefs and config files inside are
- * not accessible to other local users regardless of their permissions.
+ * If a directory named {@code portable} exists next to the application launcher, the app
+ * runs in portable mode: config, keys, vault, and other data live inside that directory
+ * instead of under {@code ~/.config/skerry} / {@code ~/.local/share/skerry}.
+ * The directory itself acts as both the marker and the data root — no separate sentinel file.
+ * Detected once at startup; the result is cached for the lifetime of the process.
+ */
+private val portableDir: Path? by lazy {
+    val marker = resolveAppDir()?.resolve("portable")
+    if (marker != null && Files.isDirectory(marker)) marker else null
+}
+
+/** Best-effort: directory containing the application root (jpackage app dir, JAR dir, or cwd fallback). */
+private fun resolveAppDir(): Path? {
+    // jpackage sets this system property to the absolute path of the native launcher.
+    // On Linux the launcher is at <app>/bin/skerry, so we walk up one more level to <app>/.
+    System.getProperty("jpackage.app-path")?.let {
+        val launcherDir = Path.of(it).parent
+        // jpackage Linux layout: launcher is inside bin/ — the app root is the parent.
+        return if (launcherDir?.fileName?.toString() == "bin") launcherDir.parent else launcherDir
+    }
+    // When running from an IDE or plain JAR, resolve via the code source location.
+    try {
+        val jarUrl = object {}.javaClass.protectionDomain?.codeSource?.location
+        if (jarUrl != null && jarUrl.protocol == "file") {
+            val jarPath = Path.of(jarUrl.toURI())
+            // Inside a jpackage image the jar is at  <app>/lib/app/skerry-ui-desktop-*.jar;
+            // in a fat-JAR it's the jar itself. Walk up to the containing directory.
+            return if (Files.isDirectory(jarPath)) jarPath else jarPath.parent
+        }
+    } catch (_: Exception) { /* fall through */ }
+    return null
+}
+
+/**
+ * Delete stale jars left behind by an overwrite-install of the portable ZIP (or a manual
+ * copy over an older install). jpackage versions its jars (`skerry-ui-desktop-<ver>.jar`,
+ * and dependency versions drift too), so an overwritten `app/` accumulates one orphan per
+ * past version. They are inert — the launcher only loads jars listed in `Skerry.cfg`'s
+ * `app.classpath` — but each costs tens of MB.
+ *
+ * The cfg list is authoritative (it is what the running JVM was launched with), so
+ * anything in the jar directory NOT listed there is safe to delete. Deletes .jar files
+ * only, only in that one directory, and never touches the sibling `runtime/` or a
+ * `portable/` data dir. Failures are ignored (locked files, read-only installs).
+ */
+private fun cleanupStaleJars() {
+    try {
+        val appPath = System.getProperty("jpackage.app-path") ?: return // only packaged builds have a cfg
+        val appDir = Path.of(appPath).parent?.resolve("app") ?: return
+        if (!Files.isDirectory(appDir)) return
+        val cfg = appDir.resolve("Skerry.cfg")
+        if (!Files.isRegularFile(cfg)) return
+        val listed = Files.readString(cfg)
+            .lineSequence()
+            .filter { it.startsWith("app.classpath=") }
+            .flatMap { it.removePrefix("app.classpath=").splitToSequence(";") }
+            .map { it.trim().substringAfterLast('/').substringAfterLast('\\') }
+            .filter { it.endsWith(".jar") }
+            .toSet()
+        if (listed.isEmpty()) return // unparsed cfg — touch nothing
+        Files.list(appDir).use { stream ->
+            stream.filter { Files.isRegularFile(it) && it.fileName.toString().endsWith(".jar") }
+                .filter { it.fileName.toString() !in listed }
+                .forEach { runCatching { Files.deleteIfExists(it) } }
+        }
+    } catch (_: Exception) { /* best-effort housekeeping — never break startup */ }
+}
+
+/**
+ * Skerry config directory. In portable mode, it's the {@code portable/} subdirectory;
+ * otherwise {@code ~/.config/skerry}, honouring {@code XDG_CONFIG_HOME}.
  */
 private fun configDir(): Path {
+    portableDir?.let { return it.also { Files.createDirectories(it) } }
     val xdg = System.getenv("XDG_CONFIG_HOME")?.takeIf { it.isNotBlank() }
     val base = xdg?.let { Path.of(it) } ?: Path.of(System.getProperty("user.home"), ".config")
     return base.resolve("skerry").also { PrivateConfig.ensureDir(it) }
 }
 
 /**
- * Skerry data directory (not config): large artifacts such as downloaded local-AI GGUF models.
- * Defaults to `~/.local/share/skerry`; honors XDG_DATA_HOME (the app data dir inside a Flatpak
- * sandbox). Models are public weights, so 0600 hardening is not required.
+ * Skerry data directory (large artifacts: downloaded local-AI GGUF models).
+ * In portable mode, it's the {@code portable/} subdirectory.
  */
 private fun dataDir(): Path {
+    portableDir?.let { return it }
     val xdg = System.getenv("XDG_DATA_HOME")?.takeIf { it.isNotBlank() }
     val base = xdg?.let { Path.of(it) } ?: Path.of(System.getProperty("user.home"), ".local", "share")
     return base.resolve("skerry").also { Files.createDirectories(it) }
@@ -384,6 +453,24 @@ fun main(args: Array<String>) {
     // vault, no window. A packaged build has no bundled `java` to spawn, so the app re-launches its
     // own launcher with this flag; the branch must come before anything touches AWT or Skia.
     if (LlmHostCommandLine.isHostRun(args)) return LlmHostMain.main(args)
+    // Housekeeping for overwrite-installed portable ZIPs: drop jars from previous versions
+    // (inert but tens of MB each). No-op outside a packaged build.
+    cleanupStaleJars()
+    // libsodium's stock loader (goterl/ionspin) resolves the jar location through a URL-encoded
+    // path and crashes on any non-ASCII install dir (Chinese folders on Kylin/UOS). The previous
+    // auto-fix (preload via JNA into a temp dir) proved too fragile to verify remotely, so we
+    // fail fast with a clear message instead of crashing deep inside the crypto init.
+    val launchPath = System.getProperty("java.class.path").split(java.io.File.pathSeparator).firstOrNull()
+        ?.let { java.io.File(it).absoluteFile.parent } ?: System.getProperty("user.dir")
+    if (!launchPath.chars().allMatch { it < 128 }) {
+        javax.swing.JOptionPane.showMessageDialog(
+            null,
+            "检测到安装路径包含中文或其他非英文字符：\n\n$launchPath\n\n软件无法在此路径下运行。\n请将软件移动到纯英文目录（如 D:\\Skerry 或 /opt/Skerry）后重新启动。",
+            "路径错误 / Path Error",
+            javax.swing.JOptionPane.ERROR_MESSAGE,
+        )
+        kotlin.system.exitProcess(1)
+    }
     // libsodium (ionspin) requires async init before the first VaultCrypto call; on desktop startup
     // this is done blocking so the dependency graph is already built and ready.
     runBlocking { initializeVaultCrypto() }

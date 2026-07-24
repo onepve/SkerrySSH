@@ -95,6 +95,7 @@ import app.skerry.ui.generated.resources.term_recent_section
 import app.skerry.ui.generated.resources.term_search_hosts_placeholder
 import app.skerry.ui.host.ALL_HOSTS_CHIP
 import app.skerry.ui.host.HOST_GROUPS
+import app.skerry.ui.host.HostDraft
 import app.skerry.ui.host.HostDragState
 import app.skerry.ui.host.HostFolder
 import app.skerry.ui.host.HostGroup
@@ -695,6 +696,27 @@ private fun HostRow(
     val onClick = remember(host, connect) { { connect(host) } }
     val onSelect = remember(host) { { onSelectHost(host.id) } }
     val onEdit = remember(host, state) { { state.openEditModal(host) } }
+    val onDuplicate = remember(host, controller) {
+        {
+            controller.save(
+                HostDraft(
+                    id = null,
+                    label = host.label + " Copy",
+                    address = host.address,
+                    port = host.port,
+                    username = host.username,
+                    group = host.group,
+                    credentialId = host.credentialId,
+                    tags = host.tags,
+                    aiPolicy = host.aiPolicy,
+                    connectionType = host.connectionType,
+                    jumpHostId = host.jumpHostId,
+                    keepAliveSeconds = host.keepAliveSeconds,
+                )
+            )
+            Unit
+        }
+    }
     val onDelete = remember(host, state) { { state.requestDeleteHost(host) } }
     // Forgets the row's geometry once the host leaves the list (deleted/filtered out).
     DisposableEffect(host.id) { onDispose { dragState.clearHostBounds(host.id) } }
@@ -721,6 +743,7 @@ private fun HostRow(
             host = host,
             // Edit/delete the profile via the context menu (right-click/long-press).
             onEdit = onEdit,
+            onDuplicate = onDuplicate,
             onDelete = onDelete,
         )
     }
@@ -775,12 +798,13 @@ internal fun HostEntryRow(
     host: Host? = null,
     onSelect: (() -> Unit)? = null,
     onEdit: (() -> Unit)? = null,
+    onDuplicate: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
 ) {
     val snippets = LocalSnippets.current
     val runSnippetOnHost = LocalRunSnippetOnHost.current
     val canRunSnippet = host != null && snippets != null
-    val hasMenu = onEdit != null || onDelete != null || canRunSnippet
+    val hasMenu = onEdit != null || onDelete != null || canRunSnippet || onDuplicate != null
     var menuOpen by remember { mutableStateOf(false) }
     var snippetPickerOpen by remember { mutableStateOf(false) }
     Row(
@@ -833,6 +857,9 @@ internal fun HostEntryRow(
                             }
                             onEdit?.let { edit ->
                                 HostMenuItem(stringResource(Res.string.term_menu_edit), Skerry.colors.text) { menuOpen = false; edit() }
+                            }
+                            onDuplicate?.let { dup ->
+                                HostMenuItem("创建副本", Skerry.colors.text) { menuOpen = false; dup() }
                             }
                             onDelete?.let { delete ->
                                 HostMenuItem(stringResource(Res.string.term_menu_delete), Skerry.colors.sunset) { menuOpen = false; delete() }
