@@ -98,6 +98,8 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+        with:
+          cache-cleanup: on-success
 
       - name: Package deb + rpm + Chinese distro debs (x86_64 only)
         if: matrix.arch == 'x86_64'
@@ -235,6 +237,8 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+        with:
+          cache-cleanup: on-success
 
       # Windows installers: MSI + WiX-Burn EXE. Both go through light.exe, which links
       # with code page 1252 — the package description MUST stay ASCII-only or the link
@@ -334,6 +338,8 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+        with:
+          cache-cleanup: on-success
 
       - name: Package dmg
         # Unsigned/un-notarized on purpose (no Apple Developer account yet) — Gatekeeper
@@ -412,6 +418,8 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+        with:
+          cache-cleanup: on-success
 
       - name: Assemble release APK
         # versionCode must be a monotonic integer; the tag's semver can't map to one, so use
