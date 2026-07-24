@@ -278,7 +278,7 @@ jobs:
           MSYS_NO_PATHCONV: "1"
         run: |
           mkdir -p composeApp/build/compose/binaries/main/exe
-          iscc composeApp/skerry.iss /DMyAppVersion="$VER" /DAppImageDir="composeApp/build/compose/binaries/main/app/Skerry"
+          iscc composeApp/skerry.iss /DMyAppVersion="$VER" /DAppImageDir="build/compose/binaries/main/app/Skerry"
 
       - name: Build portable ZIP
         # Shell-based instead of the Gradle task — avoids config-cache serialization

@@ -8,11 +8,12 @@
 #define MyAppExeName "Skerry.exe"
 
 ; These are overridden via command line: /DMyAppVersion=0.1.21 /DAppImageDir=...
+; Paths are relative to this script's location (composeApp/).
 #ifndef MyAppVersion
   #define MyAppVersion "0.1.0"
 #endif
 #ifndef AppImageDir
-  #define AppImageDir "composeApp\build\compose\binaries\main\app\Skerry"
+  #define AppImageDir "build\compose\binaries\main\app\Skerry"
 #endif
 
 [Setup]
@@ -28,8 +29,8 @@ DisableDirPage=yes
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 OutputBaseFilename=Skerry-{#MyAppVersion}-setup
-OutputDir=composeApp\build\compose\binaries\main\exe
-SetupIconFile=composeApp\icons\skerry.ico
+OutputDir=build\compose\binaries\main\exe
+SetupIconFile=icons\skerry.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
 Uninstallable=yes
