@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import app.skerry.ui.design.ModalScrim
 import app.skerry.ui.design.PrimaryButton
 import app.skerry.ui.design.Txt
+import app.skerry.ui.design.consumeClicks
 import app.skerry.ui.theme.Skerry
 import app.skerry.ui.generated.resources.Res
 import app.skerry.ui.generated.resources.shell_lock_choice_title
@@ -55,6 +56,7 @@ fun LockChoiceDialog(
                 .clip(RoundedCornerShape(12.dp))
                 .background(Skerry.colors.surfaceDeep)
                 .border(1.dp, Skerry.colors.cyan14, RoundedCornerShape(12.dp))
+                .consumeClicks()
                 .padding(26.dp),
         ) {
             Txt(stringResource(Res.string.shell_lock_choice_title), color = Skerry.colors.text, size = 16.sp, weight = FontWeight.SemiBold)
