@@ -11,9 +11,13 @@ WORKDIR /app
 COPY --from=build /src/server/build/install/server/ /app/
 
 # Unprivileged user (least privilege): RCE in the process must not grant root in the container.
-# Runs as nobody (uid 65534) — fixed uid across rebuilds for consistent bind-mount permissions.
-RUN mkdir -p /data && chown nobody:nogroup /app /data
-USER nobody
+# The /data volume belongs to it so the SQLite file is created without root.
+# uid/gid are pinned (999): without --uid the allocation follows the base image's user table, so a
+# base bump could shift it and lock the process out of an existing /data volume (SQLITE_READONLY).
+# 1000 is taken by the base image's "ubuntu" user. Bind-mount owners: chown to 999:999.
+RUN groupadd --system --gid 999 skerry && useradd --system --uid 999 --gid skerry --home /app skerry \
+    && mkdir -p /data && chown -R skerry:skerry /app /data
+USER skerry
 
 # SQLite file lives in the /data volume by default; mount a volume for persistence.
 ENV SKERRY_HOST=0.0.0.0 \
