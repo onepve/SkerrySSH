@@ -1035,7 +1035,7 @@ function loadInviteCodes(){
   fetch('/invite-codes/public')
     .then(function(r){ if(!r.ok) return null; return r.json(); })
     .then(function(j){
-      if(!j || !j.registrationOpen){
+      if(!j || j.registration === "closed"){
         sec.style.display = '';
         msg.style.display = '';
         msg.textContent = t('inviteRegClosed') || '当前未开放注册';

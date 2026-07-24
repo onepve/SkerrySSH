@@ -123,7 +123,7 @@ data class InviteCodeDto(
 )
 
 @Serializable
-data class InviteCodesResponse(val codes: List<InviteCodeDto>, val total: Long, val registrationOpen: Boolean)
+data class InviteCodesResponse(val codes: List<InviteCodeDto>, val total: Long, val registration: String)
 
 @Serializable
 data class BatchDeleteRequest(val codes: List<String>)

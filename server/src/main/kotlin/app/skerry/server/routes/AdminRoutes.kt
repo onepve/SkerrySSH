@@ -60,7 +60,7 @@ fun Route.adminRoutes(services: Services) {
                 usedBy = r.usedBy, usedAt = r.usedAt, isPublic = r.isPublic,
             )
         }
-        call.respond(InviteCodesResponse(dto, total, registrationOpen = services.config.registrationOpen))
+        call.respond(InviteCodesResponse(dto, total, registration = services.config.registration))
     }
 
     // Guard on a transparent child node (like authenticate {}): routing merges identical
@@ -206,7 +206,7 @@ fun Route.adminRoutes(services: Services) {
                     usedBy = r.usedBy, usedAt = r.usedAt, isPublic = r.isPublic,
                 )
             }
-            call.respond(InviteCodesResponse(dto, total, registrationOpen = services.config.registrationOpen))
+            call.respond(InviteCodesResponse(dto, total, registration = services.config.registration))
         }
 
         delete("/invite-codes/{code}") {
