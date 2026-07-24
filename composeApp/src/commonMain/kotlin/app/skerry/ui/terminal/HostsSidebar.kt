@@ -892,7 +892,7 @@ internal fun HostEntryRow(
 @Composable
 private fun HostMenuItem(label: String, color: Color, onClick: () -> Unit) {
     Box(
-        Modifier.clip(RoundedCornerShape(5.dp)).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 7.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(5.dp)).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 7.dp),
     ) {
         Txt(label, color = color, size = 12.sp)
     }
