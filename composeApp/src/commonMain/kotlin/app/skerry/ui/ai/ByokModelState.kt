@@ -31,8 +31,6 @@ data class ByokHints(
 data class ByokStateDeps(
     val hints: ByokHints,
     val listModels: suspend (apiKey: String, baseUrl: String) -> Result<List<String>>,
-    val loadModels: (baseUrl: String) -> List<String>,
-    val loadFavorites: (baseUrl: String) -> Set<String>,
     val saveCatalog: (baseUrl: String, models: List<String>) -> Unit,
     val saveFavorite: (baseUrl: String, id: String, favorite: Boolean) -> Unit,
     val scope: CoroutineScope,
@@ -133,8 +131,6 @@ fun rememberByokModelState(ai: AiAssistantController, hints: ByokHints): ByokMod
             deps = ByokStateDeps(
                 hints = hints,
                 listModels = ai::listModels,
-                loadModels = AiModelCache::load,
-                loadFavorites = AiModelCache::loadFavorites,
                 saveCatalog = AiModelCache::save,
                 saveFavorite = AiModelCache::saveFavorite,
                 scope = scope,
@@ -144,8 +140,8 @@ fun rememberByokModelState(ai: AiAssistantController, hints: ByokHints): ByokMod
     // Reload the cache whenever the *typed* address changes (also on first composition and after a
     // settings reload that reset the fields). Runs off the composition path.
     LaunchedEffect(state.baseUrl) {
-        state.models = state.loadModels(state.baseUrl)
-        state.favorites = state.loadFavorites(state.baseUrl)
+        state.models = AiModelCache.load(state.baseUrl)
+        state.favorites = AiModelCache.loadFavorites(state.baseUrl)
     }
     // Flash hints self-dismiss after 3s; pending hints stay until superseded.
     LaunchedEffect(state.hint, state.hintFlash) {
