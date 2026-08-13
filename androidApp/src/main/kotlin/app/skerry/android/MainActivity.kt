@@ -162,7 +162,6 @@ class MainActivity : FragmentActivity() {
     /** A per-session notification tap carries the session id — remember it for the UI to activate. */
     private fun routeSessionTap(intent: Intent?) {
         val id = intent?.getStringExtra(SessionKeepAliveService.EXTRA_SESSION_ID)
-        android.util.Log.d("KeepaliveTap", "routeSessionTap sessionId=$id intent=$intent")
         id?.let { pendingSessionId = it }
     }
 
@@ -305,18 +304,11 @@ class MainActivity : FragmentActivity() {
                         val target = pendingSessionId
                         if (target != null) {
                             val sessions = keepAliveSessions
-                            android.util.Log.d(
-                                "KeepaliveTap",
-                                "effect target=$target sessions=${sessions != null} tabs=${sessions?.tabs?.size} " +
-                                    "activeId=${sessions?.activeId}",
-                            )
                             if (sessions != null) {
                                 val tab = sessions.tabs.firstOrNull { it.id == target }
-                                android.util.Log.d("KeepaliveTap", "effect tabFound=${tab != null}")
                                 if (tab != null) {
                                     sessions.activate(target)
                                     designState.push(if (tab.isVnc) MobileRoute.Vnc else MobileRoute.Terminal)
-                                    android.util.Log.d("KeepaliveTap", "effect activated+push route=${designState.route}")
                                 }
                             }
                             pendingSessionId = null
