@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import app.skerry.ui.app.UiTags
 import app.skerry.ui.settings.ChangeAccountPasswordDialog
 import app.skerry.ui.desktop.onField
@@ -53,7 +54,7 @@ class SyncFormsTest {
     @Test
     fun `a server without a scheme blocks connecting`() = withOfflineCoordinator { sync ->
         runForm({ SyncSetupDialog(sync, onDismiss = {}) }) {
-            onField(Res.string.sync_field_server_url).performTextInput("sync.example.com")
+            onField(Res.string.sync_field_server_url).performTextReplacement("sync.example.com")
             onField(Res.string.sync_field_account).performTextInput(ACCOUNT)
             onField(Res.string.sync_field_master_password).performTextInput(PASSWORD)
             onNodeWithTag(UiTags.FORM_SAVE).assertIsNotEnabled()

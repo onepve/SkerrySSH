@@ -128,7 +128,7 @@ class VaultDialogFormTest {
     @Test
     fun `renaming to the same label changes nothing`() {
         var renamed: String? = null
-        runForm({ EditSecretDialog(currentLabel = NAME, currentNotes = null, onDismiss = {}, onConfirm = { renamed, _ -> renamed }) }) {
+        runForm({ EditSecretDialog(currentLabel = NAME, currentNotes = null, onDismiss = {}, onConfirm = { newName, _ -> renamed = newName }) }) {
             onNodeWithTag(UiTags.FORM_SAVE).assertIsNotEnabled()
 
             onField(Res.string.vault_field_name).performTextReplacement(RENAMED)
