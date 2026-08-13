@@ -5,7 +5,6 @@ import org.jetbrains.exposed.v1.core.eq
 import org.jetbrains.exposed.v1.core.greater
 import org.jetbrains.exposed.v1.core.lessEq
 import org.jetbrains.exposed.v1.core.minus
-import org.jetbrains.exposed.v1.core.plus
 import org.jetbrains.exposed.v1.core.SortOrder
 import org.jetbrains.exposed.v1.jdbc.Database
 import org.jetbrains.exposed.v1.jdbc.deleteWhere
@@ -94,7 +93,7 @@ class InviteRepository(private val db: Database) {
         val spent = InviteCodes.update({
             (InviteCodes.code eq code) and (InviteCodes.remainingUses greater 0)
         }) {
-            it[remainingUses] = it[remainingUses] - 1
+            it[remainingUses] = InviteCodes.remainingUses - 1
         }
         if (spent != 1) return@dbTransaction false
 
@@ -103,7 +102,7 @@ class InviteRepository(private val db: Database) {
         Preregistrations.insert {
             it[Preregistrations.accountId] = accountId
             it[Preregistrations.inviteCode] = code
-            it[expiresAt] = expiresAt
+            it[Preregistrations.expiresAt] = expiresAt
             it[createdAt] = now
         }
         true
