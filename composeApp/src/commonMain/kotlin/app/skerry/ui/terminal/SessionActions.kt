@@ -250,9 +250,9 @@ internal fun RowScope.SessionActions(
     // Group 2 — what can be sent into the session running there.
     ActionGroupSeparator(shown = groupDrawn(ToolbarGroup.Workspace) && groupDrawn(ToolbarGroup.Session))
     // Quick snippet launch into the active session without leaving for the Snippets section.
-    if (drawn(ToolbarAction.Snippets)) SnippetPaletteButton(active, state.snippetPaletteRequests)
+    if (drawn(ToolbarAction.Snippets)) SnippetPaletteButton(active, state.snippetPaletteRequests, state.snippetLibrary.collapsedTags, state.snippetLibrary.onCollapsedTagsChange)
     // Same idea one size up: start a saved procedure here instead of going to its section.
-    if (drawn(ToolbarAction.Runbook)) RunbookPaletteButton(active, state.runbookPaletteRequests)
+    if (drawn(ToolbarAction.Runbook)) RunbookPaletteButton(active, state.runbookPaletteRequests, state.runbookLibrary.collapsedTags, state.runbookLibrary.onCollapsedTagsChange)
     // Streams this session to a team over the sync relay (viewers watch; the host decides whether
     // they may type).
     if (drawn(ToolbarAction.Share)) {
@@ -304,8 +304,8 @@ internal fun RowScope.SessionActions(
     // the file pickers behind them, and dropping them from the tree would take that state with them
     // — the overflow menu drives them through their request signals instead.
     Box(Modifier.size(0.dp).clipToBounds()) {
-        if (ToolbarAction.Snippets in hidden) SnippetPaletteButton(active, state.snippetPaletteRequests)
-        if (ToolbarAction.Runbook in hidden) RunbookPaletteButton(active, state.runbookPaletteRequests)
+        if (ToolbarAction.Snippets in hidden) SnippetPaletteButton(active, state.snippetPaletteRequests, state.snippetLibrary.collapsedTags, state.snippetLibrary.onCollapsedTagsChange)
+        if (ToolbarAction.Runbook in hidden) RunbookPaletteButton(active, state.runbookPaletteRequests, state.runbookLibrary.collapsedTags, state.runbookLibrary.onCollapsedTagsChange)
         if (ToolbarAction.Record in hidden) {
             RecordSessionButton(
                 active,

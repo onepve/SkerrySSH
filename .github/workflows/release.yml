@@ -23,7 +23,6 @@ on:
       - "gradle.properties"
       - "settings.gradle.kts"
       - "**/build.gradle.kts"
-      - "composeApp/appimage/**"
       - ".github/workflows/release.yml"
   workflow_dispatch:
     inputs:
@@ -38,6 +37,9 @@ on:
   push:
     tags:
       - "v*"
+
+env:
+  TZ: Asia/Shanghai
 
 permissions:
   contents: read
@@ -54,40 +56,25 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       name: ${{ steps.resolve.outputs.name }}
-      code: ${{ steps.resolve.outputs.code }}
     steps:
       - id: resolve
-        # The dispatch inputs go through env, never interpolated into the shell — otherwise a
+        # inputs.versionName goes through env, never interpolated into the shell — otherwise a
         # dispatch input could inject commands into this step (it writes $GITHUB_OUTPUT).
         env:
           INPUT_VERSION: ${{ inputs.versionName }}
-          INPUT_VERSION_CODE: ${{ inputs.versionCode }}
         run: |
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            name="${GITHUB_REF_NAME#v}"
+            echo "name=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
           else
-            name="$INPUT_VERSION"
+            echo "name=$INPUT_VERSION" >> "$GITHUB_OUTPUT"
           fi
-          # None of the sources is constrained to a version format. Reject anything that is not
-          # version-shaped here, once, before it reaches $GITHUB_OUTPUT and four build jobs. This
-          # is not jpackage's grammar: a pre-release tag still gets as far as the packaging step.
-          if [[ -n "$name" && ! "$name" =~ ^[0-9]+(\.[0-9]+)*([-.][0-9A-Za-z]+)*$ ]]; then
-            echo "not a version string: $name" >&2
-            exit 1
-          fi
-          # Bounded and leading-zero-free: AGP parses versionCode as a signed int, and 007 would
-          # quietly become 7 — a downgrade against the value in gradle.properties.
-          code="$INPUT_VERSION_CODE"
-          if [[ -n "$code" && ! "$code" =~ ^[1-9][0-9]{0,8}$ ]]; then
-            echo "not a versionCode (1..999999999): $code" >&2
-            exit 1
-          fi
-          echo "name=$name" >> "$GITHUB_OUTPUT"
-          echo "code=$code" >> "$GITHUB_OUTPUT"
 
   linux-desktop:
     needs: version
+    env:
+      TZ: Asia/Shanghai
     strategy:
+      fail-fast: false
       matrix:
         include:
           - runner: ubuntu-latest
@@ -111,42 +98,54 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
 
-      - name: Package deb + rpm
-        # Version comes through env, not interpolated into the shell (injection-safe).
-        env:
-          VERSION_NAME: ${{ needs.version.outputs.name }}
+      - name: Package deb + rpm (x86_64)
+        if: matrix.arch == 'x86_64'
         run: >
           ./gradlew :composeApp:packageDeb :composeApp:packageRpm --stacktrace
-          ${VERSION_NAME:+"-Pskerry.versionName=$VERSION_NAME"}
+          ${{ needs.version.outputs.name && format('-Pskerry.versionName={0}', needs.version.outputs.name) || '' }}
 
-      - name: Package AppImage
-        # createDistributable (a dependency of packageAppImage) rebuilds the app-image; the
-        # script wraps it into a portable .AppImage. CI has no FUSE — the script sets
-        # APPIMAGE_EXTRACT_AND_RUN so appimagetool and mksquashfs run without it.
-        # appimagetool is downloaded and sha256-verified by that script, which is the single place
-        # its version and hashes are pinned: a second copy here would drift from it unnoticed.
-        # Version comes through env, not interpolated into the shell (injection-safe).
-        env:
-          VERSION_NAME: ${{ needs.version.outputs.name }}
+      - name: Package deb + rpm
+        if: matrix.arch != 'x86_64'
         run: >
-          ./gradlew :composeApp:packageAppImage --stacktrace
-          ${VERSION_NAME:+"-Pskerry.versionName=$VERSION_NAME"}
+          ./gradlew :composeApp:packageDeb :composeApp:packageRpm --stacktrace
+          ${{ needs.version.outputs.name && format('-Pskerry.versionName={0}', needs.version.outputs.name) || '' }}
+
+      - name: Build xinchuang portable ZIP (moved to linux-desktop-xinchuang-legacy job)
+        # REMOVED from the main job: Chinese-distro builds (deb + zip) now run in the
+        # dedicated linux-desktop-xinchuang-legacy job with -Pskiko.version=0.9.17.
+        if: false
+        run: echo "xinchuang packaging moved to linux-desktop-xinchuang-legacy"
 
       - name: Upload Linux distributables
-        # deb/rpm/AppImage names already carry the arch (amd64/arm64, x86_64/aarch64),
+        # deb/rpm names already carry the arch (amd64/arm64, x86_64/aarch64),
         # so the two matrix legs can't collide in the release.
         uses: actions/upload-artifact@v7
         with:
           name: skerry-linux-${{ matrix.arch }}
           path: |
-            composeApp/build/compose/binaries/main/deb/*.deb
+            composeApp/build/compose/binaries/main/deb/skerry_*.deb
             composeApp/build/compose/binaries/main/rpm/*.rpm
-            composeApp/build/compose/binaries/main/appimage/*.AppImage
           if-no-files-found: error
 
-  windows-desktop:
+  # Chinese-distro (信创) package: deb + portable zip built with skiko 0.9.17 (last
+  # version needing only GLIBC_2.17) so all three distros run everywhere — Kylin V10 /
+  # UOS V20 (glibc 2.28.31) / NARI. Separate job so the skiko override (-Pskiko.version)
+  # can't bleed into the main job's app-image build. Both arches: amd64 + arm64.
+  linux-desktop-xinchuang-legacy:
     needs: version
-    runs-on: windows-latest
+    env:
+      TZ: Asia/Shanghai
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            arch: x86_64
+            zip_name: skerry-xinchuang-amd64-portable.zip
+          - runner: ubuntu-24.04-arm
+            arch: aarch64
+            zip_name: skerry-xinchuang-arm64-portable.zip
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
 
@@ -156,34 +155,170 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      - name: Install jpackage tooling (deb/rpm)
+        run: sudo apt-get update && sudo apt-get install -y rpm fakeroot
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+
+      - name: Package Chinese distro deb (skiko 0.9.17)
+        # One unified deb for all three distros (kylin/uos/nari); the repack task
+        # auto-detects arch from the source deb name.
+        run: >
+          ./gradlew :composeApp:packageChineseDeb -Pskiko.version=0.9.17 --stacktrace
+          ${{ needs.version.outputs.name && format('-Pskerry.versionName={0}', needs.version.outputs.name) || '' }}
+
+      - name: Build app-image (skiko 0.9.17)
+        # The zip below copies from the Compose app-image (createDistributable output at
+        # compose/binaries/main/app/Skerry); jpackage's packageDeb does not produce it.
+        run: >
+          ./gradlew :composeApp:createDistributable -Pskiko.version=0.9.17 --stacktrace
+          ${{ needs.version.outputs.name && format('-Pskerry.versionName={0}', needs.version.outputs.name) || '' }}
+
+      - name: Build xinchuang portable ZIP (skiko 0.9.17)
+        # Same app-image the packageDeb step just rebuilt. The zip holds a single skerry/
+        # folder: launcher script + bin/ + lib/ on top, data root portable/ inside — the
+        # app detects portable/ next to its launcher and keeps vault/keys/config there.
+        # One zip for all three distros (contents are identical).
+        # ZIP (not tar.gz) so xinchuang users on Windows desktops can extract it natively.
+        run: |
+          set -euo pipefail
+          SRC=composeApp/build/compose/binaries/main/app/Skerry
+          TMP=$(mktemp -d)
+          mkdir -p "$TMP/skerry"
+          cp -a "$SRC/bin" "$SRC/lib" "$TMP/skerry/"
+          # All-lowercase inside the zip, same rule as the Chinese deb — mixed-case
+          # leftovers break on case-sensitive Linux filesystems.
+          mv "$TMP/skerry/bin/Skerry" "$TMP/skerry/bin/skerry"
+          mv "$TMP/skerry/lib/Skerry.png" "$TMP/skerry/lib/skerry.png"
+          rm -f "$TMP/skerry/lib/"*.desktop
+          find "$TMP/skerry/lib/app" -depth -name '*[A-Z]*' \
+            -exec bash -c 'for p; do mv "$p" "$(dirname "$p")/$(basename "$p" | tr "A-Z" "a-z")"; done' _ {} +
+          # jpackage launcher resolves its cfg by executable name — bin/skerry
+          # looks for lib/app/skerry.cfg. The find above already lowercases the
+          # filename, but keep an explicit rename guard for clarity.
+          [ -f "$TMP/skerry/lib/app/Skerry.cfg" ] && mv "$TMP/skerry/lib/app/Skerry.cfg" "$TMP/skerry/lib/app/skerry.cfg"
+          sed -i -E 's/^(app\.classpath=\$APPDIR\/)(.*)$/\1\L\2/' "$TMP/skerry/lib/app/skerry.cfg"
+          mkdir -p "$TMP/skerry/portable"
+          cp composeApp/portable/README.txt "$TMP/skerry/portable/README.txt"
+          printf '#!/bin/sh\nHERE="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"\nexec "$HERE/bin/skerry" "$@"\n' > "$TMP/skerry/skerry"
+          chmod 755 "$TMP/skerry/skerry"
+          (cd "$TMP" && zip -qr "${{ matrix.zip_name }}" skerry)
+          mv "$TMP/${{ matrix.zip_name }}" "$GITHUB_WORKSPACE/"
+          rm -rf "$TMP"
+
+      - name: Upload Chinese distro deb + zip
+        uses: actions/upload-artifact@v7
+        with:
+          name: skerry-linux-xinchuang-${{ matrix.arch }}
+          path: |
+            composeApp/build/compose/binaries/main/deb/Skerry-xinchuang-*.deb
+            ${{ matrix.zip_name }}
+          if-no-files-found: error
+
+  windows-desktop:
+    needs: version
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set timezone to China Standard Time
+        run: Set-TimeZone -Id "China Standard Time"
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6
+
+      # Windows installers: MSI + WiX-Burn EXE. Both go through light.exe, which links
+      # with code page 1252 — the package description MUST stay ASCII-only or the link
+      # dies with LGHT0311 (exit 311). See composeApp/build.gradle.kts.
       - name: Install WiX Toolset (jpackage MSI)
         # jpackage needs WiX 3.x (candle.exe/light.exe) for .msi; recent
         # windows runners may not ship it.
         run: choco install wixtoolset -y --no-progress
 
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6
+      - name: Install Inno Setup
+        # Replaces jpackage's WiX-Burn EXE (crashes on reinstall).
+        run: |
+          choco install innosetup -y --no-progress
+          # Download Chinese Simplified language file (not included in choco package)
+          $langDir = "C:\Program Files (x86)\Inno Setup 6\Languages"
+          if (-not (Test-Path "$langDir\ChineseSimplified.isl")) {
+            Invoke-WebRequest -Uri "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/ChineseSimplified.isl" -OutFile "$langDir\ChineseSimplified.isl"
+          }
 
-      - name: Package msi + portable zip
-        # packagePortableZip reuses the app-image createDistributable already builds for the
-        # msi, so the extra artifact costs only the zipping.
-        # Version comes through env, not interpolated into the shell (injection-safe).
+      - name: Package msi
+        id: msi
+        shell: bash
+        # downloadWix fetches wix3112rtm.zip from github.com and the runner's
+        # connection to it is flaky (NoHttpResponseException), so retry before failing.
+        run: |
+          for attempt in 1 2 3; do
+            echo "=== packageMsi attempt $attempt ==="
+            if ./gradlew :composeApp:packageMsi --stacktrace \
+              ${{ needs.version.outputs.name && format('-Pskerry.versionName={0}', needs.version.outputs.name) || '' }}; then
+              echo "packageMsi succeeded on attempt $attempt"
+              exit 0
+            fi
+            echo "attempt $attempt failed, waiting before retry..."
+            sleep 20
+          done
+          echo "packageMsi failed after 3 attempts"
+          for f in composeApp/build/compose/logs/packageMsi/jpackage-*-err.txt; do
+            echo "===== $f ====="; cat "$f" || true
+          done
+          exit 1
+
+      - name: Build EXE with Inno Setup
+        id: exe
         shell: bash
         env:
-          VERSION_NAME: ${{ needs.version.outputs.name }}
-        run: >
-          ./gradlew :composeApp:packageMsi :composeApp:packagePortableZip --stacktrace
-          ${VERSION_NAME:+"-Pskerry.versionName=$VERSION_NAME"}
+          VER: ${{ needs.version.outputs.name }}
+          MSYS_NO_PATHCONV: "1"
+        run: |
+          # Fallback to gradle.properties when no explicit version was supplied (manual run).
+          VER="${VER:-$(sed -n 's/^skerry.versionName=//p' gradle.properties)}"
+          # Ensure app-image exists (independent of packageMsi success)
+          ./gradlew :composeApp:createDistributable -Pskerry.versionName="$VER" --stacktrace
+          mkdir -p composeApp/build/compose/binaries/main/exe
+          iscc composeApp/skerry.iss /DMyAppVersion="$VER" /DAppImageDir="build/compose/binaries/main/app/Skerry"
 
-      - name: Suffix msi and portable zip with the architecture
-        # jpackage emits Skerry-<version>.msi with no arch marker; every other desktop
+      - name: Build portable ZIP
+        # Shell-based instead of the Gradle task — avoids config-cache serialization
+        # issues with Gradle 9.x on Windows runners.
+        shell: bash
+        env:
+          VER: ${{ needs.version.outputs.name }}
+        run: |
+          set -euo pipefail
+          # Fallback to gradle.properties when no explicit version was supplied (manual run).
+          VER="${VER:-$(sed -n 's/^skerry.versionName=//p' gradle.properties)}"
+          SRC=composeApp/build/compose/binaries/main/app/Skerry
+          DST_DIR=composeApp/build/compose/binaries/main/portable
+          mkdir -p "$DST_DIR"
+          # Create portable/ marker with README
+          mkdir -p "$SRC/portable"
+          cp composeApp/portable/README.txt "$SRC/portable/README.txt"
+          # 7z (available on Windows runners) for zip creation
+          (cd "$(dirname "$SRC")" && 7z a -tzip -mx9 "${GITHUB_WORKSPACE}/${DST_DIR}/Skerry-${VER}-portable.zip" Skerry/ -bso0 -bsp0)
+
+      - name: Suffix and rename for distribution
+        # jpackage emits Skerry-<version>.{msi,exe} with no arch marker; every other desktop
         # asset carries one, and a Windows ARM build would otherwise collide.
+        # Rename to the fixed public names used by the download page / R2 latest/.
         shell: bash
         run: |
           cd composeApp/build/compose/binaries/main/msi
-          for f in *.msi; do mv "$f" "${f%.msi}-x64.msi"; done
+          for f in *.msi; do mv "$f" "Skerry-windows-x64.msi"; done
+          cd ../exe
+          for f in Skerry-*-setup.exe; do mv "$f" "Skerry-windows-x64.exe"; done
           cd ../portable
-          for f in *.zip; do mv "$f" "${f%.zip}-x64.zip"; done
+          for f in *.zip; do mv "$f" "Skerry-portable-x64.zip"; done
 
       - name: Upload Windows distributables
         uses: actions/upload-artifact@v7
@@ -191,6 +326,7 @@ jobs:
           name: skerry-windows-x64
           path: |
             composeApp/build/compose/binaries/main/msi/*.msi
+            composeApp/build/compose/binaries/main/exe/*.exe
             composeApp/build/compose/binaries/main/portable/*.zip
           if-no-files-found: error
 
@@ -219,12 +355,9 @@ jobs:
       - name: Package dmg
         # Unsigned/un-notarized on purpose (no Apple Developer account yet) — Gatekeeper
         # will require a manual allow in System Settings on first launch.
-        # Version comes through env, not interpolated into the shell (injection-safe).
-        env:
-          VERSION_NAME: ${{ needs.version.outputs.name }}
         run: >
           ./gradlew :composeApp:packageDmg --stacktrace
-          ${VERSION_NAME:+"-Pskerry.versionName=$VERSION_NAME"}
+          ${{ needs.version.outputs.name && format('-Pskerry.versionName={0}', needs.version.outputs.name) || '' }}
 
       - name: Rename dmg to the real version and suffix the architecture
         # jpackage forces the mac bundle version's major to >=1 (see build.gradle.kts), so
@@ -307,11 +440,11 @@ jobs:
           SKERRY_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           SKERRY_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           VERSION_NAME: ${{ needs.version.outputs.name }}
-          VERSION_CODE: ${{ needs.version.outputs.code || github.run_number }}
+          VERSION_CODE: ${{ inputs.versionCode || github.run_number }}
         run: >
           ./gradlew :androidApp:assembleRelease --stacktrace
-          ${VERSION_NAME:+"-Pskerry.versionName=$VERSION_NAME"}
-          "-Pskerry.versionCode=$VERSION_CODE"
+          ${VERSION_NAME:+-Pskerry.versionName=$VERSION_NAME}
+          -Pskerry.versionCode=$VERSION_CODE
 
       - name: Rename APK to match the other artifacts
         # AGP emits androidApp-release.apk. Rename it to the Skerry-<version> scheme the
@@ -337,8 +470,10 @@ jobs:
   # Publish only on tag pushes. Collects every build job's artifact, adds checksums, and
   # creates a DRAFT release for a human to review and publish. Skipped on manual runs
   # (then the artifacts just stay on the run, as before).
+  # !cancelled(): a failed build job (e.g. the hermetic flatpak sandbox) must not block the
+  # release — publish proceeds with whatever artifacts exist (download-artifact skips missing).
   publish:
-    needs: [linux-desktop, windows-desktop, macos-desktop, android]
+    needs: [version, linux-desktop, linux-desktop-xinchuang-legacy, windows-desktop, macos-desktop, android]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
@@ -356,12 +491,81 @@ jobs:
         run: |
           mkdir -p dist
           find artifacts -type f -exec cp {} dist/ \;
+          # 删掉内部重打包的 .deb（skerry-xinchuang_*_amd64.deb），只保留对外版
+          rm -f dist/skerry-xinchuang_*.deb
           cd dist && sha256sum * > SHA256SUMS.txt
+
+      - name: Write release notes
+        run: |
+          cat > dist/RELEASE_NOTES.md <<'EOF'
+
+          > **注意 / Note:** macOS 安装包未签名且未经过公证。首次运行时，请前往系统设置 → 隐私与安全性，点击“仍然打开”。  
+          > macOS packages are unsigned and un-notarized. On first launch, open **System Settings → Privacy & Security** and click **Open Anyway**.
+
+          ## 校验 / Verification
+          SHA256 校验和请查看 `SHA256SUMS.txt` / SHA256 checksums for all files are in `SHA256SUMS.txt`.
+          EOF
 
       - name: Create draft release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: >
-          gh release create "$GITHUB_REF_NAME" dist/*
-          --draft --generate-notes --title "$GITHUB_REF_NAME"
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --draft \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file dist/RELEASE_NOTES.md \
+            dist/*
+
+      - name: Upload stable filenames to R2
+        # Fixed paths under Skerry/latest/ so the landing page's download cards never change.
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+        run: |
+          set -euo pipefail
+          ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          upload() { # $1 local file, $2 r2 key
+            for attempt in 1 2 3; do
+              echo "upload $2 (attempt $attempt)"
+              if aws s3 cp "$1" "s3://${R2_BUCKET_NAME}/Skerry/latest/$2" \
+                --endpoint-url "$ENDPOINT" --region auto --no-progress \
+                --cache-control "max-age=0, no-cache"; then
+                return 0
+              fi
+              echo "upload $2 attempt $attempt failed, retrying..."
+              sleep 5
+            done
+            echo "upload $2 failed after 3 attempts"
+            return 1
+          }
+          upload "$(ls dist/Skerry-*.apk)"                    Skerry-android.apk
+          upload "$(ls dist/Skerry-windows-x64.exe)"          Skerry-windows-x64.exe
+          upload "$(ls dist/Skerry-windows-x64.msi)"          Skerry-windows-x64.msi
+          upload "$(ls dist/Skerry-portable-x64.zip)"         Skerry-portable-x64.zip
+          upload "$(ls dist/Skerry-*-arm64.dmg)"              Skerry-macos-arm64.dmg
+          upload "$(ls dist/Skerry-*-x64.dmg)"                Skerry-macos-x64.dmg
+          upload "$(ls dist/skerry_[0-9]*_amd64.deb)"          Skerry-linux-amd64.deb
+          upload "dist/Skerry-xinchuang-amd64.deb"          Skerry-xinchuang-amd64.deb
+          upload "dist/Skerry-xinchuang-arm64.deb"          Skerry-xinchuang-arm64.deb
+          upload "dist/skerry-xinchuang-amd64-portable.zip" skerry-xinchuang-amd64-portable.zip
+          upload "dist/skerry-xinchuang-arm64-portable.zip" skerry-xinchuang-arm64-portable.zip
+          upload "$(ls dist/*.x86_64.rpm)"                    Skerry-linux-x86_64.rpm
+          upload "$(ls dist/*_arm64.deb)"                     Skerry-linux-arm64.deb
+          upload "$(ls dist/*.aarch64.rpm)"                   Skerry-linux-aarch64.rpm
+          upload dist/SHA256SUMS.txt                          SHA256SUMS.txt
+          # Write and upload the version manifest that the in-app update checker reads.
+          # This job runs only on tag pushes, so the version is always set here (no fallback —
+          # and no gradle.properties in this job, which has no checkout).
+          VERSION_NAME="${{ needs.version.outputs.name }}"
+          VERSION_CODE="${{ inputs.versionCode || github.run_number }}"
+          cat > "$RUNNER_TEMP/version.json" <<EOF
+          {
+            "version": "$VERSION_NAME",
+            "version_code": $VERSION_CODE,
+            "page_url": "https://ssh.onepve.com/"
+          }
+          EOF
+          upload "$RUNNER_TEMP/version.json"                   version.json

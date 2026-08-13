@@ -95,7 +95,7 @@ class RunbookRunnerTest {
     private fun environment() = SnippetRunEnvironment(
         moment = SnippetMoment(2026, 7, 26, 14, 5, 9, epochSeconds = 1_784_000_000L),
         newUuid = { "uuid" },
-        randomChars = { n -> "r".repeat(n) },
+        randomChars = { n, _ -> "r".repeat(n) },
     )
 
     private fun runbook(vararg steps: RunbookStep, policy: RunbookPolicy = RunbookPolicy(watchdogMinutes = 1)) =
@@ -720,5 +720,66 @@ class RunbookRunnerTest {
 
     private companion object {
         const val RUN_ID = "run"
+    }
+
+    // --- Interactive run mode (Runbook.interactive = true) ---
+
+    @Test
+    fun interactive_mode_sends_bare_command_and_parks_until_complete() = runnerTest { r, term ->
+        val rb = runbook(
+            step("s1", "menu"),
+            step("s2", "echo done"),
+        ).copy(interactive = true)
+
+        r.startNow(rb, term.target()) { "" }
+
+        // Step 1 sent bare: the line carries no probe marker, and the step parks for the user.
+        assertEquals(listOf("menu\n"), term.sent)
+        assertEquals(RunbookPhase.AWAITING_COMPLETE, r.only.phase)
+
+        r.completeStep()
+        assertEquals(RunbookPhase.AWAITING_COMPLETE, r.only.phase)
+        assertEquals(listOf("menu\n", "echo done\n"), term.sent)
+
+        r.completeStep()
+        assertEquals(RunbookPhase.DONE, r.phase)
+    }
+
+    @Test
+    fun interactive_mode_skips_the_confirm_pause() = runnerTest { r, term ->
+        // confirm=true steps still dispatch immediately in interactive mode — the completion pause
+        // after the send is the only pause an interactive run needs.
+        val rb = runbook(step("s1", "top", confirm = true)).copy(interactive = true)
+
+        r.startNow(rb, term.target()) { "" }
+
+        assertEquals(RunbookPhase.AWAITING_COMPLETE, r.only.phase)
+        assertEquals(listOf("top\n"), term.sent)
+    }
+
+    @Test
+    fun interactive_mode_can_skip_a_step() = runnerTest { r, term ->
+        val rb = runbook(
+            step("s1", "menu"),
+            step("s2", "next"),
+        ).copy(interactive = true)
+
+        r.startNow(rb, term.target()) { "" }
+        r.skipStep()
+
+        assertEquals(listOf("menu\n", "next\n"), term.sent)
+        assertEquals(RunbookPhase.AWAITING_COMPLETE, r.only.phase)
+        assertEquals(RunbookStepStatus.SKIPPED, r.only.steps[0].status)
+    }
+
+    @Test
+    fun non_interactive_run_keeps_the_probe_path() = runnerTest { r, term ->
+        // The default must stay exactly as before: probe line + marker detection.
+        val rb = runbook(step("s1", "uptime"))
+        val target = term.target()
+        r.startNow(rb, target) { "" }
+
+        assertEquals(listOf(RunbookMarker.probeLine("uptime", RunbookMarker.token(RUN_ID, 0)) + "\n"), term.sent)
+        assertEquals(RunbookPhase.RUNNING, r.phase)
     }
 }

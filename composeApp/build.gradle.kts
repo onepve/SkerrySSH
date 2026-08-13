@@ -8,6 +8,26 @@ plugins {
     alias(libs.plugins.composeCompiler)
 }
 
+// Skia (skiko) version override — used to build the UOS-legacy package.
+// Default: the version Compose 1.9.3 pins (skiko 0.9.22.2, needs GLIBC_2.29).
+// `-Pskiko.version=0.9.17` forces skiko 0.9.17 (last version needing only GLIBC_2.17)
+// so UnionTech UOS V20 (glibc 2.28) can run it. Ordinary builds are unaffected.
+//
+// NOTE: the native .so ships as a SEPARATE artifact (skiko-awt-runtime-linux-*) pulled
+// directly by org.jetbrains.compose.desktop:desktop-jvm-linux-* — both must be forced
+// together, or the Java jar downgrades while the native lib stays on 0.9.22.2 (and the
+// GLIBC_2.29 problem persists).
+val skikoVersion = providers.gradleProperty("skiko.version").orNull
+if (skikoVersion != null) {
+    configurations.configureEach {
+        resolutionStrategy.force(
+            "org.jetbrains.skiko:skiko-awt:$skikoVersion",
+            "org.jetbrains.skiko:skiko-awt-runtime-linux-x64:$skikoVersion",
+            "org.jetbrains.skiko:skiko-awt-runtime-linux-arm64:$skikoVersion",
+        )
+    }
+}
+
 kotlin {
     jvmToolchain(21)
 
@@ -354,7 +374,7 @@ tasks.register<Zip>("packagePortableZip") {
     archiveFileName.set("Skerry-$appVersion-portable.zip")
     destinationDirectory.set(layout.buildDirectory.dir("compose/binaries/main/portable"))
     from(layout.buildDirectory.dir("compose/binaries/main/app"))
-    from(project.file("portable/README.txt"))
+    from(project.file("portable/README.txt")) { into("portable") }
 }
 
 // Offscreen render of the design to PNG (visual check without a window). See design/Screenshot.kt.
@@ -384,6 +404,9 @@ tasks.register<JavaExec>("screenshotDesign") {
     // Stub window chrome: draws the custom window buttons of the undecorated window in the titlebar.
     systemProperty("skerry.screenshot.windowChrome", providers.systemProperty("skerry.screenshot.windowChrome").getOrElse("false"))
 }
+
+// Repack the standard .deb for Kylin V10 / UOS / NARI (Chinese domestic Linux distributions).
+apply(from = "kylin-deb.gradle.kts")
 
 // Kover coverage — applied via pluginManager; the classpath comes from the root buildscript.
 pluginManager.apply("org.jetbrains.kotlinx.kover")

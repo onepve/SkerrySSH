@@ -44,6 +44,7 @@ import app.skerry.ui.generated.resources.Res
 import app.skerry.ui.generated.resources.vault_add_password
 import app.skerry.ui.generated.resources.vault_any_principal
 import app.skerry.ui.generated.resources.vault_badge_expired
+import app.skerry.ui.generated.resources.vault_copy
 import app.skerry.ui.generated.resources.vault_copy_certificate
 import app.skerry.ui.generated.resources.vault_copy_password
 import app.skerry.ui.generated.resources.vault_copy_public_key
@@ -54,11 +55,13 @@ import app.skerry.ui.generated.resources.vault_empty_passwords_hint
 import app.skerry.ui.generated.resources.vault_empty_passwords_title
 import app.skerry.ui.generated.resources.vault_empty_ssh_hint
 import app.skerry.ui.generated.resources.vault_empty_ssh_title
+import app.skerry.ui.generated.resources.vault_edit
 import app.skerry.ui.generated.resources.vault_export_key
 import app.skerry.ui.generated.resources.vault_export_certificate
 import app.skerry.ui.generated.resources.vault_export_failed_title
 import app.skerry.ui.generated.resources.vault_export_failed_message
 import app.skerry.ui.generated.resources.vault_export_dismiss
+import app.skerry.ui.generated.resources.vault_field_notes
 import app.skerry.ui.generated.resources.vault_generate_key
 import app.skerry.ui.generated.resources.vault_header_summary
 import app.skerry.ui.generated.resources.vault_item_count
@@ -66,7 +69,6 @@ import app.skerry.ui.generated.resources.vault_import_certificate
 import app.skerry.ui.generated.resources.vault_key_unreadable
 import app.skerry.ui.generated.resources.vault_label_public_key
 import app.skerry.ui.generated.resources.vault_link_key_file
-import app.skerry.ui.generated.resources.vault_rename
 import app.skerry.ui.generated.resources.vault_subtitle_certificate
 import app.skerry.ui.generated.resources.vault_subtitle_certificate_typed
 import app.skerry.ui.generated.resources.vault_subtitle_key_file
@@ -124,13 +126,16 @@ import app.skerry.ui.app.LocalSshKeyGenerator
 import app.skerry.ui.app.LocalVault
 import app.skerry.ui.app.LocalVaultBiometrics
 import app.skerry.ui.app.MobileDesignState
+import app.skerry.ui.vault.EditSecretDialog
 import app.skerry.ui.vault.PasswordConfirmDialog
-import app.skerry.ui.vault.RenameSecretDialog
 import app.skerry.ui.design.PrimaryButton
 import app.skerry.ui.vault.SecretIcon
+import app.skerry.ui.design.HelpDialog
 import app.skerry.ui.design.Sym
 import app.skerry.ui.design.Txt
 import app.skerry.ui.vault.SecretAuditRows
+import app.skerry.ui.vault.vaultHelpSections
+import app.skerry.ui.vault.vaultHelpTitle
 import app.skerry.ui.vault.SecretEncryptionRows
 import app.skerry.ui.vault.SecretFactRows
 import app.skerry.ui.vault.SecretRow
@@ -189,6 +194,7 @@ private fun MobileVaultLive(state: MobileDesignState, credentials: CredentialMan
     var showLinkKeyFile by remember { mutableStateOf(false) }
     var pendingRename by remember { mutableStateOf<Credential?>(null) }
     var pendingDelete by remember { mutableStateOf<Credential?>(null) }
+    var showHelp by remember { mutableStateOf(false) }
 
     val credItems = VaultPresentation.credentialsIn(category, allCreds)
     val selectedCred = credItems.firstOrNull { it.id == selectedId }
@@ -210,7 +216,7 @@ private fun MobileVaultLive(state: MobileDesignState, credentials: CredentialMan
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().background(Skerry.colors.bg).verticalScroll(rememberScrollState())) {
-            MobilePushHeader(stringResource(Res.string.vault_title), onBack = state::pop, plainBack = true)
+            MobilePushHeader(stringResource(Res.string.vault_title), onBack = state::pop, plainBack = true, onHelp = { showHelp = true })
             MobileVaultSummary(allCreds.size)
             MobileCategoryPills(category, allCreds) { category = it; selectedId = null }
             MobileVaultAction(
@@ -248,14 +254,14 @@ private fun MobileVaultLive(state: MobileDesignState, credentials: CredentialMan
         if (showGenerate && generator != null) {
             GenerateKeyDialog(
                 onDismiss = { showGenerate = false },
-                onCreate = { name, type ->
+                onCreate = { name, notes, type ->
                     showGenerate = false
                     category = VaultCategoryKind.SSH_KEYS
                     // Generation (especially RSA-4096) is expensive — move it off the main thread; save touches state.
                     scope.launch {
                         val key = withContext(Dispatchers.Default) { generator.generate(type, comment = name) }
                         selectedId = credentials.save(
-                            CredentialDraft(label = name, kind = CredentialKind.PRIVATE_KEY, privateKeyPem = key.privateKeyPem),
+                            CredentialDraft(label = name, kind = CredentialKind.PRIVATE_KEY, privateKeyPem = key.privateKeyPem, notes = notes),
                         )
                     }
                 },
@@ -264,8 +270,8 @@ private fun MobileVaultLive(state: MobileDesignState, credentials: CredentialMan
         if (showAddPassword) {
             AddPasswordDialog(
                 onDismiss = { showAddPassword = false },
-                onCreate = { name, password ->
-                    selectedId = credentials.save(CredentialDraft(label = name, kind = CredentialKind.PASSWORD, password = password))
+                onCreate = { name, notes, password ->
+                    selectedId = credentials.save(CredentialDraft(label = name, kind = CredentialKind.PASSWORD, password = password, notes = notes))
                     category = VaultCategoryKind.PASSWORDS
                     showAddPassword = false
                 },
@@ -275,7 +281,7 @@ private fun MobileVaultLive(state: MobileDesignState, credentials: CredentialMan
             ImportCertificateDialog(
                 inspector = inspector,
                 onDismiss = { showImportCert = false },
-                onCreate = { name, pem, cert, passphrase ->
+                onCreate = { name, notes, pem, cert, passphrase ->
                     selectedId = credentials.save(
                         CredentialDraft(
                             label = name,
@@ -283,6 +289,7 @@ private fun MobileVaultLive(state: MobileDesignState, credentials: CredentialMan
                             privateKeyPem = pem,
                             certificate = cert,
                             passphrase = passphrase ?: "",
+                            notes = notes,
                         ),
                     )
                     category = VaultCategoryKind.CERTIFICATES
@@ -293,7 +300,7 @@ private fun MobileVaultLive(state: MobileDesignState, credentials: CredentialMan
         if (showLinkKeyFile) {
             LinkKeyFileDialog(
                 onDismiss = { showLinkKeyFile = false },
-                onCreate = { name, keyRef, certRef, passphrase ->
+                onCreate = { name, notes, keyRef, certRef, passphrase ->
                     selectedId = credentials.save(
                         CredentialDraft(
                             label = name,
@@ -301,6 +308,7 @@ private fun MobileVaultLive(state: MobileDesignState, credentials: CredentialMan
                             privateKeyRef = keyRef,
                             certificateRef = certRef ?: "",
                             passphrase = passphrase ?: "",
+                            notes = notes,
                         ),
                     )
                     category = if (certRef == null) VaultCategoryKind.SSH_KEYS else VaultCategoryKind.CERTIFICATES
@@ -309,15 +317,16 @@ private fun MobileVaultLive(state: MobileDesignState, credentials: CredentialMan
             )
         }
         pendingRename?.let { target ->
-            // Rename edits only the label; the id (hosts reference it) and the secret stay put, and the
-            // change propagates to sync on its own (see CredentialManagerController.rename).
-            RenameSecretDialog(
+            // Edit changes only the label and note; the id (hosts reference it) and the secret stay put, and the
+            // change propagates to sync on its own (see CredentialManagerController.edit).
+            EditSecretDialog(
                 currentLabel = target.label,
+                currentNotes = target.notes,
                 onDismiss = { pendingRename = null },
-                onConfirm = { newLabel ->
+                onConfirm = { newLabel, newNotes ->
                     // Abort on a lock race: idle auto-lock can fire while the dialog is open, and vault
                     // CRUD throws once locked. Mirrors the delete guard.
-                    if (vault?.isUnlocked == true) credentials.rename(target.id, newLabel)
+                    if (vault?.isUnlocked == true) credentials.edit(target.id, newLabel, newNotes)
                     pendingRename = null
                 },
             )
@@ -355,8 +364,7 @@ private fun MobileVaultLive(state: MobileDesignState, credentials: CredentialMan
                 },
                 // Private key material: re-authenticated like a password copy; see VaultView.
                 onExportKey = { export -> exportPrivateKey(copyAuth, export, scope) { exportFailed = it.worthReporting } },
-                onExportPublic = { export -> exportPublic(export, scope) { exportFailed = it.worthReporting } },
-                // Close the detail sheet before showing a centered dialog (rename/delete): otherwise the
+                onExportPublic = { export -> exportPublic(export, scope) { exportFailed = it.worthReporting } },                // Close the detail sheet before showing a centered dialog (rename/delete): otherwise the
                 // sheet, drawn on top, would cover it and leave only its edge visible.
                 onRename = {
                     selectedId = null
@@ -387,6 +395,15 @@ private fun MobileVaultLive(state: MobileDesignState, credentials: CredentialMan
                 access = copyAuth.access,
                 onDismiss = { copyAuth.dismiss() },
                 onConfirm = { copyAuth.submitPassword(it) },
+            )
+        }
+
+        if (showHelp) {
+            HelpDialog(
+                title = vaultHelpTitle(),
+                sections = vaultHelpSections(),
+                examples = emptyList(),
+                onDismiss = { showHelp = false },
             )
         }
     }
@@ -557,8 +574,7 @@ private fun MobileSecretDetailSheet(
     onCopy: (String) -> Unit,
     onCopyPassword: (String) -> Unit,
     onExportKey: (SecretExport.PrivateKey) -> Unit,
-    onExportPublic: (SecretExport.Public) -> Unit,
-    onRename: () -> Unit,
+    onExportPublic: (SecretExport.Public) -> Unit,    onRename: () -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -591,6 +607,11 @@ private fun MobileSecretDetailSheet(
                     // No subtitle here: the Type fact row right below states it, and stating it twice
                     // 14dp apart is the noise this redesign removed from the rows.
                     Txt(credential.label, color = Skerry.colors.text, size = 15.sp, weight = FontWeight.SemiBold)
+                }
+                // The note is free-form text the user wrote — its own labelled block under the name.
+                credential.notes?.let { note ->
+                    Txt(stringResource(Res.string.vault_field_notes), color = Skerry.colors.faint, size = 10.5.sp, weight = FontWeight.SemiBold, letterSpacing = 0.6.sp, modifier = Modifier.padding(top = 2.dp, bottom = 4.dp))
+                    Txt(note, color = Skerry.colors.dim, size = 12.sp, lineHeight = 17.sp, modifier = Modifier.padding(bottom = 14.dp))
                 }
                 SecretFactRows(
                     typeLabel = subtitle,
@@ -629,7 +650,7 @@ private fun MobileSecretDetailSheet(
                         // Nothing to copy: the material is on disk, and the refs are already spelled out above.
                         is CredentialSecret.KeyFile -> Unit
                     }
-                    MobileSheetButton(stringResource(Res.string.vault_rename), onClick = onRename, filled = false, modifier = Modifier.fillMaxWidth())
+                    MobileSheetButton(stringResource(Res.string.vault_edit), onClick = onRename, filled = false, modifier = Modifier.fillMaxWidth())
                     // Export hands out the private key; see the desktop panel.
                     val deleteButton: @Composable (Modifier) -> Unit = { modifier ->
                         MobileSheetButton(stringResource(Res.string.vault_delete), onClick = onDelete, filled = false, danger = true, modifier = modifier)
@@ -644,8 +665,7 @@ private fun MobileSecretDetailSheet(
                         }
                         SecretActions.KeyAndDelete -> Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             MobileSheetButton(stringResource(Res.string.vault_export_key), onClick = { keyExport?.let(onExportKey) }, filled = false, modifier = Modifier.weight(1f))
-                            deleteButton(Modifier.weight(1f))
-                        }
+                            deleteButton(Modifier.weight(1f))                        }
                         SecretActions.DeleteOnly -> deleteButton(Modifier.fillMaxWidth())
                     }
                 }

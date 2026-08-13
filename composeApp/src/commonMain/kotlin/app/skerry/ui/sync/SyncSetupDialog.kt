@@ -84,7 +84,7 @@ fun SyncSetupDialog(sync: SyncCoordinator, onDismiss: () -> Unit) {
 
     // Prefill from the saved link (after restart/Reconnect): server+account known, only the password needed.
     val saved = remember { sync.savedConfig }
-    var serverUrl by remember { mutableStateOf(saved?.serverUrl ?: "") }
+    var serverUrl by remember { mutableStateOf(saved?.serverUrl ?: SyncSetupForm.DEFAULT_SERVER_URL) }
     var account by remember { mutableStateOf(saved?.accountId ?: "") }
     var password by remember { mutableStateOf("") }
     var keepConnected by remember { mutableStateOf(saved?.keepConnected ?: true) }
@@ -221,14 +221,16 @@ internal fun SyncField(
     imeAction: ImeAction,
     secret: Boolean = false,
     onSubmit: () -> Unit = {},
+    /** Select the whole value on focus (pre-filled defaults/old names), so typing replaces it. */
+    selectAllOnFocus: Boolean = false,
     onChange: (String) -> Unit,
 ) {
     val ui = LocalFonts.current.ui
     val textColor = Skerry.colors.text
     val style = remember(ui, textColor) { TextStyle(color = textColor, fontSize = 13.sp, fontFamily = ui) }
-    // No select-on-focus: a saved server URL is edited, not replaced. The draft is still here for
-    // the caret, which otherwise starts at offset 0 on a prefilled field.
-    val draft = rememberFieldDraft(value, masked = secret)
+    // No select-on-focus for a saved server URL: it is edited, not replaced. The draft is still
+    // here for the caret, which otherwise starts at offset 0 on a prefilled field.
+    val draft = rememberFieldDraft(value, selectAllOnFocus, masked = secret)
     // Capsule/padding/icon live in decorationBox so a click anywhere in the field places the caret.
     BasicTextField(
         value = draft.textFieldValue(value),

@@ -46,7 +46,7 @@
     <string name="conn_protocol_rdp">RDP</string>
     <string name="conn_protocol_local">Local</string>
     <string name="conn_telnet_plaintext_warning">Telnet is unencrypted — credentials and session data travel in the clear. Use SSH unless the network is trusted.</string>
-    <string name="conn_vnc_plaintext_warning">VNC (RFB) is unencrypted — screen and input travel in the clear. Use a trusted network or tunnel through SSH.</string>
+    <string name="conn_vnc_plaintext_warning">VNC is unencrypted, or encrypted without certificate verification — use a trusted network or tunnel through SSH.</string>
 
     <string name="conn_jump_none">None — direct</string>
     <string name="conn_jump_error_title">Jump host unavailable</string>

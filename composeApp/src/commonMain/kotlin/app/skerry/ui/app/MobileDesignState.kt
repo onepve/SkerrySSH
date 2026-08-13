@@ -17,6 +17,7 @@ import app.skerry.ui.terminal.clampTerminalLetterSpacing
 import app.skerry.ui.terminal.clampTerminalLineHeight
 import app.skerry.ui.i18n.UiLanguage
 import app.skerry.ui.session.BroadcastController
+import app.skerry.ui.runbook.RunbookLibraryState
 import app.skerry.ui.snippet.SnippetLibraryState
 import app.skerry.ui.vault.AutoLockDuration
 import app.skerry.shared.terminal.Asciicast
@@ -130,6 +131,14 @@ class MobileDesignState(
     // preserve prior behavior for previews/tests.
     initialCollapsedGroups: Set<String> = emptySet(),
     private val onCollapsedGroupsChange: (Set<String>) -> Unit = {},
+    // Collapsed snippet categories in the library, persisted like the host folders (read at
+    // startup, written back via the callback, survives a restart). Defaults (all expanded, no-op)
+    // preserve prior behavior for previews/tests.
+    initialSnippetCollapsedTags: Set<String> = emptySet(),
+    private val onSnippetCollapsedTagsChange: (Set<String>) -> Unit = {},
+    // Collapsed runbook categories, same contract as the snippet ones above.
+    initialRunbookCollapsedTags: Set<String> = emptySet(),
+    private val onRunbookCollapsedTagsChange: (Set<String>) -> Unit = {},
     // Terminal font (More -> Appearance -> Font) and its size. Initial values are read from
     // persistence at startup, callbacks write back — the choice survives restart. Defaults
     // (Hack 13px, no-op) are for previews/tests.
@@ -274,10 +283,19 @@ class MobileDesignState(
 
     /**
      * View state of the snippet library (search, category chip, collapsed sections). Lives here so
-     * switching tabs doesn't reset the view; not persisted across restarts (see
-     * [app.skerry.ui.snippet.SnippetLibraryState]).
+     * switching tabs doesn't reset the view; collapsed categories are persisted across restarts
+     * like the host folders (see [SnippetLibraryState]).
      */
-    val snippetLibrary = SnippetLibraryState()
+    val snippetLibrary = SnippetLibraryState(
+        initialCollapsedTags = initialSnippetCollapsedTags,
+        onCollapsedTagsChange = onSnippetCollapsedTagsChange,
+    )
+
+    /** View state of the runbook library (search, category chip, collapsed sections). See [snippetLibrary]. */
+    val runbookLibrary = RunbookLibraryState(
+        initialCollapsedTags = initialRunbookCollapsedTags,
+        onCollapsedTagsChange = onRunbookCollapsedTagsChange,
+    )
 
     /** Recording being played back over the app, or `null` when the player is closed. */
     var castRecording: Asciicast? by mutableStateOf(null); private set

@@ -65,8 +65,9 @@ actual class FramebufferImage actual constructor(width: Int, height: Int) {
             val bmp = Bitmap()
             bmp.allocPixels(ImageInfo(w, h, ColorType.BGRA_8888, ColorAlphaType.PREMUL))
             val bytes = ByteArray(w * h * 4)
-            val bb = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
-            for (p in pixels) bb.putInt(p)
+            // Bulk put, not a per-pixel loop: a 1920×1080 frame is ~2M ints, and boxing each one
+            // through the loop costs tens of ms a frame — the difference between smooth and "laggy".
+            ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer().put(pixels)
             bmp.installPixels(bytes)
             val image = bmp.asComposeImageBitmap()
             cached = image

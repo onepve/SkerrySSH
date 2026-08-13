@@ -22,6 +22,9 @@
     <string name="shell_password_strength_fair">Средний</string>
     <string name="shell_password_strength_good">Хороший</string>
     <string name="shell_password_strength_strong">Надёжный</string>
+    <string name="shell_password_strength_danger">Опасно</string>
+    <string name="shell_password_danger_hint">Пароль слишком короткий, легко поддаётся офлайн-взлому. Рекомендуется не менее 12 символов.</string>
+    <string name="shell_password_weak_hint">Недостаточная стойкость. Рекомендуется не менее 12 символов, включая буквы разного регистра, цифры и символы.</string>
     <string name="shell_password_min_length">Нужно не меньше %1$d символов, чтобы создать vault</string>
     <string name="shell_password_blank">Пароль не может состоять из одних пробелов</string>
 

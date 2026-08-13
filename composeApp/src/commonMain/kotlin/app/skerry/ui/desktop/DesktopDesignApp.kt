@@ -33,6 +33,8 @@ import app.skerry.ui.known.TrustedCaController
 import app.skerry.ui.session.SessionsController
 import app.skerry.ui.runbook.RunbookManager
 import app.skerry.ui.runbook.RunbookRunner
+import app.skerry.shared.snippet.Snippet
+import app.skerry.shared.vault.IonspinVaultCrypto
 import app.skerry.ui.snippet.SnippetManager
 import app.skerry.ui.sync.SyncCoordinator
 import app.skerry.ui.terminal.LocalTerminalAppearance
@@ -83,6 +85,7 @@ import app.skerry.ui.app.LocalTestTransport
 import app.skerry.ui.app.LocalTunnels
 import app.skerry.ui.app.LocalUpdates
 import app.skerry.ui.app.LocalVault
+import app.skerry.ui.app.LocalVaultCrypto
 import app.skerry.ui.app.LocalVaultBiometrics
 import app.skerry.ui.app.SftpPrefs
 import app.skerry.ui.sync.SyncOnboardingScreen
@@ -115,6 +118,12 @@ fun DesktopDesignApp(
     // Collapsed host groups — also persisted externally (desktop main): starting set + write callback.
     initialCollapsedGroups: Set<String> = emptySet(),
     onCollapsedGroupsChange: (Set<String>) -> Unit = {},
+    // Collapsed snippet categories — persisted externally (desktop main) like the host groups.
+    initialSnippetCollapsedTags: Set<String> = emptySet(),
+    onSnippetCollapsedTagsChange: (Set<String>) -> Unit = {},
+    // Collapsed runbook categories — persisted externally (desktop main), same contract.
+    initialRunbookCollapsedTags: Set<String> = emptySet(),
+    onRunbookCollapsedTagsChange: (Set<String>) -> Unit = {},
     // Recent connections (RECENT section) — also persisted externally (desktop main): starting order + write callback.
     initialRecentHostIds: List<String> = emptyList(),
     onRecentHostIdsChange: (List<String>) -> Unit = {},
@@ -134,6 +143,10 @@ fun DesktopDesignApp(
             settings = settings,
             initialCollapsedGroups = initialCollapsedGroups,
             onCollapsedGroupsChange = onCollapsedGroupsChange,
+            initialSnippetCollapsedTags = initialSnippetCollapsedTags,
+            onSnippetCollapsedTagsChange = onSnippetCollapsedTagsChange,
+            initialRunbookCollapsedTags = initialRunbookCollapsedTags,
+            onRunbookCollapsedTagsChange = onRunbookCollapsedTagsChange,
             initialRecentHostIds = initialRecentHostIds,
             onRecentHostIdsChange = onRecentHostIdsChange,
             initialCustomGroups = initialCustomGroups,
@@ -382,6 +395,7 @@ fun DesktopDesignApp(
         // The open vault + biometrics behind the gate — needed for re-authentication before copying
         // a password from the keychain (desktop has no biometrics, so the path reduces to the master password).
         LocalVault provides vault,
+        LocalVaultCrypto provides remember { IonspinVaultCrypto() },
         LocalVaultBiometrics provides biometrics,
         LocalSecurityLog provides securityLog,
         LocalSync provides sync,

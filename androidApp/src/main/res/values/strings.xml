@@ -1,9 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Android platform resources only (launcher label). The app's UI strings live in
-  composeApp/src/commonMain/composeResources — this file exists so the manifest has no hardcoded
-  text and a locale-specific launcher label stays possible.
+  Android platform resources only (launcher label + session keep-alive notification). The app's UI
+  strings live in composeApp/src/commonMain/composeResources — this file exists so the manifest has
+  no hardcoded text and a locale-specific launcher label stays possible.
 -->
 <resources>
     <string name="app_name">Skerry</string>
+    <string name="session_keepalive_channel_name">Session keep-alive</string>
+    <string name="session_keepalive_title">Connection active — don\'t swipe away</string>
+    <string name="session_keepalive_text">The SSH connection stays alive while you switch apps</string>
+    <plurals name="session_keepalive_count">
+        <item quantity="one">%1$d connection</item>
+        <item quantity="other">%1$d connections</item>
+    </plurals>
 </resources>

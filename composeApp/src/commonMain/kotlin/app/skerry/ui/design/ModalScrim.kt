@@ -41,6 +41,7 @@ fun ModalScrim(
     onDismiss: () -> Unit,
     scrimColor: Color = Skerry.colors.modalScrim,
     contentAlignment: Alignment = Alignment.Center,
+    dismissOnScrimClick: Boolean = false,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val noop = remember { MutableInteractionSource() }
@@ -54,7 +55,7 @@ fun ModalScrim(
         Modifier
             .fillMaxSize()
             .background(scrimColor)
-            .clickable(interactionSource = noop, indication = null, onClick = {}) // consume, never dismiss
+            .clickable(interactionSource = noop, indication = null, onClick = { if (dismissOnScrimClick) onDismiss() })
             .onFocusChanged { subtreeFocused = it.hasFocus }
             .focusRequester(escFocus)
             .onKeyEvent { event ->

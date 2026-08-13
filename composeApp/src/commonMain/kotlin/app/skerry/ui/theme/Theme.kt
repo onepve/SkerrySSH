@@ -43,7 +43,7 @@ fun SkerryColors.toMaterialColorScheme(dark: Boolean): ColorScheme {
     )
 }
 
-/** User-facing theme choice, persisted by id. [SYSTEM] follows the OS; the default is [DARK]. */
+/** User-facing theme choice, persisted by id. [SYSTEM] follows the OS; the default is [SYSTEM]. */
 enum class ThemeMode(val id: String) {
     SYSTEM("system"),
     LIGHT("light"),
@@ -57,7 +57,7 @@ enum class ThemeMode(val id: String) {
     SOLARIZED_LIGHT("solarized-light");
 
     companion object {
-        val DEFAULT = DARK
+        val DEFAULT = SYSTEM
         fun fromId(id: String): ThemeMode = entries.firstOrNull { it.id == id } ?: DEFAULT
     }
 }
@@ -111,8 +111,8 @@ fun ThemeMode.resolveColors(): Pair<SkerryColors, Boolean> {
 
 /**
  * Wraps the UI in the app theme for the chosen [mode]: provides the active [SkerryColors] to the
- * tree and mirrors it onto Material3. Defaults to [ThemeMode.DEFAULT] (night-sea dark) so call sites
- * that don't pick a theme keep the original appearance.
+ * tree and mirrors it onto Material3. Defaults to [ThemeMode.DEFAULT] (follow the OS) so a first
+ * launch without persisted settings matches the system appearance.
  */
 @Composable
 fun SkerryTheme(

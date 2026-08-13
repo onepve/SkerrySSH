@@ -49,12 +49,13 @@ data class SnippetMoment(
 /**
  * Machine-value providers for one snippet run, captured once when the run is initiated so the
  * previewed command is exactly the one sent (see the TOCTOU rule in coding-guidelines §3).
- * [randomChars] returns the given number of characters from a cryptographically secure source.
+ * [randomChars] returns [length] characters drawn from [alphabet] via a cryptographically
+ * secure source.
  */
 class SnippetRunEnvironment(
     val moment: SnippetMoment,
     val newUuid: () -> String,
-    val randomChars: (Int) -> String,
+    val randomChars: (length: Int, alphabet: String) -> String,
 )
 
 /**
@@ -106,8 +107,13 @@ object SnippetTemplate {
             SnippetVariableKind.TIME -> formatMoment(variable.format ?: "HH:mm:ss", env.moment)
             SnippetVariableKind.TIMESTAMP -> env.moment.epochSeconds.toString()
             SnippetVariableKind.UUID -> env.newUuid()
-            SnippetVariableKind.RANDOM ->
-                env.randomChars((variable.format?.toIntOrNull() ?: DEFAULT_RANDOM_LENGTH).coerceIn(1, MAX_RANDOM_LENGTH))
+            SnippetVariableKind.RANDOM -> {
+                val lengthSpec = variable.format?.substringBefore(',')
+                val charsetName = variable.format?.substringAfter(',', missingDelimiterValue = "")?.ifEmpty { null }
+                val length = (lengthSpec?.toIntOrNull() ?: DEFAULT_RANDOM_LENGTH).coerceIn(1, MAX_RANDOM_LENGTH)
+                val alphabet = charsetName?.let { RANDOM_CHARSETS[it] } ?: RANDOM_ALPHABET_DEFAULT
+                env.randomChars(length, alphabet)
+            }
             else -> null
         }
 
@@ -209,6 +215,21 @@ object SnippetTemplate {
     private const val CLOSE = "}}"
     private const val DEFAULT_RANDOM_LENGTH = 8
     private const val MAX_RANDOM_LENGTH = 64
+
+    /**
+     * Character sets for `${{random:length,charset}}`. `alnum` (lowercase letters + digits) is
+     * the historical default and stays default so existing snippets are unchanged; `hex` is for
+     * tokens that must fit in a hex field; `special` adds punctuation so it can stand in for a
+     * generated password. An unknown charset name falls back to the default.
+     */
+    const val RANDOM_ALPHABET_DEFAULT = "abcdefghijklmnopqrstuvwxyz0123456789"
+    const val RANDOM_ALPHABET_HEX = "0123456789abcdef"
+    const val RANDOM_ALPHABET_SPECIAL = "abcdefghijklmnopqrstuvwxyz0123456789!@#\$%^&*-_=+"
+    val RANDOM_CHARSETS: Map<String, String> = mapOf(
+        "alnum" to RANDOM_ALPHABET_DEFAULT,
+        "hex" to RANDOM_ALPHABET_HEX,
+        "special" to RANDOM_ALPHABET_SPECIAL,
+    )
 
     private fun pad2(n: Int) = n.toString().padStart(2, '0')
 

@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   build-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v7
 
@@ -59,7 +59,33 @@ jobs:
         # Under xvfb-run because compose-resources asks AWT for the screen resolution when it loads
         # a string, which throws HeadlessException on a runner with no display — the failure lands
         # inside a coroutine and surfaces as a test that never reaches its final state.
-        run: xvfb-run --auto-servernum ./gradlew test allTests --stacktrace
+        #
+        # One Xvfb, fixed display, for the WHOLE step (including retries). Two traps with
+        # xvfb-run --auto-servernum per attempt: (1) it may pick a different display number each
+        # time while the Gradle daemon keeps the old DISPLAY env — test JVMs then can't reach the
+        # display and every render/form test dies with ExceptionInInitializerError (X11GraphicsEnvironment);
+        # (2) plain Xvfb has no GLX, so Skiko falls back to slow software X11 rendering — on a busy
+        # runner the frame rate drops and render-timing tests (wait ≤120 frames for ANSI pixels)
+        # plus input-driven form tests time out together. Enable GLX (+extension GLX) so Skiko uses
+        # mesa llvmpipe, keep the screen modest (1280x1024 — software pixels cost time), and retry
+        # up to 3 times ON THE SAME display: a repeat flake is near-impossible, while a real failure
+        # (compile/test logic) fails every attempt.
+        run: |
+          set +e
+          Xvfb :99 -screen 0 1280x1024x24 -ac +extension GLX +render -noreset &
+          XVFB_PID=$!
+          export DISPLAY=:99
+          code=0
+          for attempt in 1 2 3; do
+            ./gradlew test allTests --stacktrace
+            code=$?
+            if [ $code -eq 0 ]; then break; fi
+            echo "test run $attempt failed (possibly the flaky xvfb render test); retrying on the same display"
+            sleep 30
+          done
+          kill $XVFB_PID 2>/dev/null
+          wait $XVFB_PID 2>/dev/null
+          exit $code
 
       # Static analysis. Runs after the tests so a red suite is reported first — detekt findings are
       # cheaper to read once the behaviour is known good. Existing findings sit in

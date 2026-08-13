@@ -105,10 +105,10 @@ class SkerryColorsTest {
     }
 
     @Test
-    fun `theme mode round-trips by id and defaults to dark`() {
+    fun `theme mode round-trips by id and defaults to system`() {
         ThemeMode.entries.forEach { assertEquals(it, ThemeMode.fromId(it.id)) }
-        assertEquals(ThemeMode.DARK, ThemeMode.DEFAULT)
-        assertEquals(ThemeMode.DARK, ThemeMode.fromId("nonsense"))
+        assertEquals(ThemeMode.SYSTEM, ThemeMode.DEFAULT)
+        assertEquals(ThemeMode.SYSTEM, ThemeMode.fromId("nonsense"))
         assertEquals(ThemeMode.entries.size, ThemeMode.entries.map { it.id }.toSet().size)
     }
 

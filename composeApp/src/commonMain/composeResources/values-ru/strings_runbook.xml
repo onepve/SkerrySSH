@@ -43,6 +43,7 @@
     <string name="runbook_panel_failed">Остановлен из-за ошибки</string>
     <string name="runbook_panel_stopped">Остановлен</string>
     <string name="runbook_panel_run_step">Выполнить шаг</string>
+    <string name="runbook_panel_complete_step">Завершить шаг</string>
     <string name="runbook_panel_skip_step">Пропустить</string>
     <string name="runbook_panel_stop">Остановить</string>
     <string name="runbook_panel_close">Закрыть</string>
@@ -52,7 +53,6 @@
     <string name="runbook_panel_shell_note">Шаги выполняются в шелле этой сессии; код возврата приходит служебной последовательностью и ничего не печатает.</string>
     <string name="runbook_panel_transfer_failed">Передача не удалась: %1$s</string>
     <string name="runbook_panel_no_sftp">У этой сессии нет SFTP-канала.</string>
-
     <!-- Library screen -->
     <string name="runbook_edit">Изменить</string>
     <string name="runbook_cancel">Отмена</string>
@@ -68,7 +68,6 @@
         <item quantity="many">%1$d шагов</item>
         <item quantity="other">%1$d шага</item>
     </plurals>
-
     <!-- Step kinds -->
     <string name="runbook_kind_command">Команда</string>
     <string name="runbook_kind_transfer">Файл</string>
@@ -80,14 +79,14 @@
     <string name="runbook_direction_download">Забрать</string>
     <string name="runbook_transfer_note">Передача идёт по SFTP-каналу той же сессии.</string>
     <string name="runbook_vars_hint">${{name}} спросит значение перед запуском; ${{vault:запись}} и ${{clipboard}} подставятся сами.</string>
-
     <!-- Run policy -->
     <string name="runbook_policy">Политика прогона</string>
+    <string name="runbook_interactive">Интерактивный запуск</string>
+    <string name="runbook_interactive_sub">Команды отправляются как есть; отмечайте шаг завершённым, чтобы продолжить</string>
     <string name="runbook_policy_stop">Стоп на первой ошибке</string>
     <string name="runbook_policy_watchdog">Сторож</string>
     <string name="runbook_policy_watchdog_value">%1$d мин</string>
     <string name="runbook_policy_watchdog_off">Выкл.</string>
-
     <!-- Run screen -->
     <string name="runbook_run_kind">сценарий</string>
     <string name="runbook_run_step_of">шаг %1$d из %2$d</string>
@@ -104,10 +103,28 @@
     <string name="runbook_dur_seconds">%1$s с</string>
     <string name="runbook_dur_minutes">%1$d мин %2$d с</string>
     <string name="runbook_transfer_of">%1$s из %2$s</string>
-
     <!-- Run history -->
     <string name="runbook_history">Прошлые прогоны</string>
     <string name="runbook_history_empty">Прогонов ещё не было</string>
     <string name="runbook_history_failed_at">сбой на шаге %1$d</string>
     <string name="runbook_history_last">последний прогон %1$s</string>
+    <!-- Runbook help dialog (HelpDialog) -->
+    <string name="help_runbook_title">Справка: сценарии</string>
+    <string name="help_runbook_intro">Сценарий — это упорядоченный список команд, выполняемых по очереди в открытом терминале; всё, что он отправляет, видно в сессии. Шаги сценария поддерживают те же переменные ${{}}, что и фрагменты кода.</string>
+    <string name="help_runbook_flow">Каждый шаг ждёт завершения предыдущего (кода выхода), прежде чем отправить следующий — фиксированной задержки нет. По умолчанию каждый шаг ждёт вашего подтверждения перед запуском; шаг с ошибкой останавливает сценарий, если только он не помечен как продолжающийся.</string>
+    <string name="help_runbook_examples_intro">Примеры — коснитесь строки, чтобы создать:</string>
+    <string name="help_runbook_example_load">Создать пример: проверка нагрузки системы</string>
+    <string name="help_runbook_example_install">Создать пример: установка и проверка ПО</string>
+    <string name="help_runbook_example_disk">Создать пример: проверка дискового пространства</string>
+    <string name="help_runbook_sample_load">Проверка нагрузки системы</string>
+    <string name="help_runbook_sample_install">Установка и проверка ПО</string>
+    <string name="help_runbook_sample_disk">Проверка дискового пространства</string>
+    <string name="help_runbook_step_uptime">Время работы</string>
+    <string name="help_runbook_step_memory">Память</string>
+    <string name="help_runbook_step_top_processes">Топ процессов</string>
+    <string name="help_runbook_step_check_installed">Проверить установку</string>
+    <string name="help_runbook_step_install">Установить</string>
+    <string name="help_runbook_step_verify">Проверить</string>
+    <string name="help_runbook_step_usage">Использование диска</string>
+    <string name="help_runbook_step_largest_dirs">Крупнейшие каталоги</string>
 </resources>

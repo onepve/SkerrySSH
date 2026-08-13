@@ -1,5 +1,7 @@
 package app.skerry.shared.vault
 
+import app.skerry.shared.host.normalizeNotes
+
 /**
  * Store for [Credential] keychain secrets over a [Vault]: each secret is a [RecordType.CREDENTIAL]
  * record whose payload is a JSON serialization of [Credential] (label and secret inside the
@@ -47,6 +49,18 @@ class CredentialStore(
     fun rename(id: String, label: String) = vault.transaction {
         val existing = get(id) ?: return@transaction
         put(existing.copy(label = label))
+    }
+
+    /**
+     * Edits a secret's metadata in place — [label] and [notes] together, in one
+     * [Vault.transaction] so the pair reads as a single sync edit (one version bump). Keeps
+     * [Credential.id] and the secret material. [notes] is normalized like a host note
+     * ([app.skerry.shared.host.normalizeNotes]); blank becomes `null`. No-op if [id] is
+     * missing or deleted (same tombstone guard as [rename]).
+     */
+    fun edit(id: String, label: String, notes: String?) = vault.transaction {
+        val existing = get(id) ?: return@transaction
+        put(existing.copy(label = label, notes = normalizeNotes(notes ?: "")))
     }
 
     /** Soft-delete a secret (tombstone). Hosts referencing it are reconciled in the UI layer. */

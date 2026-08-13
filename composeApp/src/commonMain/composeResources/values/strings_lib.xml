@@ -280,5 +280,51 @@
     <string name="lib_teams_shared_runbooks_count">Shared runbooks · %1$d</string>
     <string name="lib_teams_runbook_steps">%1$d steps</string>
     <string name="lib_teams_record_runbook">runbook</string>
-    <string name="lib_teams_scope_access_unknown">Access list unavailable — the server did not answer</string>
+    <string name="lib_teams_scope_access_unknown">Access list unavailable — the server did not answer</string>    <!-- Snippet help dialog (HelpDialog) -->
+    <string name="help_snippet_title">Code snippet help</string>
+    <string name="help_snippet_intro">A snippet is one or more command lines. You can write ${{variable}} placeholders in it — they are replaced when the snippet runs.</string>
+    <string name="help_snippet_variables">Every variable:
+${{name}} — a name you make up; you'll be asked for its value at run time
+${{date:pattern}} — today's date (default YYYY-MM-DD)
+${{time:pattern}} — current time (default HH:mm:ss)
+${{timestamp}} — Unix timestamp in seconds
+${{uuid}} — a random UUID
+${{random}} — random text, default 8 chars (a-z, 0-9)
+${{random:N,charset}} — N chars from alnum, hex or special
+${{clipboard}} — clipboard contents
+${{vault:name}} — a password saved in the vault
+${{name:default}} — asks you to type before running
+${{name:default|a|b}} — pick one of the offered choices</string>
+    <string name="help_examples_intro">Examples — tap a line to copy it:</string>
+    <string name="help_copy_all_hint">Double-click to copy everything</string>
+    <string name="help_copied_all">Copied everything</string>
+    <string name="help_example_date">Backup file with today's date</string>
+    <string name="help_example_time">Log the completion time</string>
+    <string name="help_example_timestamp">New directory named by timestamp</string>
+    <string name="help_example_uuid">Generate a random ID</string>
+    <string name="help_example_random">Generate a random password</string>
+    <string name="help_example_clipboard">Save clipboard contents to a file</string>
+    <string name="help_example_vault">Database password from the vault</string>
+    <string name="help_example_vault_cmd">mysql -u root -p"${{vault:db_password}}" -e "show databases;"</string>
+    <string name="help_example_vault_key">SSH key public half from the vault (append to authorized_keys)</string>
+    <string name="help_example_vault_key_cmd">echo "${{vault:my_key}}" &gt;&gt; ~/.ssh/authorized_keys</string>
+    <string name="help_example_param">Ping a host of your choice</string>
+    <string name="help_example_param_cmd">ping -c 4 ${{host:192.168.1.1}}</string>
+    <string name="help_example_param_options">Pick a service action</string>
+    <string name="help_example_param_options_cmd">systemctl ${{action:restart|start|stop|status}} nginx</string>
+    <!-- Vault help dialog (HelpDialog) -->
+    <string name="help_vault_title">Vault help</string>
+    <string name="help_vault_intro">The vault keeps your secrets encrypted with your master password — SSH keys, passwords and certificates. They are unlocked only while the vault is open.</string>
+    <string name="help_vault_categories">Three categories:
+SSH keys — key pairs used to connect to hosts
+Passwords — logins and API tokens
+Certificates — imported X.509 certificates</string>
+    <string name="help_vault_variable">Snippets and runbooks can use a stored vault entry as ${{vault:name}} — a password is filled in as-is; an SSH key is filled in with its public half.</string>
+    <string name="convert_to_runbook">Convert to runbook</string>
+    <string name="convert_to_snippet">Convert to snippet</string>
+    <string name="convert_name_label">Name</string>
+    <string name="convert_name_conflict_runbook">A runbook with this name already exists — choose another name</string>
+    <string name="convert_name_conflict_snippet">A snippet with this name already exists — choose another name</string>
+    <string name="convert_skipped_transfer">%d transfer step(s) skipped — they can't be converted</string>
+    <string name="convert_confirm">Create</string>
 </resources>

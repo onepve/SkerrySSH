@@ -47,6 +47,7 @@ import app.skerry.ui.generated.resources.lib_snippets_runs_on
 import app.skerry.ui.generated.resources.lib_snippets_variables
 import app.skerry.ui.generated.resources.runbook_delete
 import app.skerry.ui.generated.resources.runbook_edit
+import app.skerry.ui.generated.resources.convert_to_snippet
 import app.skerry.ui.generated.resources.runbook_history_last
 import app.skerry.ui.generated.resources.runbook_policy
 import app.skerry.ui.generated.resources.runbook_policy_stop
@@ -83,6 +84,7 @@ internal fun RunbookRunCard(
     state: DesktopDesignState,
     mono: FontFamily,
     onEdit: () -> Unit,
+    onConvert: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val runbook = entry.runbook
@@ -185,12 +187,13 @@ internal fun RunbookRunCard(
             GhostButton(stringResource(Res.string.runbook_edit), onClick = onEdit, modifier = Modifier.weight(1f))
         }
         Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            GhostButton(stringResource(Res.string.convert_to_snippet), onClick = onConvert, modifier = Modifier.weight(1f))
             GhostButton(
                 stringResource(Res.string.runbook_delete),
                 onClick = onDelete,
                 fg = Skerry.colors.sunset,
                 border = Skerry.colors.sunset.copy(alpha = 0.3f),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.weight(1f),
             )
         }
     }

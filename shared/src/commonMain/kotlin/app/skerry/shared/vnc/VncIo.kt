@@ -14,3 +14,10 @@ fun interface VncSource {
 fun interface VncSink {
     suspend fun write(bytes: ByteArray)
 }
+
+/**
+ * Result of a mid-handshake TLS upgrade (VeNCrypt/TLS security types): the [source]/[sink] the
+ * codec should switch to once the socket is wrapped in TLS. Produced by the transport (which owns
+ * the socket) and handed to the codec, which is pure bytes and cannot do TLS itself.
+ */
+data class VncTlsUpgrade(val source: VncSource, val sink: VncSink)

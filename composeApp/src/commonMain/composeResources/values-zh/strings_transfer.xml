@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Whole-library import/export of snippets and runbooks (desktop). -->
+    <string name="transfer_export">导出</string>
+    <string name="transfer_import">导入</string>
+    <string name="transfer_dialog_import_snippets">导入片段</string>
+    <string name="transfer_dialog_import_runbooks">导入运行手册</string>
+    <string name="transfer_dialog_pick_snippets">选择片段文件</string>
+    <string name="transfer_dialog_pick_runbooks">选择运行手册文件</string>
+    <string name="transfer_dialog_summary">新增 %1$d · 更新 %2$d · 本地独有 %3$d</string>
+    <string name="transfer_dialog_merge">同步变更</string>
+    <string name="transfer_dialog_merge_sub">保留本地独有条目，文件里的新增并更新</string>
+    <string name="transfer_dialog_replace">直接替换</string>
+    <string name="transfer_dialog_replace_sub">先删除本地全部（含本地独有 %1$d 条）</string>
+    <string name="transfer_dialog_confirm">导入</string>
+    <string name="transfer_dialog_import_done">导入完成</string>
+    <string name="transfer_dialog_result">新增 %1$d 条、更新 %2$d 条</string>
+    <string name="transfer_dialog_error_title">无法导入</string>
+    <string name="transfer_dialog_corrupted">该文件不是有效的导入文件，未做任何更改。</string>
+</resources>

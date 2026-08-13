@@ -91,6 +91,10 @@ data class Credential(
     val id: String,
     val label: String,
     val secret: CredentialSecret,
+    /** Free-form remark shown in the detail panel — same idea as a host note. Stored inside the
+     * encrypted payload with everything else, normalized by
+     * [app.skerry.shared.host.normalizeNotes]; `null` means "no note". */
+    val notes: String? = null,
 ) {
     override fun toString(): String = "Credential(id=$id, label=redacted, secret=redacted)"
 }

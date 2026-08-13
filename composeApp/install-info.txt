@@ -1,0 +1,24 @@
+配置与数据说明
+================
+
+配置文件位置：
+  安装目录下的 config\ 文件夹
+  （例如：C:\Users\<用户名>\AppData\Local\Skerry\config\）
+
+重要提示：
+  · 卸载软件不会删除配置文件和数据
+  · 覆盖安装（升级）不会删除配置文件和数据
+  · 如需彻底清除，请手动删除安装目录
+
+
+Configuration & Data Notes
+==========================
+
+Configuration location:
+  config\ folder under the installation directory
+  (e.g. C:\Users\<username>\AppData\Local\Skerry\config\)
+
+Important:
+  · Uninstalling will NOT delete your configuration or data
+  · Upgrading (reinstalling) will NOT delete your configuration or data
+  · To completely remove everything, manually delete the installation folder

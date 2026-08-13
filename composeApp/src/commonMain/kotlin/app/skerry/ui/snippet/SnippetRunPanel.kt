@@ -53,6 +53,7 @@ import app.skerry.ui.generated.resources.lib_snippets_clipboard_ref
 import app.skerry.ui.generated.resources.lib_snippets_copied
 import app.skerry.ui.generated.resources.lib_snippets_copy
 import app.skerry.ui.generated.resources.lib_snippets_delete
+import app.skerry.ui.generated.resources.convert_to_runbook
 import app.skerry.ui.generated.resources.lib_snippets_edit_action
 import app.skerry.ui.generated.resources.lib_snippets_no_session
 import app.skerry.ui.generated.resources.lib_snippets_preview_runs
@@ -91,6 +92,7 @@ internal fun SnippetRunPanel(
     onRun: (target: SnippetRunTarget, params: Map<String, String>) -> Boolean,
     onCopy: (String) -> Unit,
     onEdit: () -> Unit,
+    onConvert: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val snippet = entry.snippet
@@ -206,13 +208,16 @@ internal fun SnippetRunPanel(
         )
 
         Row(Modifier.fillMaxWidth().padding(top = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            GhostButton(stringResource(Res.string.convert_to_runbook), onClick = onConvert, modifier = Modifier.weight(1f))
             GhostButton(stringResource(Res.string.lib_snippets_edit_action), onClick = onEdit, modifier = Modifier.weight(1f))
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp)) {
             GhostButton(
                 stringResource(Res.string.lib_snippets_delete),
                 onClick = onDelete,
                 fg = Skerry.colors.sunset,
                 border = Skerry.colors.sunset.copy(alpha = 0.3f),
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.fillMaxWidth(),
             )
         }
     }

@@ -70,10 +70,13 @@ import app.skerry.ui.generated.resources.shell_create_vault
 import app.skerry.ui.generated.resources.shell_pairing_link
 import app.skerry.ui.generated.resources.shell_no_recovery_ack
 import app.skerry.ui.generated.resources.shell_password_strength
+import app.skerry.ui.generated.resources.shell_password_strength_danger
 import app.skerry.ui.generated.resources.shell_password_strength_weak
 import app.skerry.ui.generated.resources.shell_password_strength_fair
 import app.skerry.ui.generated.resources.shell_password_strength_good
 import app.skerry.ui.generated.resources.shell_password_strength_strong
+import app.skerry.ui.generated.resources.shell_password_danger_hint
+import app.skerry.ui.generated.resources.shell_password_weak_hint
 import org.jetbrains.compose.resources.stringResource
 import app.skerry.ui.design.BrandMark
 import app.skerry.ui.design.BrandPlate
@@ -304,14 +307,20 @@ fun DesktopCreateScreen(
     }
 }
 
-/** Master-password strength bar (4 segments) + label; color by [PasswordStrength]. */
+/** Master-password strength bar (4 segments) + label + warning text below. */
 @Composable
 private fun PasswordStrengthMeter(strength: PasswordStrength) {
     val (filled, color, label) = when (strength) {
+        PasswordStrength.Danger -> Triple(1, Skerry.colors.sunset, stringResource(Res.string.shell_password_strength_danger))
         PasswordStrength.Weak -> Triple(1, Skerry.colors.storm, stringResource(Res.string.shell_password_strength_weak))
         PasswordStrength.Fair -> Triple(2, Skerry.colors.amber, stringResource(Res.string.shell_password_strength_fair))
         PasswordStrength.Good -> Triple(3, Skerry.colors.cyan, stringResource(Res.string.shell_password_strength_good))
         PasswordStrength.Strong -> Triple(4, Skerry.colors.moss, stringResource(Res.string.shell_password_strength_strong))
+    }
+    val warning = when (strength) {
+        PasswordStrength.Danger -> stringResource(Res.string.shell_password_danger_hint)
+        PasswordStrength.Weak -> stringResource(Res.string.shell_password_weak_hint)
+        else -> null
     }
     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -323,6 +332,9 @@ private fun PasswordStrengthMeter(strength: PasswordStrength) {
             }
         }
         Txt(stringResource(Res.string.shell_password_strength, label), color = color, size = 11.sp)
+        if (warning != null) {
+            Txt(warning, color = color, size = 10.5.sp)
+        }
     }
 }
 
@@ -411,7 +423,7 @@ private fun LockPasswordField(
         onValueChange = onValueChange,
         singleLine = true,
         visualTransformation = PasswordVisualTransformation(),
-        textStyle = TextStyle(color = Skerry.colors.text, fontSize = 14.sp, fontFamily = LocalFonts.current.ui),
+        textStyle = TextStyle(color = Skerry.colors.text, fontSize = 14.sp, fontFamily = LocalFonts.current.ui, lineHeight = 19.sp),
         cursorBrush = SolidColor(Skerry.colors.cyan),
         keyboardOptions = KeyboardOptions(imeAction = imeAction, keyboardType = KeyboardType.Password),
         keyboardActions = KeyboardActions(onDone = { onSubmit() }, onGo = { onSubmit() }),
@@ -431,8 +443,11 @@ private fun LockPasswordField(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Sym("lock", size = 18.sp, color = Skerry.colors.faint)
-                Box(Modifier.weight(1f)) {
-                    if (value.isEmpty()) Txt(placeholder, color = Skerry.colors.faint, size = 14.sp)
+                // CenterStart + a shared lineHeight: without an explicit alignment the text hugs the
+                // top of the Box and looks off-center whenever the icon's line height makes the row
+                // taller than the text; placeholder and input share 19.sp so the field doesn't jump.
+                Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                    if (value.isEmpty()) Txt(placeholder, color = Skerry.colors.faint, size = 14.sp, lineHeight = 19.sp)
                     innerTextField()
                 }
             }
@@ -453,7 +468,7 @@ private fun LockTextField(
         value = value,
         onValueChange = onValueChange,
         singleLine = true,
-        textStyle = TextStyle(color = Skerry.colors.text, fontSize = 14.sp, fontFamily = LocalFonts.current.ui),
+        textStyle = TextStyle(color = Skerry.colors.text, fontSize = 14.sp, fontFamily = LocalFonts.current.ui, lineHeight = 19.sp),
         cursorBrush = SolidColor(Skerry.colors.cyan),
         keyboardOptions = KeyboardOptions(imeAction = imeAction),
         keyboardActions = KeyboardActions(onDone = { onSubmit() }, onGo = { onSubmit() }),
@@ -467,8 +482,8 @@ private fun LockTextField(
                     .padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(Modifier.weight(1f)) {
-                    if (value.isEmpty()) Txt(placeholder, color = Skerry.colors.faint, size = 14.sp)
+                Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                    if (value.isEmpty()) Txt(placeholder, color = Skerry.colors.faint, size = 14.sp, lineHeight = 19.sp)
                     innerTextField()
                 }
             }

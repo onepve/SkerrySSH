@@ -26,6 +26,14 @@ data class Runbook(
     val steps: List<RunbookStep> = emptyList(),
     val tags: List<String> = emptyList(),
     val policy: RunbookPolicy = RunbookPolicy(),
+    /**
+     * Interactive run mode: steps are sent as-is (no probe marker) and the user marks each one
+     * complete in the run panel before the next step goes out — for programs that keep the shell
+     * busy until the user finishes (menus, TUIs). When false (default) the original behaviour
+     * applies: steps carry the probe marker and completion is detected automatically, so runs can
+     * be unattended.
+     */
+    val interactive: Boolean = false,
 )
 
 /**

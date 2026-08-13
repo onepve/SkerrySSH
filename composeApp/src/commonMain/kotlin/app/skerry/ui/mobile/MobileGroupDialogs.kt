@@ -82,7 +82,9 @@ internal fun MobileGroupCreateDialog(onDismiss: () -> Unit, onCreate: (String) -
     MobileCenteredDialog(onDismiss = onDismiss) {
         Txt(stringResource(Res.string.conn_group_new_title), color = Skerry.colors.text, size = 18.sp, weight = FontWeight.Bold)
         Spacer(Modifier.height(14.dp))
-        MobileFormInput(name, { name = it }, "Production")
+        MobileFormInput(name, { name = it }, "Production",
+            // Renaming: the pre-filled old name is selected on focus so typing replaces it.
+            selectAllOnFocus = true)
         Spacer(Modifier.height(18.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Box(

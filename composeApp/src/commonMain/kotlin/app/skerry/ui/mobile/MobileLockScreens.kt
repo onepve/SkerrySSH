@@ -23,6 +23,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -109,6 +110,12 @@ fun MobileUnlockScreen(
     val submit = { if (pwd.isNotEmpty()) onUnlock(pwd.toCharArray()) }
     // Blocks screenshots/Recent Apps preview of the master password field (Android; no-op on desktop).
     SecureScreen()
+    // If biometrics is available and enabled — fire the prompt on entering the form (once),
+    // matching the desktop unlock form. Cancelling it lands back here on the password field
+    // (the controller stays on NeedsUnlock); the manual biometric row below remains as fallback.
+    if (canUseBiometric) {
+        LaunchedEffect(Unit) { onBiometric() }
+    }
     MobileLockScaffold(title = stringResource(Res.string.shell_lock_title), subtitle = stringResource(Res.string.shell_unlock_subtitle_mobile), error = error) {
         MobileLockField(pwd, { pwd = it }, stringResource(Res.string.shell_master_password), ImeAction.Done, onSubmit = submit)
         Spacer(Modifier.height(14.dp))

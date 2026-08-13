@@ -161,6 +161,7 @@ internal fun stepStatusText(state: RunbookStepState): String {
     return when (state.status) {
         RunbookStepStatus.PENDING -> stringResource(Res.string.runbook_status_waiting)
         RunbookStepStatus.AWAITING_CONFIRM -> stringResource(Res.string.runbook_status_confirm)
+        RunbookStepStatus.AWAITING_COMPLETE -> stringResource(Res.string.runbook_status_confirm)
         RunbookStepStatus.RUNNING -> stringResource(Res.string.runbook_status_running)
         RunbookStepStatus.SKIPPED -> stringResource(Res.string.runbook_status_skipped)
         RunbookStepStatus.STOPPED -> stringResource(Res.string.runbook_status_stopped)
@@ -181,6 +182,7 @@ internal fun runbookDurationText(millis: Long): String = when (val duration = ru
 @Composable
 internal fun runPhaseLabel(phase: RunbookPhase, hadFailures: Boolean): String = when (phase) {
     RunbookPhase.AWAITING_CONFIRM -> stringResource(Res.string.runbook_panel_waiting)
+    RunbookPhase.AWAITING_COMPLETE -> stringResource(Res.string.runbook_panel_waiting)
     RunbookPhase.RUNNING -> stringResource(Res.string.runbook_panel_running)
     RunbookPhase.DONE ->
         if (hadFailures) stringResource(Res.string.runbook_panel_done_with_failures)
@@ -192,6 +194,7 @@ internal fun runPhaseLabel(phase: RunbookPhase, hadFailures: Boolean): String = 
 @Composable
 internal fun runPhaseColor(phase: RunbookPhase, hadFailures: Boolean): Color = when (phase) {
     RunbookPhase.AWAITING_CONFIRM -> Skerry.colors.cyanBright
+    RunbookPhase.AWAITING_COMPLETE -> Skerry.colors.cyanBright
     RunbookPhase.RUNNING -> Skerry.colors.cyan
     RunbookPhase.DONE -> if (hadFailures) Skerry.colors.storm else Skerry.colors.moss
     RunbookPhase.FAILED -> Skerry.colors.sunset
@@ -202,6 +205,7 @@ internal fun runPhaseColor(phase: RunbookPhase, hadFailures: Boolean): Color = w
 internal fun runStatusColor(status: RunbookStepStatus): Color = when (status) {
     RunbookStepStatus.PENDING -> Skerry.colors.faint
     RunbookStepStatus.AWAITING_CONFIRM -> Skerry.colors.cyanBright
+    RunbookStepStatus.AWAITING_COMPLETE -> Skerry.colors.cyanBright
     RunbookStepStatus.RUNNING -> Skerry.colors.cyan
     RunbookStepStatus.SUCCEEDED -> Skerry.colors.moss
     RunbookStepStatus.FAILED -> Skerry.colors.sunset
@@ -216,11 +220,13 @@ internal fun runStatusIcon(status: RunbookStepStatus): String? = when (status) {
     RunbookStepStatus.SKIPPED -> "skip_next"
     RunbookStepStatus.STOPPED -> "stop_circle"
     RunbookStepStatus.AWAITING_CONFIRM -> "pause_circle"
+    RunbookStepStatus.AWAITING_COMPLETE -> "task_alt"
     RunbookStepStatus.PENDING, RunbookStepStatus.RUNNING -> null
 }
 
 internal fun phaseIcon(phase: RunbookPhase): String = when (phase) {
     RunbookPhase.AWAITING_CONFIRM -> "pause_circle"
+    RunbookPhase.AWAITING_COMPLETE -> "task_alt"
     RunbookPhase.RUNNING -> "timer"
     RunbookPhase.DONE -> "check_circle"
     RunbookPhase.FAILED -> "error"

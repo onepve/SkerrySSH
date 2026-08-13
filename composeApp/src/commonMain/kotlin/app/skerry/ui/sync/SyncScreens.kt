@@ -307,7 +307,7 @@ internal fun SyncSetupBody(
 ) {
     // Prefill from the saved link (Configured after restart): only the password is needed.
     val saved = remember { sync.savedConfig }
-    var serverUrl by remember { mutableStateOf(saved?.serverUrl ?: "") }
+    var serverUrl by remember { mutableStateOf(saved?.serverUrl ?: SyncSetupForm.DEFAULT_SERVER_URL) }
     var account by remember { mutableStateOf(saved?.accountId ?: "") }
     var password by remember { mutableStateOf("") }
     var keepConnected by remember { mutableStateOf(saved?.keepConnected ?: true) }

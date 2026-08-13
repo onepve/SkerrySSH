@@ -22,6 +22,9 @@
     <string name="shell_password_strength_fair">一般</string>
     <string name="shell_password_strength_good">良好</string>
     <string name="shell_password_strength_strong">强</string>
+    <string name="shell_password_strength_danger">危险</string>
+    <string name="shell_password_danger_hint">密码过短，离线极易被暴力破解，保险库数据可能暴露。建议至少 12 位混合字符。</string>
+    <string name="shell_password_weak_hint">强度不够，离线暴力破解保护有限。建议至少 12 位，混合大小写字母、数字和符号。</string>
     <string name="shell_password_min_length">请使用至少 %1$d 个字符创建保险库</string>
     <string name="shell_password_blank">密码不能全是空格</string>
 
