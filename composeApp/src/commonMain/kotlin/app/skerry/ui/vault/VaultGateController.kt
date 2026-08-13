@@ -23,11 +23,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Minimum master-password length. Higher than the typical "8" (NIST for server passwords with an
- * attempt counter): the vault file is attacked offline with no attempt limit, the only barrier is
- * Argon2id. Single source of truth for both validation and the UI error text.
+ * Minimum master-password length. The vault file is attacked offline with no attempt limit,
+ * the only barrier is Argon2id. Single source of truth for both validation and the UI error text.
  */
-const val MIN_MASTER_PASSWORD_LENGTH: Int = 12
+const val MIN_MASTER_PASSWORD_LENGTH: Int = 3
 
 /**
  * Word the user must type on the reset screen (type-to-confirm) to confirm irreversible vault erasure.

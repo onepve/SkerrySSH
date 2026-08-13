@@ -50,9 +50,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.skerry.shared.host.capNotes
 import app.skerry.shared.vault.SshCertificateInspector
 import app.skerry.shared.vault.SshKeyType
 import app.skerry.ui.generated.resources.Res
+import app.skerry.ui.generated.resources.conn_save
 import app.skerry.ui.generated.resources.vault_add
 import app.skerry.ui.generated.resources.vault_add_password
 import app.skerry.ui.generated.resources.vault_any_principal
@@ -74,12 +76,14 @@ import app.skerry.ui.generated.resources.vault_dialog_generate_subtitle
 import app.skerry.ui.generated.resources.vault_dialog_generate_title
 import app.skerry.ui.generated.resources.vault_dialog_import_subtitle
 import app.skerry.ui.generated.resources.vault_dialog_key_file_subtitle
+import app.skerry.ui.generated.resources.vault_edit_title
 import app.skerry.ui.generated.resources.vault_field_algorithm
 import app.skerry.ui.generated.resources.vault_field_cert_path
 import app.skerry.ui.generated.resources.vault_field_certificate
 import app.skerry.ui.generated.resources.vault_field_key_path
 import app.skerry.ui.generated.resources.vault_field_master_password
 import app.skerry.ui.generated.resources.vault_field_name
+import app.skerry.ui.generated.resources.vault_field_notes
 import app.skerry.ui.generated.resources.vault_field_passphrase
 import app.skerry.ui.generated.resources.vault_field_password
 import app.skerry.ui.generated.resources.vault_field_private_key_pem
@@ -97,11 +101,11 @@ import app.skerry.ui.generated.resources.vault_placeholder_name_cert
 import app.skerry.ui.generated.resources.vault_placeholder_name_key
 import app.skerry.ui.generated.resources.vault_placeholder_name_key_file
 import app.skerry.ui.generated.resources.vault_placeholder_name_password
+import app.skerry.ui.generated.resources.vault_placeholder_notes
 import app.skerry.ui.generated.resources.vault_placeholder_optional
 import app.skerry.ui.generated.resources.vault_placeholder_password
-import app.skerry.ui.generated.resources.vault_rename
-import app.skerry.ui.generated.resources.vault_rename_title
 import app.skerry.ui.nav.PlatformBackHandler
+import app.skerry.ui.host.ModalTextField
 import app.skerry.ui.vault.title
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -121,33 +125,37 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 
 @Composable
-internal fun GenerateKeyDialog(onDismiss: () -> Unit, onCreate: (name: String, type: SshKeyType) -> Unit) {
+internal fun GenerateKeyDialog(onDismiss: () -> Unit, onCreate: (name: String, notes: String, type: SshKeyType) -> Unit) {
     var name by remember { mutableStateOf("") }
+    var notes by remember { mutableStateOf("") }
     var type by remember { mutableStateOf(SshKeyType.ED25519) }
     val valid = name.isNotBlank()
     VaultDialogScaffold(stringResource(Res.string.vault_dialog_generate_title), stringResource(Res.string.vault_dialog_generate_subtitle), onDismiss) {
         DialogField(stringResource(Res.string.vault_field_name), name, { name = it }, placeholder = stringResource(Res.string.vault_placeholder_name_key))
+        NotesField(notes, { notes = capNotes(it) })
         Txt(stringResource(Res.string.vault_field_algorithm), color = Skerry.colors.faint, size = 10.5.sp, weight = FontWeight.SemiBold, letterSpacing = 0.6.sp, modifier = Modifier.padding(top = 16.dp, bottom = 6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SshKeyType.entries.forEach { option ->
                 Chip(option.label, active = option == type, modifier = Modifier.clickable { type = option })
             }
         }
-        DialogButtons(confirmLabel = stringResource(Res.string.vault_generate), confirmEnabled = valid, onDismiss = onDismiss, onConfirm = { onCreate(name.trim(), type) })
+        DialogButtons(confirmLabel = stringResource(Res.string.vault_generate), confirmEnabled = valid, onDismiss = onDismiss, onConfirm = { onCreate(name.trim(), capNotes(notes.trim()), type) })
     }
 }
 
 @Composable
-internal fun AddPasswordDialog(onDismiss: () -> Unit, onCreate: (name: String, password: String) -> Unit) {
+internal fun AddPasswordDialog(onDismiss: () -> Unit, onCreate: (name: String, notes: String, password: String) -> Unit) {
     var name by remember { mutableStateOf("") }
+    var notes by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     val valid = name.isNotBlank() && password.isNotEmpty()
     VaultDialogScaffold(stringResource(Res.string.vault_add_password), stringResource(Res.string.vault_dialog_add_password_subtitle), onDismiss) {
         DialogField(stringResource(Res.string.vault_field_name), name, { name = it }, placeholder = stringResource(Res.string.vault_placeholder_name_password))
+        NotesField(notes, { notes = capNotes(it) })
         Box(Modifier.padding(top = 16.dp)) {
             DialogField(stringResource(Res.string.vault_field_password), password, { password = it }, placeholder = stringResource(Res.string.vault_placeholder_password), password = true)
         }
-        DialogButtons(confirmLabel = stringResource(Res.string.vault_add), confirmEnabled = valid, onDismiss = onDismiss, onConfirm = { onCreate(name.trim(), password) })
+        DialogButtons(confirmLabel = stringResource(Res.string.vault_add), confirmEnabled = valid, onDismiss = onDismiss, onConfirm = { onCreate(name.trim(), capNotes(notes.trim()), password) })
     }
 }
 
@@ -155,9 +163,10 @@ internal fun AddPasswordDialog(onDismiss: () -> Unit, onCreate: (name: String, p
 internal fun ImportCertificateDialog(
     inspector: SshCertificateInspector,
     onDismiss: () -> Unit,
-    onCreate: (name: String, pem: String, certificate: String, passphrase: String?) -> Unit,
+    onCreate: (name: String, notes: String, pem: String, certificate: String, passphrase: String?) -> Unit,
 ) {
     var name by remember { mutableStateOf("") }
+    var notes by remember { mutableStateOf("") }
     var pem by remember { mutableStateOf("") }
     var certificate by remember { mutableStateOf("") }
     var passphrase by remember { mutableStateOf("") }
@@ -168,6 +177,7 @@ internal fun ImportCertificateDialog(
 
     VaultDialogScaffold(stringResource(Res.string.vault_import_certificate), stringResource(Res.string.vault_dialog_import_subtitle), onDismiss) {
         DialogField(stringResource(Res.string.vault_field_name), name, { name = it }, placeholder = stringResource(Res.string.vault_placeholder_name_cert))
+        NotesField(notes, { notes = capNotes(it) })
         Box(Modifier.padding(top = 16.dp)) {
             DialogField(stringResource(Res.string.vault_field_private_key_pem), pem, { pem = it }, placeholder = "-----BEGIN OPENSSH PRIVATE KEY-----", singleLine = false, keyboardType = KeyboardType.Password)
         }
@@ -187,7 +197,7 @@ internal fun ImportCertificateDialog(
                 )
             }
         }
-        DialogButtons(confirmLabel = stringResource(Res.string.vault_import), confirmEnabled = valid, onDismiss = onDismiss, onConfirm = { onCreate(name.trim(), pem.trim(), certificate.trim(), passphrase.ifBlank { null }) })
+        DialogButtons(confirmLabel = stringResource(Res.string.vault_import), confirmEnabled = valid, onDismiss = onDismiss, onConfirm = { onCreate(name.trim(), capNotes(notes.trim()), pem.trim(), certificate.trim(), passphrase.ifBlank { null }) })
     }
 }
 
@@ -212,9 +222,10 @@ internal fun RefRow(ref: String, missing: Boolean, mono: FontFamily) {
 @Composable
 internal fun LinkKeyFileDialog(
     onDismiss: () -> Unit,
-    onCreate: (name: String, keyRef: String, certificateRef: String?, passphrase: String?) -> Unit,
+    onCreate: (name: String, notes: String, keyRef: String, certificateRef: String?, passphrase: String?) -> Unit,
 ) {
     var name by remember { mutableStateOf("") }
+    var notes by remember { mutableStateOf("") }
     var keyRef by remember { mutableStateOf("") }
     var certRef by remember { mutableStateOf("") }
     var passphrase by remember { mutableStateOf("") }
@@ -224,6 +235,7 @@ internal fun LinkKeyFileDialog(
 
     VaultDialogScaffold(stringResource(Res.string.vault_link_key_file), stringResource(Res.string.vault_dialog_key_file_subtitle), onDismiss) {
         DialogField(stringResource(Res.string.vault_field_name), name, { name = it }, placeholder = stringResource(Res.string.vault_placeholder_name_key_file))
+        NotesField(notes, { notes = capNotes(it) })
         Box(Modifier.padding(top = 16.dp)) {
             RefField(stringResource(Res.string.vault_field_key_path), keyRef, { keyRef = it }, "~/.ssh/id_ed25519") {
                 scope.launch { pickSecretFileRef(browseTitle)?.let { keyRef = it } }
@@ -249,7 +261,7 @@ internal fun LinkKeyFileDialog(
             confirmLabel = stringResource(Res.string.vault_link),
             confirmEnabled = valid,
             onDismiss = onDismiss,
-            onConfirm = { onCreate(name.trim(), keyRef.trim(), certRef.trim().ifBlank { null }, passphrase.ifBlank { null }) },
+            onConfirm = { onCreate(name.trim(), capNotes(notes.trim()), keyRef.trim(), certRef.trim().ifBlank { null }, passphrase.ifBlank { null }) },
         )
     }
 }
@@ -296,20 +308,42 @@ internal fun PasswordConfirmDialog(
 }
 
 /**
- * Renames a keychain secret: a single prefilled NAME field. The secret material and id are untouched
- * (only the label changes). Confirm is enabled only for a non-blank label that actually differs — a
- * rename to the same name is a pointless sync push. Shared by desktop and mobile. [onConfirm] gets the
- * trimmed label.
+ * Edits a keychain secret's metadata: a prefilled NAME field plus a free-form NOTE field (the same
+ * note input the host connection dialog has). The secret material and id are untouched. Confirm is
+ * enabled only for a non-blank label that actually differs from the current values — an edit that
+ * changes nothing is a pointless sync push. Shared by desktop and mobile. [onConfirm] gets the
+ * trimmed label and the capped note (`null` when blank).
  */
 @Composable
-internal fun RenameSecretDialog(currentLabel: String, onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+internal fun EditSecretDialog(currentLabel: String, currentNotes: String?, onDismiss: () -> Unit, onConfirm: (String, String?) -> Unit) {
     var name by remember { mutableStateOf(currentLabel) }
+    var notes by remember { mutableStateOf(currentNotes ?: "") }
     val trimmed = name.trim()
-    val valid = trimmed.isNotEmpty() && trimmed != currentLabel
-    VaultDialogScaffold(stringResource(Res.string.vault_rename_title, currentLabel), null, onDismiss) {
+    val normalizedNotes = capNotes(notes.trim()).ifBlank { null }
+    val valid = trimmed.isNotEmpty() && (trimmed != currentLabel || normalizedNotes != currentNotes)
+    VaultDialogScaffold(stringResource(Res.string.vault_edit_title, currentLabel), null, onDismiss) {
         // The old label arrives prefilled: select it so typing replaces the name outright.
         DialogField(stringResource(Res.string.vault_field_name), name, { name = it }, placeholder = currentLabel, selectAllOnFocus = name == currentLabel)
-        DialogButtons(confirmLabel = stringResource(Res.string.vault_rename), confirmEnabled = valid, onDismiss = onDismiss, onConfirm = { onConfirm(trimmed) })
+        NotesField(notes, { notes = capNotes(it) })
+        DialogButtons(confirmLabel = stringResource(Res.string.conn_save), confirmEnabled = valid, onDismiss = onDismiss, onConfirm = { onConfirm(trimmed, normalizedNotes) })
+    }
+}
+
+/**
+ * Free-form remark field shared by every secret dialog — the same note input the host connection
+ * dialog uses (multi-line, UI font, capped at [app.skerry.shared.host.MAX_NOTES_LENGTH]).
+ */
+@Composable
+private fun NotesField(notes: String, onNotesChange: (String) -> Unit) {
+    Column(Modifier.padding(top = 16.dp)) {
+        Txt(stringResource(Res.string.vault_field_notes), color = Skerry.colors.faint, size = 10.5.sp, weight = FontWeight.SemiBold, letterSpacing = 0.6.sp, modifier = Modifier.padding(bottom = 5.dp))
+        ModalTextField(
+            notes,
+            onNotesChange,
+            stringResource(Res.string.vault_placeholder_notes),
+            singleLine = false,
+            minHeightDp = 64,
+        )
     }
 }
 

@@ -18,14 +18,14 @@ class PasswordStrengthTest {
 
     @Test
     fun below_minimum_length_is_weak_regardless_of_variety() {
-        // Anything shorter than MIN_MASTER_PASSWORD_LENGTH is always Weak, even with every
-        // character class present — the meter must not read "Good" while the create button is
-        // still disabled for being too short.
-        assertEquals(PasswordStrength.Weak, passwordStrength("aB1!"))
-        assertEquals(PasswordStrength.Weak, passwordStrength("abcdefg"))
-        assertEquals(PasswordStrength.Weak, passwordStrength("aB1!aB1!")) // 8 chars, 4 classes
-        assertEquals(PasswordStrength.Weak, passwordStrength("aB1!aB1!ab")) // 10 chars
-        assertEquals(PasswordStrength.Weak, passwordStrength("aB1!aB1!abc")) // 11 chars, one short
+        // 1–6 chars → Danger (trivially brute-forceable)
+        assertEquals(PasswordStrength.Danger, passwordStrength("aB1!"))
+        // 7+ chars, single class → Fair
+        assertEquals(PasswordStrength.Fair, passwordStrength("abcdefg"))
+        // 7+ chars with variety → scored by variety, not capped at Weak
+        assertEquals(PasswordStrength.Strong, passwordStrength("aB1!aB1!")) // 8 chars, 4 classes
+        assertEquals(PasswordStrength.Strong, passwordStrength("aB1!aB1!ab")) // 10 chars
+        assertEquals(PasswordStrength.Strong, passwordStrength("aB1!aB1!abc")) // 11 chars
     }
 
     @Test
@@ -59,7 +59,7 @@ class PasswordStrengthTest {
 
     @Test
     fun short_password_reports_too_short() {
-        assertEquals(MasterPasswordIssue.TooShort, masterPasswordIssue("aB1!aB1!abc"))
+        assertEquals(MasterPasswordIssue.TooShort, masterPasswordIssue("ab"))
     }
 
     @Test

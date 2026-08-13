@@ -278,5 +278,51 @@
     <string name="lib_teams_shared_runbooks_count">共享的运行手册 · %1$d</string>
     <string name="lib_teams_runbook_steps">%1$d 步</string>
     <string name="lib_teams_record_runbook">运行手册</string>
-    <string name="lib_teams_scope_access_unknown">无法获取访问列表 — 服务器未响应</string>
+    <string name="lib_teams_scope_access_unknown">无法获取访问列表 — 服务器未响应</string>    <!-- Snippet help dialog (HelpDialog) -->
+    <string name="help_snippet_title">代码片段帮助</string>
+    <string name="help_snippet_intro">代码片段是一条或多条命令。里面可以写 ${{变量}} 占位符，运行时自动替换成对应值。</string>
+    <string name="help_snippet_variables">全部变量：
+${{名称}} —— 名称由你自己起，运行前询问取值
+${{date:格式}} —— 当前日期（默认 YYYY-MM-DD）
+${{time:格式}} —— 当前时间（默认 HH:mm:ss）
+${{timestamp}} —— Unix 时间戳（秒）
+${{uuid}} —— 随机 UUID
+${{random}} —— 随机文本（默认 8 位：a-z、0-9）
+${{random:N,字符集}} —— N 位随机，字符集 alnum / hex / special
+${{clipboard}} —— 剪贴板内容
+${{vault:名称}} —— 保险库中保存的密码
+${{名称:默认值}} —— 运行前询问你填写
+${{名称:默认|选项1|选项2}} —— 运行前从选项中选择</string>
+    <string name="help_examples_intro">范例（点一行即复制）：</string>
+    <string name="help_copy_all_hint">双击复制全部内容</string>
+    <string name="help_copied_all">已复制全部内容</string>
+    <string name="help_example_date">带日期的备份文件</string>
+    <string name="help_example_time">把完成时间记入日志</string>
+    <string name="help_example_timestamp">按时间戳新建目录</string>
+    <string name="help_example_uuid">生成随机 ID</string>
+    <string name="help_example_random">生成随机密码</string>
+    <string name="help_example_clipboard">把剪贴板内容存成文件</string>
+    <string name="help_example_vault">从保险库取数据库密码</string>
+    <string name="help_example_vault_cmd">mysql -u root -p"${{vault:db_password}}" -e "show databases;"</string>
+    <string name="help_example_vault_key">从保险库取 SSH 密钥公钥（追加到 authorized_keys）</string>
+    <string name="help_example_vault_key_cmd">echo "${{vault:my_key}}" &gt;&gt; ~/.ssh/authorized_keys</string>
+    <string name="help_example_param">测试指定主机连通性</string>
+    <string name="help_example_param_cmd">ping -c 4 ${{host:192.168.1.1}}</string>
+    <string name="help_example_param_options">选择要执行的服务动作</string>
+    <string name="help_example_param_options_cmd">systemctl ${{action:restart|start|stop|status}} nginx</string>
+    <!-- Vault help dialog (HelpDialog) -->
+    <string name="help_vault_title">保险库帮助</string>
+    <string name="help_vault_intro">保险库用你的主密码加密保存机密信息——SSH 密钥、密码和证书。只有在保险库打开时才可读取。</string>
+    <string name="help_vault_categories">三个类别：
+SSH 密钥 —— 连接主机用的密钥对
+密码 —— 登录凭据和 API 令牌
+证书 —— 导入的 X.509 证书</string>
+    <string name="help_vault_variable">代码片段和运行手册可以用 ${{vault:名称}} 引用保险库中的条目——密码自动填入，SSH 密钥自动填入公钥。</string>
+    <string name="convert_to_runbook">转为运行手册</string>
+    <string name="convert_to_snippet">转为片段</string>
+    <string name="convert_name_label">名称</string>
+    <string name="convert_name_conflict_runbook">已存在同名运行手册，请换个名称</string>
+    <string name="convert_name_conflict_snippet">已存在同名片段，请换个名称</string>
+    <string name="convert_skipped_transfer">已跳过 %d 个传输步骤（无法转换）</string>
+    <string name="convert_confirm">创建</string>
 </resources>

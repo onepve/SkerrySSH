@@ -60,6 +60,9 @@ enum class RunbookStepStatus {
     /** The run is paused here waiting for the user's go-ahead ([RunbookStep.confirm]). */
     AWAITING_CONFIRM,
 
+    /** Interactive mode: the step was sent bare (no probe) and waits for the user to mark it done. */
+    AWAITING_COMPLETE,
+
     /** Sent to the shell (or moving over SFTP); waiting for it to report. */
     RUNNING,
     SUCCEEDED,
@@ -75,7 +78,7 @@ enum class RunbookStepStatus {
 }
 
 /** Where a run stands. */
-enum class RunbookPhase { AWAITING_CONFIRM, RUNNING, DONE, FAILED, STOPPED }
+enum class RunbookPhase { AWAITING_CONFIRM, AWAITING_COMPLETE, RUNNING, DONE, FAILED, STOPPED }
 
 /** One step's live state on one host. */
 @Stable
@@ -149,7 +152,12 @@ class RunbookStepState internal constructor(val index: Int, val step: RunbookSte
  * Held apart from [RunbookRunner] so the screens can read one live object instead of six fields.
  */
 @Stable
-class RunbookSessionRun internal constructor(internal val target: RunbookTarget, steps: List<RunbookStep>) {
+class RunbookSessionRun internal constructor(
+    internal val target: RunbookTarget,
+    steps: List<RunbookStep>,
+    /** Interactive run mode — steps are sent bare and marked complete by the user ([RunbookRunner]). */
+    val interactive: Boolean = false,
+) {
 
     val sessionId: String get() = target.sessionId
 

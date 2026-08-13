@@ -100,7 +100,7 @@ class RunbookRunner(
         private set
 
     /** Whether a run is in flight (sending or waiting for a confirmation). */
-    val active: Boolean get() = phase == RunbookPhase.RUNNING || phase == RunbookPhase.AWAITING_CONFIRM
+    val active: Boolean get() = phase == RunbookPhase.RUNNING || phase == RunbookPhase.AWAITING_CONFIRM || phase == RunbookPhase.AWAITING_COMPLETE
 
     /** Whether any step failed, including ones the runbook tolerates. */
     val hadFailures: Boolean get() = run?.hadFailures == true
@@ -179,7 +179,7 @@ class RunbookRunner(
         this.runId = newId()
         this.startedAt = now()
         this.reported = false
-        this.run = RunbookSessionRun(request.target, request.runbook.steps)
+        this.run = RunbookSessionRun(request.target, request.runbook.steps, request.runbook.interactive)
         phase = RunbookPhase.RUNNING
         advance(0)
         flushReport()
@@ -197,9 +197,22 @@ class RunbookRunner(
     /** The user skipped the step the run is paused on; the run continues with the next one. */
     fun skipStep() {
         val run = run ?: return
-        if (run.phase != RunbookPhase.AWAITING_CONFIRM) return
+        if (run.phase != RunbookPhase.AWAITING_CONFIRM && run.phase != RunbookPhase.AWAITING_COMPLETE) return
         val index = run.currentIndex
         run.steps.getOrNull(index)?.status = RunbookStepStatus.SKIPPED
+        advance(index + 1)
+        flushReport()
+    }
+
+    /**
+     * Interactive mode: the user watched the step run (a menu, a TUI) and marks it done, so the run
+     * moves on to the next step. No-op unless the run is parked on [RunbookPhase.AWAITING_COMPLETE].
+     */
+    fun completeStep() {
+        val run = run ?: return
+        if (run.phase != RunbookPhase.AWAITING_COMPLETE) return
+        val index = run.currentIndex
+        run.steps.getOrNull(index)?.status = RunbookStepStatus.SUCCEEDED
         advance(index + 1)
         flushReport()
     }
@@ -260,7 +273,12 @@ class RunbookRunner(
             return
         }
         run.currentIndex = index
-        if (state.step.confirm) {
+        // Interactive mode parks every step after sending it (the human is the completion detector),
+        // so the pre-send [RunbookStep.confirm] pause has nothing to add — it would just double the
+        // click count on a run the user is already watching.
+        if (run.interactive) {
+            dispatchStep(index)
+        } else if (state.step.confirm) {
             state.status = RunbookStepStatus.AWAITING_CONFIRM
             run.phase = RunbookPhase.AWAITING_CONFIRM
             phase = RunbookPhase.AWAITING_CONFIRM
@@ -281,12 +299,22 @@ class RunbookRunner(
         phase = RunbookPhase.RUNNING
         when (resolved) {
             is ResolvedRunbookStep.Command -> {
-                val token = RunbookMarker.token(runId, index)
-                // Declared before the line is sent, never after: the terminal reports only the step
-                // it was told to expect, and the echo it must hide starts arriving immediately.
-                run.target.expectStep(token, RunbookMarker.echoFragments(resolved.line, token))
-                run.target.send(RunbookMarker.probeLine(resolved.line, token) + "\n")
-                watch(run, index, token)
+                if (run.interactive) {
+                    // Bare send: no probe marker, nothing for the runner to detect. The step parks
+                    // as AWAITING_COMPLETE until the user marks it done ([completeStep]) — the only
+                    // way an interactive program can ever "complete".
+                    run.target.send(resolved.line + "\n")
+                    state.status = RunbookStepStatus.AWAITING_COMPLETE
+                    run.phase = RunbookPhase.AWAITING_COMPLETE
+                    phase = RunbookPhase.AWAITING_COMPLETE
+                } else {
+                    val token = RunbookMarker.token(runId, index)
+                    // Declared before the line is sent, never after: the terminal reports only the step
+                    // it was told to expect, and the echo it must hide starts arriving immediately.
+                    run.target.expectStep(token, RunbookMarker.echoFragments(resolved.line, token))
+                    run.target.send(RunbookMarker.probeLine(resolved.line, token) + "\n")
+                    watch(run, index, token)
+                }
             }
             is ResolvedRunbookStep.Transfer -> transfer(run, index, resolved)
         }

@@ -22,6 +22,9 @@
     <string name="shell_password_strength_fair">Fair</string>
     <string name="shell_password_strength_good">Good</string>
     <string name="shell_password_strength_strong">Strong</string>
+    <string name="shell_password_strength_danger">Danger</string>
+    <string name="shell_password_danger_hint">Password is too short, easily brute-forced offline. Recommend at least 12 mixed characters.</string>
+    <string name="shell_password_weak_hint">Not strong enough, limited offline brute-force protection. Recommend at least 12 characters, mixed case, digits and symbols.</string>
     <string name="shell_password_min_length">Use at least %1$d characters to create the vault</string>
     <string name="shell_password_blank">The password can't be spaces only</string>
 

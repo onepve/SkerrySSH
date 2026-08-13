@@ -43,6 +43,7 @@
     <string name="runbook_panel_failed">Stopped on a failure</string>
     <string name="runbook_panel_stopped">Stopped</string>
     <string name="runbook_panel_run_step">Run this step</string>
+    <string name="runbook_panel_complete_step">Complete step</string>
     <string name="runbook_panel_skip_step">Skip</string>
     <string name="runbook_panel_stop">Stop run</string>
     <string name="runbook_panel_close">Close</string>
@@ -52,7 +53,6 @@
     <string name="runbook_panel_shell_note">Steps run in the shell of this session; the exit code comes back out of band, printing nothing.</string>
     <string name="runbook_panel_transfer_failed">Transfer failed: %1$s</string>
     <string name="runbook_panel_no_sftp">This session has no SFTP channel.</string>
-
     <!-- Library screen -->
     <string name="runbook_edit">Edit</string>
     <string name="runbook_cancel">Cancel</string>
@@ -64,7 +64,6 @@
         <item quantity="one">%1$d step</item>
         <item quantity="other">%1$d steps</item>
     </plurals>
-
     <!-- Step kinds -->
     <string name="runbook_kind_command">Command</string>
     <string name="runbook_kind_transfer">File</string>
@@ -76,14 +75,14 @@
     <string name="runbook_direction_download">Download</string>
     <string name="runbook_transfer_note">Transfers use the SFTP channel of the same session.</string>
     <string name="runbook_vars_hint">${{name}} asks for a value before the run; ${{vault:entry}} and ${{clipboard}} fill themselves in.</string>
-
     <!-- Run policy -->
     <string name="runbook_policy">Run policy</string>
+    <string name="runbook_interactive">Interactive run</string>
+    <string name="runbook_interactive_sub">Commands are sent as-is; mark each step complete to continue</string>
     <string name="runbook_policy_stop">Stop on first failure</string>
     <string name="runbook_policy_watchdog">Watchdog</string>
     <string name="runbook_policy_watchdog_value">%1$d min</string>
     <string name="runbook_policy_watchdog_off">Off</string>
-
     <!-- Run screen -->
     <string name="runbook_run_kind">runbook</string>
     <string name="runbook_run_step_of">step %1$d of %2$d</string>
@@ -100,10 +99,28 @@
     <string name="runbook_dur_seconds">%1$s s</string>
     <string name="runbook_dur_minutes">%1$d m %2$d s</string>
     <string name="runbook_transfer_of">%1$s of %2$s</string>
-
     <!-- Run history -->
     <string name="runbook_history">Previous runs</string>
     <string name="runbook_history_empty">No runs yet</string>
     <string name="runbook_history_failed_at">failed at step %1$d</string>
     <string name="runbook_history_last">last run %1$s</string>
+    <!-- Runbook help dialog (HelpDialog) -->
+    <string name="help_runbook_title">Runbook help</string>
+    <string name="help_runbook_intro">A runbook is an ordered list of commands run one after another in the terminal you are looking at — everything it sends is visible in the session. Runbook steps support the same ${{}} variables as code snippets.</string>
+    <string name="help_runbook_flow">Each step waits for the previous one to finish (its exit code) before the next is sent — there is no fixed delay. By default every step pauses for your confirmation before it runs; a step that fails stops the runbook unless it is marked to keep going.</string>
+    <string name="help_runbook_examples_intro">Examples — tap a line to create it:</string>
+    <string name="help_runbook_example_load">Create example: system load check</string>
+    <string name="help_runbook_example_install">Create example: install and verify software</string>
+    <string name="help_runbook_example_disk">Create example: check disk space</string>
+    <string name="help_runbook_sample_load">System load check</string>
+    <string name="help_runbook_sample_install">Install and verify software</string>
+    <string name="help_runbook_sample_disk">Check disk space</string>
+    <string name="help_runbook_step_uptime">Uptime</string>
+    <string name="help_runbook_step_memory">Memory</string>
+    <string name="help_runbook_step_top_processes">Top processes</string>
+    <string name="help_runbook_step_check_installed">Check installed</string>
+    <string name="help_runbook_step_install">Install</string>
+    <string name="help_runbook_step_verify">Verify</string>
+    <string name="help_runbook_step_usage">Usage</string>
+    <string name="help_runbook_step_largest_dirs">Largest dirs</string>
 </resources>

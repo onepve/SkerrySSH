@@ -7,7 +7,7 @@ import app.skerry.ui.generated.resources.shell_password_min_length
 import org.jetbrains.compose.resources.stringResource
 
 /** Master password strength rating for the vault-creation screen indicator. */
-enum class PasswordStrength { Weak, Fair, Good, Strong }
+enum class PasswordStrength { Danger, Weak, Fair, Good, Strong }
 
 /** Why the master password can't be accepted yet, for the create-screen gate and hint. */
 enum class MasterPasswordIssue { TooShort, Blank }
@@ -37,23 +37,19 @@ fun masterPasswordHint(issue: MasterPasswordIssue): String = when (issue) {
 /**
  * Rough password strength heuristic based on length and character-class count (lower/upper case,
  * digits, other). Not a cryptographic entropy metric, only a UX hint. Empty input returns `null`
- * (indicator hidden); anything below [MIN_MASTER_PASSWORD_LENGTH] is always [PasswordStrength.Weak]
- * so the meter never reads "Good" while vault creation is still blocked on length. Pure function,
- * covered by [PasswordStrengthTest].
+ * (indicator hidden). Any short password is [PasswordStrength.Danger]; the `Weak` tier below
+ * [MIN_MASTER_PASSWORD_LENGTH] can't be reached through the form, which refuses to submit shorter
+ * values in the first place (the tier only survives for blank input and the shared enum). Pure
+ * function, covered by [PasswordStrengthTest].
  */
 fun passwordStrength(password: String): PasswordStrength? {
     if (password.isEmpty()) return null
-    // Whitespace-only password has no real strength; don't rate it above Weak.
     if (password.isBlank()) return PasswordStrength.Weak
     val len = password.length
-    if (len < MIN_MASTER_PASSWORD_LENGTH) return PasswordStrength.Weak
+    // 1–6 chars: trivially brute-forceable → Danger
+    if (len < 7) return PasswordStrength.Danger
 
-    var classes = 0
-    if (password.any { it.isLowerCase() }) classes++
-    if (password.any { it.isUpperCase() }) classes++
-    if (password.any { it.isDigit() }) classes++
-    if (password.any { !it.isLetterOrDigit() }) classes++
-
+    val classes = countCharClasses(password)
     var score = 2 // length already >= MIN_MASTER_PASSWORD_LENGTH
     if (len >= 16) score++
     if (classes >= 2) score++
@@ -64,4 +60,14 @@ fun passwordStrength(password: String): PasswordStrength? {
         score == 3 -> PasswordStrength.Good
         else -> PasswordStrength.Strong
     }
+}
+
+/** Counts how many character classes (lowercase, uppercase, digit, symbol) appear in [password]. */
+private fun countCharClasses(password: String): Int {
+    var classes = 0
+    if (password.any { it.isLowerCase() }) classes++
+    if (password.any { it.isUpperCase() }) classes++
+    if (password.any { it.isDigit() }) classes++
+    if (password.any { !it.isLetterOrDigit() }) classes++
+    return classes
 }

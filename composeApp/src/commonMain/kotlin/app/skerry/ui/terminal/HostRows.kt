@@ -204,6 +204,8 @@ internal fun HostRow(
             onEdit = onEdit,
             onDuplicate = onDuplicate,
             onDelete = onDelete,
+            initialCollapsedTags = state.snippetLibrary.collapsedTags,
+            onCollapsedTagsChange = state.snippetLibrary.onCollapsedTagsChange,
         )
     }
 }
@@ -265,6 +267,8 @@ internal fun HostEntryRow(
     onEdit: (() -> Unit)? = null,
     onDuplicate: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
+    initialCollapsedTags: Set<String> = emptySet(),
+    onCollapsedTagsChange: (Set<String>) -> Unit = {},
 ) {
     // Production marker: shown before the row is ever clicked, so "wrong window" is visible in the
     // list itself and not only once a session is open.
@@ -371,12 +375,17 @@ internal fun HostEntryRow(
                             onDismissRequest = { snippetPickerOpen = false },
                             properties = PopupProperties(focusable = true),
                         ) {
-                            SnippetPalette(snippets) { entry ->
-                                // Through the manager: a snippet with ${{…}} variables opens the confirm
-                                // dialog first; the resolved line (newline included) lands here after.
-                                snippets.run(entry.id) { line -> runSnippetOnHost(host, line) }
-                                snippetPickerOpen = false
-                            }
+                            SnippetPalette(
+                                manager = snippets,
+                                onPick = { entry ->
+                                    // Through the manager: a snippet with ${{…}} variables opens the confirm
+                                    // dialog first; the resolved line (newline included) lands here after.
+                                    snippets.run(entry.id) { line -> runSnippetOnHost(host, line) }
+                                    snippetPickerOpen = false
+                                },
+                                initialCollapsedTags = initialCollapsedTags,
+                                onCollapsedTagsChange = onCollapsedTagsChange,
+                            )
                         }
                     }
                 }

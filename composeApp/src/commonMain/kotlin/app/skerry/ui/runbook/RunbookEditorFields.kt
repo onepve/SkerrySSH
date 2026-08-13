@@ -36,6 +36,7 @@ import app.skerry.ui.design.fieldFocus
 import app.skerry.ui.design.fieldName
 import app.skerry.ui.design.rememberFieldDraft
 import app.skerry.ui.design.Toggle
+import app.skerry.ui.design.ToggleRow
 import app.skerry.ui.design.Txt
 import app.skerry.ui.design.labelUppercase
 import app.skerry.ui.generated.resources.Res
@@ -52,6 +53,8 @@ import app.skerry.ui.generated.resources.runbook_ph_name
 import app.skerry.ui.generated.resources.runbook_ph_remote
 import app.skerry.ui.generated.resources.runbook_ph_tags
 import app.skerry.ui.generated.resources.runbook_policy
+import app.skerry.ui.generated.resources.runbook_interactive
+import app.skerry.ui.generated.resources.runbook_interactive_sub
 import app.skerry.ui.generated.resources.runbook_policy_stop
 import app.skerry.ui.generated.resources.runbook_policy_watchdog
 import app.skerry.ui.generated.resources.runbook_policy_watchdog_off
@@ -170,6 +173,13 @@ private fun PolicyFields(form: RunbookFormState) {
             }
         }
     }
+    ToggleRow(
+        label = stringResource(Res.string.runbook_interactive),
+        subtitle = stringResource(Res.string.runbook_interactive_sub),
+        on = form.interactive,
+        onToggle = { form.interactive = !form.interactive },
+        modifier = Modifier.padding(top = 14.dp),
+    )
 }
 
 @Composable

@@ -36,6 +36,7 @@ import app.skerry.ui.generated.resources.runbook_panel_done_with_failures
 import app.skerry.ui.generated.resources.runbook_panel_failed
 import app.skerry.ui.generated.resources.runbook_panel_progress
 import app.skerry.ui.generated.resources.runbook_panel_run_step
+import app.skerry.ui.generated.resources.runbook_panel_complete_step
 import app.skerry.ui.generated.resources.runbook_panel_running
 import app.skerry.ui.generated.resources.runbook_panel_stalled
 import app.skerry.ui.generated.resources.runbook_panel_skip_step
@@ -101,6 +102,14 @@ fun RunbookRunPanel(runner: RunbookRunner, run: RunbookSessionRun, modifier: Mod
                         fg = Skerry.colors.sunset, border = Skerry.colors.sunset.copy(alpha = 0.3f),
                     )
                 }
+                RunbookPhase.AWAITING_COMPLETE -> {
+                    PrimaryButton(stringResource(Res.string.runbook_panel_complete_step), onClick = runner::completeStep)
+                    GhostButton(stringResource(Res.string.runbook_panel_skip_step), onClick = runner::skipStep)
+                    GhostButton(
+                        stringResource(Res.string.runbook_panel_stop), onClick = runner::stop,
+                        fg = Skerry.colors.sunset, border = Skerry.colors.sunset.copy(alpha = 0.3f),
+                    )
+                }
                 RunbookPhase.RUNNING -> GhostButton(
                     stringResource(Res.string.runbook_panel_stop), onClick = runner::stop,
                     fg = Skerry.colors.sunset, border = Skerry.colors.sunset.copy(alpha = 0.3f),
@@ -118,7 +127,10 @@ private fun StepRow(state: RunbookStepState, mono: androidx.compose.ui.text.font
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(7.dp))
-            .background(if (state.status == RunbookStepStatus.AWAITING_CONFIRM) Skerry.colors.cyan10 else Color.Transparent)
+            .background(
+                if (state.status == RunbookStepStatus.AWAITING_CONFIRM || state.status == RunbookStepStatus.AWAITING_COMPLETE)
+                    Skerry.colors.cyan10 else Color.Transparent
+            )
             .padding(horizontal = 8.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -161,6 +173,7 @@ private fun StepRow(state: RunbookStepState, mono: androidx.compose.ui.text.font
 private fun statusIcon(status: RunbookStepStatus): String = when (status) {
     RunbookStepStatus.PENDING -> "radio_button_unchecked"
     RunbookStepStatus.AWAITING_CONFIRM -> "pause_circle"
+    RunbookStepStatus.AWAITING_COMPLETE -> "task_alt"
     RunbookStepStatus.RUNNING -> "play_circle"
     RunbookStepStatus.SUCCEEDED -> "check_circle"
     RunbookStepStatus.FAILED -> "error"

@@ -281,5 +281,51 @@
     <string name="lib_teams_shared_runbooks_count">Общие сценарии · %1$d</string>
     <string name="lib_teams_runbook_steps">шагов: %1$d</string>
     <string name="lib_teams_record_runbook">сценарий</string>
-    <string name="lib_teams_scope_access_unknown">Список доступа не получен — сервер не ответил</string>
+    <string name="lib_teams_scope_access_unknown">Список доступа не получен — сервер не ответил</string>    <!-- Snippet help dialog (HelpDialog) -->
+    <string name="help_snippet_title">Справка по фрагментам</string>
+    <string name="help_snippet_intro">Фрагмент — это одна или несколько строк команд. В команде можно писать плейсхолдеры ${{переменная}} — при запуске они заменяются на нужные значения.</string>
+    <string name="help_snippet_variables">Все переменные:
+${{имя}} — имя придумываете вы; значение спросится при запуске
+${{date:формат}} — текущая дата (по умолчанию YYYY-MM-DD)
+${{time:формат}} — текущее время (по умолчанию HH:mm:ss)
+${{timestamp}} — метка Unix (секунды)
+${{uuid}} — случайный UUID
+${{random}} — случайный текст (по умолчанию 8 символов: a-z, 0-9)
+${{random:N,набор}} — N символов из alnum, hex или special
+${{clipboard}} — содержимое буфера обмена
+${{vault:имя}} — пароль, сохранённый в хранилище
+${{имя:значение}} — спросит ввод перед запуском
+${{имя:значение|вариант1|вариант2}} — выберите один из вариантов</string>
+    <string name="help_examples_intro">Примеры — нажмите на строку, чтобы скопировать:</string>
+    <string name="help_copy_all_hint">Двойной клик — копировать всё</string>
+    <string name="help_copied_all">Скопировано всё</string>
+    <string name="help_example_date">Резервная копия с датой</string>
+    <string name="help_example_time">Записать время завершения в журнал</string>
+    <string name="help_example_timestamp">Новый каталог с меткой времени</string>
+    <string name="help_example_uuid">Сгенерировать случайный ID</string>
+    <string name="help_example_random">Сгенерировать случайный пароль</string>
+    <string name="help_example_clipboard">Сохранить буфер обмена в файл</string>
+    <string name="help_example_vault">Пароль БД из хранилища</string>
+    <string name="help_example_vault_cmd">mysql -u root -p"${{vault:db_password}}" -e "show databases;"</string>
+    <string name="help_example_vault_key">Публичный ключ SSH из хранилища (добавить в authorized_keys)</string>
+    <string name="help_example_vault_key_cmd">echo "${{vault:my_key}}" &gt;&gt; ~/.ssh/authorized_keys</string>
+    <string name="help_example_param">Проверить связь с указанным хостом</string>
+    <string name="help_example_param_cmd">ping -c 4 ${{host:192.168.1.1}}</string>
+    <string name="help_example_param_options">Выбрать действие для службы</string>
+    <string name="help_example_param_options_cmd">systemctl ${{action:restart|start|stop|status}} nginx</string>
+    <!-- Vault help dialog (HelpDialog) -->
+    <string name="help_vault_title">Справка по хранилищу</string>
+    <string name="help_vault_intro">Хранилище шифрует ваши секреты мастер-паролем — SSH-ключи, пароли и сертификаты. Они доступны, только пока хранилище открыто.</string>
+    <string name="help_vault_categories">Три категории:
+SSH-ключи — пары ключей для подключения к хостам
+Пароли — учётные данные и токены API
+Сертификаты — импортированные сертификаты X.509</string>
+    <string name="help_vault_variable">Фрагменты и сценарии могут использовать элемент хранилища как ${{vault:имя}} — пароль подставляется как есть, а для SSH-ключа — его открытая часть.</string>
+    <string name="convert_to_runbook">Преобразовать в сценарий</string>
+    <string name="convert_to_snippet">Преобразовать в сниппет</string>
+    <string name="convert_name_label">Имя</string>
+    <string name="convert_name_conflict_runbook">Сценарий с таким именем уже существует — выберите другое имя</string>
+    <string name="convert_name_conflict_snippet">Сниппет с таким именем уже существует — выберите другое имя</string>
+    <string name="convert_skipped_transfer">Пропущено шагов передачи: %d (их нельзя преобразовать)</string>
+    <string name="convert_confirm">Создать</string>
 </resources>

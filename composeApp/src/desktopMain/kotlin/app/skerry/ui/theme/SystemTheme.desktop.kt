@@ -29,7 +29,7 @@ actual fun systemInDarkTheme(enabled: Boolean): Boolean {
     // flipping to SYSTEM re-reads the state and (re)subscribes. All call sites share ONE watcher
     // via [SystemDarkMonitor] — unsubscribing here only stops it when no one else is listening.
     // Slot count is the same in both states.
-    val initial = remember(enabled) { if (enabled) SystemDarkMonitor.INSTANCE.current() else true }
+    val initial = remember(enabled) { if (enabled) SystemDarkMonitor.INSTANCE.current() else false }
     val dark by produceState(initial, enabled) {
         if (!enabled) return@produceState
         val subscription = SystemDarkMonitor.INSTANCE.subscribe { value = it }

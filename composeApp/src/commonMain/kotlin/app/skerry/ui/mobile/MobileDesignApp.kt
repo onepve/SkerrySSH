@@ -14,16 +14,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.CoroutineScope
 import app.skerry.shared.ai.AiSettingsStore
 import app.skerry.ui.ai.aiProviderFactory
 import app.skerry.ui.AppDependencies
 import app.skerry.ui.ai.AiAssistantController
 import app.skerry.shared.terminal.VaultTerminalHistoryStore
+import app.skerry.shared.vault.IonspinVaultCrypto
+import app.skerry.ui.app.LocalVaultCrypto
 import app.skerry.ui.connection.ConnectionController
 import app.skerry.ui.session.SessionsController
 import app.skerry.ui.sync.SyncStatus
 import app.skerry.ui.sync.SyncOnboardingScreen
 import app.skerry.ui.terminal.LocalTerminalAppearance
+import app.skerry.ui.terminal.terminalFontDefaultForLocale
 import app.skerry.ui.terminal.LocalTerminalHighlight
 import app.skerry.ui.terminal.TerminalHighlight
 import app.skerry.ui.terminal.LocalTerminalTheme
@@ -81,9 +85,16 @@ fun MobileDesignApp(
     deps: AppDependencies = AppDependencies(),
     // Keyboard-interactive prompts (2FA codes a server asks for mid-connect); null in preview.
     keyboardInteractive: app.skerry.ui.connection.KeyboardInteractivePromptController? = null,
-    state: MobileDesignState = remember { MobileDesignState() },
+    state: MobileDesignState = remember {
+        MobileDesignState(initialTerminalFont = terminalFontDefaultForLocale())
+    },
     features: FeatureFlags = FeatureFlags(),
     sessions: SessionsController? = null,
+    // Process-scoped coroutine scope for sessions (Android: survives Activity recreation, so
+    // backgrounding the app — Activity may be recycled — keeps connections and the keep-alive
+    // service alive; tap a notification to come back to the same live terminal). Null falls back
+    // to the composition scope (desktop/preview/offscreen behavior).
+    processScope: CoroutineScope? = null,
     // AI controller supplied externally (offscreen render of the AI screen with a fake provider);
     // null builds it from deps.vault below, as usual.
     aiOverride: AiAssistantController? = null,
@@ -106,7 +117,7 @@ fun MobileDesignApp(
     // Session manager: supplied externally (offscreen render with a fake transport) or built from
     // the live transport — one shell per session.
     // Dispose our own graph; an externally supplied one is the caller's, leave it alone.
-    val scope = rememberCoroutineScope()
+    val scope = processScope ?: rememberCoroutineScope()
     // Per-host terminal command history over the encrypted vault: autocomplete writes it, the
     // command palette reads every host's. Hoisted out of the sessions factory so both can see it.
     val termHistory = remember(deps.vault) { deps.vault?.let { VaultTerminalHistoryStore(it) } }
@@ -288,6 +299,7 @@ fun MobileDesignApp(
         LocalTerminalHistory provides termHistory,
         // Vault + biometrics — for the More screen's "unlock with biometrics" toggle (enable/reconfigure).
         LocalVault provides deps.vault,
+        LocalVaultCrypto provides remember { IonspinVaultCrypto() },
         LocalVaultBiometrics provides deps.biometrics,
         LocalSecurityLog provides deps.securityLog,
         // Self-hosted sync coordinator — More → "Sync" push screen.

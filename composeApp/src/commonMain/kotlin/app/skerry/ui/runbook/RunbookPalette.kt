@@ -42,11 +42,13 @@ import app.skerry.ui.app.LocalRunbooks
 import app.skerry.ui.app.LocalSessions
 import app.skerry.ui.connection.ConnectionUiState
 import kotlinx.coroutines.flow.SharedFlow
+import app.skerry.ui.design.FilterChipRow
 import app.skerry.ui.design.IconBtn
 import app.skerry.ui.design.LocalFonts
 import app.skerry.ui.design.Sym
 import app.skerry.ui.design.Txt
 import app.skerry.ui.design.rememberModalPresence
+import app.skerry.ui.snippet.SnippetCategoryHeader
 import app.skerry.ui.generated.resources.Res
 import app.skerry.ui.generated.resources.runbook_empty
 import app.skerry.ui.generated.resources.runbook_no_matches
@@ -69,7 +71,12 @@ import org.jetbrains.compose.resources.stringResource
  * comes first, and the progress panel takes over from there.
  */
 @Composable
-fun RunbookPaletteButton(active: Session?, requests: SharedFlow<Unit>? = null) {
+fun RunbookPaletteButton(
+    active: Session?,
+    requests: SharedFlow<Unit>? = null,
+    initialCollapsedTags: Set<String> = emptySet(),
+    onCollapsedTagsChange: (Set<String>) -> Unit = {},
+) {
     val manager = LocalRunbooks.current
     val runner = LocalRunbookRunner.current
     val terminal = (active?.controller?.uiState as? ConnectionUiState.Connected)?.terminal
@@ -108,28 +115,40 @@ fun RunbookPaletteButton(active: Session?, requests: SharedFlow<Unit>? = null) {
                 onDismissRequest = { open = false },
                 properties = PopupProperties(focusable = true),
             ) {
-                RunbookPalette(manager) { entry ->
-                    runner.requestStart(
-                        entry.runbook,
-                        runbookTarget(active.id, terminal, active.controller),
-                        recording = terminal.recording,
-                    )
-                    open = false
-                }
+                RunbookPalette(
+                    manager = manager,
+                    onPick = { entry ->
+                        runner.requestStart(
+                            entry.runbook,
+                            runbookTarget(active.id, terminal, active.controller),
+                            recording = terminal.recording,
+                        )
+                        open = false
+                    },
+                    initialCollapsedTags = initialCollapsedTags,
+                    onCollapsedTagsChange = onCollapsedTagsChange,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun RunbookPalette(manager: RunbookManager, onPick: (RunbookEntry) -> Unit) {
+private fun RunbookPalette(
+    manager: RunbookManager,
+    onPick: (RunbookEntry) -> Unit,
+    initialCollapsedTags: Set<String> = emptySet(),
+    onCollapsedTagsChange: (Set<String>) -> Unit = {},
+) {
     // Registered like the snippet palette: it lives in a focusable Popup and must hand the keyboard
     // back to the terminal when it closes.
     rememberModalPresence()
     val mono = LocalFonts.current.mono
-    var query by remember { mutableStateOf("") }
+    // Inherits the library's collapse memory and writes toggles back to the same persisted store
+    // (the palette's own query/chip stay session-local, dropped on close).
+    val library = remember { RunbookLibraryState(initialCollapsedTags, onCollapsedTagsChange) }
     val all = manager.runbooks
-    val filtered = if (query.isBlank()) all else all.filter { it.matches(query) }
+    val filtered = library.visible(all)
     val searchFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { searchFocus.requestFocus() }
     Column(
@@ -146,15 +165,24 @@ private fun RunbookPalette(manager: RunbookManager, onPick: (RunbookEntry) -> Un
         ) {
             Sym("search", size = 15.sp, color = Skerry.colors.faint)
             Box(Modifier.weight(1f)) {
-                if (query.isEmpty()) {
+                if (library.query.isEmpty()) {
                     Txt(stringResource(Res.string.runbook_palette_placeholder), color = Skerry.colors.faint, size = 12.5.sp, font = mono)
                 }
                 BasicTextField(
-                    query, { query = it }, singleLine = true, textStyle = style,
+                    library.query, { library.query = it }, singleLine = true, textStyle = style,
                     cursorBrush = SolidColor(Skerry.colors.cyan),
                     modifier = Modifier.fillMaxWidth().focusRequester(searchFocus),
                 )
             }
+        }
+        if (hasRunbookCategories(all)) {
+            FilterChipRow(
+                chips = library.chips(all),
+                activeChip = library.effectiveChip(all) ?: ALL_RUNBOOKS_CHIP,
+                onSelect = { library.activeChip = it },
+                modifier = Modifier.padding(top = 6.dp),
+                label = { runbookChipLabel(it) },
+            )
         }
         Column(Modifier.heightIn(max = 300.dp).verticalScroll(rememberScrollState()).padding(top = 6.dp)) {
             if (filtered.isEmpty()) {
@@ -162,6 +190,20 @@ private fun RunbookPalette(manager: RunbookManager, onPick: (RunbookEntry) -> Un
                     if (all.isEmpty()) stringResource(Res.string.runbook_empty) else stringResource(Res.string.runbook_no_matches),
                     color = Skerry.colors.faint, size = 11.5.sp, font = mono, modifier = Modifier.padding(8.dp),
                 )
+            } else if (shouldGroupRunbooks(filtered, library.effectiveChip(all) ?: ALL_RUNBOOKS_CHIP)) {
+                groupRunbooksByCategory(filtered).forEach { category ->
+                    key(category.name) {
+                        SnippetCategoryHeader(
+                            category = category.name,
+                            count = category.runbooks.size,
+                            collapsed = library.isTagCollapsed(category.name),
+                            onToggle = { library.toggleTagCollapsed(category.name) },
+                        )
+                        if (!library.isTagCollapsed(category.name)) {
+                            category.runbooks.forEach { entry -> key(entry.id) { PaletteRow(entry, mono) { onPick(entry) } } }
+                        }
+                    }
+                }
             } else {
                 filtered.forEach { entry -> key(entry.id) { PaletteRow(entry, mono) { onPick(entry) } } }
             }

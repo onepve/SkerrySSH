@@ -50,21 +50,26 @@ import app.skerry.ui.generated.resources.term_no_snippets_yet
 import app.skerry.ui.generated.resources.term_run_snippet_placeholder
 import app.skerry.ui.generated.resources.term_untitled
 import app.skerry.ui.session.Session
+import app.skerry.ui.snippet.SnippetCategoryHeader
 import app.skerry.ui.snippet.SnippetEntry
+import app.skerry.ui.snippet.SnippetLibraryState
 import app.skerry.ui.snippet.SnippetManager
-import app.skerry.ui.snippet.UNCATEGORIZED_KEY
 import app.skerry.ui.snippet.groupSnippetsByCategory
 import app.skerry.ui.snippet.hasCategories
-import app.skerry.ui.snippet.matches
-import app.skerry.ui.snippet.snippetTagLabel
-import app.skerry.ui.snippet.uncategorizedSnippetsLabel
+import app.skerry.ui.snippet.shouldGroupSnippets
+import app.skerry.ui.design.FilterChipRow
 import org.jetbrains.compose.resources.stringResource
 import app.skerry.ui.theme.Skerry
 
 // Snippet palette: quickly run a saved command in the active terminal directly from the toolbar.
 
 @Composable
-internal fun SnippetPaletteButton(active: Session?, requests: SharedFlow<Unit>? = null) {
+internal fun SnippetPaletteButton(
+    active: Session?,
+    requests: SharedFlow<Unit>? = null,
+    initialCollapsedTags: Set<String> = emptySet(),
+    onCollapsedTagsChange: (Set<String>) -> Unit = {},
+) {
     val manager = LocalSnippets.current
     val terminal = (active?.controller?.uiState as? ConnectionUiState.Connected)?.terminal
     // Keyed on active: switching tabs must not leave the palette open over a different toolbar.
@@ -82,24 +87,37 @@ internal fun SnippetPaletteButton(active: Session?, requests: SharedFlow<Unit>? 
                 onDismissRequest = { open = false },
                 properties = PopupProperties(focusable = true),
             ) {
-                SnippetPalette(manager) { entry ->
-                    manager.run(entry.id, recording = terminal.recording) { text -> terminal.sendUserInputGuarded(text) }
-                    open = false
-                }
+                SnippetPalette(
+                    manager = manager,
+                    onPick = { entry ->
+                        manager.run(entry.id, recording = terminal.recording) { text -> terminal.sendUserInputGuarded(text) }
+                        open = false
+                    },
+                    initialCollapsedTags = initialCollapsedTags,
+                    onCollapsedTagsChange = onCollapsedTagsChange,
+                )
             }
         }
     }
 }
 
 @Composable
-internal fun SnippetPalette(manager: SnippetManager, onPick: (SnippetEntry) -> Unit) {
-    // Registered here rather than at each call site: the palette is only ever shown inside a
-    // focusable Popup (toolbar button, host row menu), and both must hand the keyboard back.
+internal fun SnippetPalette(
+    manager: SnippetManager,
+    onPick: (SnippetEntry) -> Unit,
+    initialCollapsedTags: Set<String> = emptySet(),
+    onCollapsedTagsChange: (Set<String>) -> Unit = {},
+) {
+    // Registered like the runbook palette: it lives in a focusable Popup and must hand the keyboard
+    // back to the terminal when it closes.
     rememberModalPresence()
     val mono = LocalFonts.current.mono
-    var query by remember { mutableStateOf("") }
+    // Inherits the library's collapse memory and writes toggles back to the same persisted store:
+    // collapsing a tag in the library keeps it collapsed here, and vice versa.
+    val library = remember { SnippetLibraryState(initialCollapsedTags, onCollapsedTagsChange) }
     val all = manager.snippets
-    val filtered = if (query.isBlank()) all else all.filter { it.matches(query) }
+    val filtered = library.visible(all)
+    val chip = library.effectiveChip(all)
     // Autofocus the search field on open — the palette is meant to be driven from the keyboard.
     val searchFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { searchFocus.requestFocus() }
@@ -115,20 +133,35 @@ internal fun SnippetPalette(manager: SnippetManager, onPick: (SnippetEntry) -> U
         ) {
             Sym("search", size = 15.sp, color = Skerry.colors.faint)
             Box(Modifier.weight(1f)) {
-                if (query.isEmpty()) Txt(stringResource(Res.string.term_run_snippet_placeholder), color = Skerry.colors.faint, size = 12.5.sp, font = mono)
-                BasicTextField(query, { query = it }, singleLine = true, textStyle = style, cursorBrush = SolidColor(Skerry.colors.cyan), modifier = Modifier.fillMaxWidth().focusRequester(searchFocus))
+                if (library.query.isEmpty()) Txt(stringResource(Res.string.term_run_snippet_placeholder), color = Skerry.colors.faint, size = 12.5.sp)
+                BasicTextField(library.query, { library.query = it }, singleLine = true, textStyle = style, cursorBrush = SolidColor(Skerry.colors.cyan), modifier = Modifier.fillMaxWidth().focusRequester(searchFocus))
             }
+        }
+        if (hasCategories(all)) {
+            FilterChipRow(
+                chips = library.chips(all),
+                activeChip = chip,
+                onSelect = { library.activeChip = it },
+                modifier = Modifier.padding(top = 4.dp),
+            )
         }
         Column(Modifier.heightIn(max = 300.dp).verticalScroll(rememberScrollState()).padding(top = 6.dp)) {
             if (filtered.isEmpty()) {
                 Txt(if (all.isEmpty()) stringResource(Res.string.term_no_snippets_yet) else stringResource(Res.string.term_no_matches), color = Skerry.colors.faint, size = 11.5.sp, font = mono, modifier = Modifier.padding(8.dp))
-            } else if (hasCategories(filtered)) {
-                // Same category split as the library, so a command is two steps away instead of a
-                // scroll. No chips or collapsing here — the palette is keyboard-driven and ephemeral.
+            } else if (shouldGroupSnippets(filtered, chip)) {
+                // Same collapsible category sections as the library (the "All" view with tags):
+                // the header is the whole click target, collapsed sections keep only the header.
                 groupSnippetsByCategory(filtered).forEach { category ->
                     key(category.name) {
-                        PaletteCategoryCaption(category.name)
-                        category.snippets.forEach { entry -> key(entry.id) { PaletteRow(entry, mono) { onPick(entry) } } }
+                        SnippetCategoryHeader(
+                            category = category.name,
+                            count = category.snippets.size,
+                            collapsed = library.isTagCollapsed(category.name),
+                            onToggle = { library.toggleTagCollapsed(category.name) },
+                        )
+                        if (!library.isTagCollapsed(category.name)) {
+                            category.snippets.forEach { entry -> key(entry.id) { PaletteRow(entry, mono) { onPick(entry) } } }
+                        }
                     }
                 }
             } else {
@@ -136,15 +169,6 @@ internal fun SnippetPalette(manager: SnippetManager, onPick: (SnippetEntry) -> U
             }
         }
     }
-}
-
-@Composable
-private fun PaletteCategoryCaption(name: String) {
-    Txt(
-        if (name == UNCATEGORIZED_KEY) uncategorizedSnippetsLabel() else snippetTagLabel(name),
-        color = Skerry.colors.faint, size = 10.sp, weight = FontWeight.SemiBold, letterSpacing = 0.5.sp,
-        modifier = Modifier.padding(start = 9.dp, top = 7.dp, bottom = 2.dp),
-    )
 }
 
 @Composable

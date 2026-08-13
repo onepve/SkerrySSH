@@ -30,14 +30,16 @@ internal class SystemDarkMonitor(
     /**
      * Current OS dark-mode state. While a watcher is live this serves its cache (no subprocess);
      * while idle it re-detects, so a consumer that re-enables after a pause starts fresh. An
-     * unknown OS answer keeps the last known value, defaulting to dark before any observation.
+     * unknown OS answer keeps the last known value, defaulting to light before any observation —
+     * a light default matches the typical desktop (and a Kylin/UOS user's expectation); only an
+     * explicit OS dark signal should render dark.
      */
     fun current(): Boolean {
         synchronized(lock) { if (job != null) last?.let { return it } }
         val fresh = detect()
         return synchronized(lock) {
             if (fresh != null) last = fresh
-            last ?: true
+            last ?: false
         }
     }
 

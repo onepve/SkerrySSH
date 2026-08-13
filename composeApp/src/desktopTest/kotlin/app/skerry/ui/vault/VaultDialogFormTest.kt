@@ -34,7 +34,7 @@ class VaultDialogFormTest {
     @Test
     fun `generating a key passes the typed name on`() {
         var created: Pair<String, SshKeyType>? = null
-        runForm({ GenerateKeyDialog(onDismiss = {}, onCreate = { name, type -> created = name to type }) }) {
+        runForm({ GenerateKeyDialog(onDismiss = {}, onCreate = { name, _, type -> created = name to type }) }) {
             onNodeWithTag(UiTags.FORM_SAVE).assertIsNotEnabled()
             onField(Res.string.vault_field_name).performTextInput(NAME)
             onNodeWithTag(UiTags.FORM_SAVE).assertIsEnabled().performClick()
@@ -47,7 +47,7 @@ class VaultDialogFormTest {
     @Test
     fun `a password secret carries both the name and the password`() {
         var created: Pair<String, String>? = null
-        runForm({ AddPasswordDialog(onDismiss = {}, onCreate = { name, pw -> created = name to pw }) }) {
+        runForm({ AddPasswordDialog(onDismiss = {}, onCreate = { name, _, pw -> created = name to pw }) }) {
             onField(Res.string.vault_field_name).performTextInput(NAME)
             onField(Res.string.vault_field_password).performTextInput(SECRET)
             onNodeWithTag(UiTags.FORM_SAVE).performClick()
@@ -60,7 +60,7 @@ class VaultDialogFormTest {
     @Test
     fun `a password secret cannot be saved without the password`() {
         var created: Pair<String, String>? = null
-        runForm({ AddPasswordDialog(onDismiss = {}, onCreate = { name, pw -> created = name to pw }) }) {
+        runForm({ AddPasswordDialog(onDismiss = {}, onCreate = { name, _, pw -> created = name to pw }) }) {
             onField(Res.string.vault_field_name).performTextInput(NAME)
             onNodeWithTag(UiTags.FORM_SAVE).assertIsNotEnabled()
         }
@@ -70,7 +70,7 @@ class VaultDialogFormTest {
     @Test
     fun `cancelling a dialog creates nothing`() {
         var created = false
-        runForm({ AddPasswordDialog(onDismiss = {}, onCreate = { _, _ -> created = true }) }) {
+        runForm({ AddPasswordDialog(onDismiss = {}, onCreate = { _, _, _ -> created = true }) }) {
             onField(Res.string.vault_field_name).performTextInput(NAME)
             onField(Res.string.vault_field_password).performTextInput(SECRET)
             onNodeWithTag(UiTags.FORM_CANCEL).performClick()
@@ -91,7 +91,7 @@ class VaultDialogFormTest {
             ImportCertificateDialog(
                 inspector = SshjCertificateInspector(),
                 onDismiss = {},
-                onCreate = { _, _, _, _ -> created = true },
+                onCreate = { _, _, _, _, _ -> created = true },
             )
         }) {
             onField(Res.string.vault_field_name).performTextInput(NAME)
@@ -111,7 +111,7 @@ class VaultDialogFormTest {
     fun `linking a key file needs a path as well as a name`() {
         var created: Triple<String, String, String?>? = null
         runForm({
-            LinkKeyFileDialog(onDismiss = {}, onCreate = { name, keyRef, certRef, _ -> created = Triple(name, keyRef, certRef) })
+            LinkKeyFileDialog(onDismiss = {}, onCreate = { name, _, keyRef, certRef, _ -> created = Triple(name, keyRef, certRef) })
         }) {
             onField(Res.string.vault_field_name).performTextInput(NAME)
             onNodeWithTag(UiTags.FORM_SAVE).assertIsNotEnabled()
@@ -128,7 +128,7 @@ class VaultDialogFormTest {
     @Test
     fun `renaming to the same label changes nothing`() {
         var renamed: String? = null
-        runForm({ RenameSecretDialog(currentLabel = NAME, onDismiss = {}, onConfirm = { renamed = it }) }) {
+        runForm({ EditSecretDialog(currentLabel = NAME, currentNotes = null, onDismiss = {}, onConfirm = { renamed, _ -> renamed }) }) {
             onNodeWithTag(UiTags.FORM_SAVE).assertIsNotEnabled()
 
             onField(Res.string.vault_field_name).performTextReplacement(RENAMED)

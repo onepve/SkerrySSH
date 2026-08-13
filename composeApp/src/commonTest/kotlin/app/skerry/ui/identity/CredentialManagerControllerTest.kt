@@ -111,6 +111,50 @@ class CredentialManagerControllerTest {
     }
 
     @Test
+    fun `save stores the note normalized`() {
+        val controller = CredentialManagerController(CredentialStore(FakeCredVault())) { "gen" }
+
+        controller.save(CredentialDraft(label = "Prod", kind = CredentialKind.PASSWORD, password = "pw", notes = "  prod admin  "))
+
+        assertEquals("prod admin", controller.credentials.single().notes)
+    }
+
+    @Test
+    fun `edit changes label and note in one go and keeps id and secret`() {
+        val controller = CredentialManagerController(CredentialStore(FakeCredVault())) { "gen" }
+        controller.save(CredentialDraft(label = "old", kind = CredentialKind.PRIVATE_KEY, privateKeyPem = "pem", passphrase = "pp", notes = "old note"))
+
+        controller.edit("gen", "new", "new note")
+
+        val c = controller.credentials.single()
+        assertEquals("gen", c.id)
+        assertEquals("new", c.label)
+        assertEquals("new note", c.notes)
+        assertEquals(CredentialSecret.PrivateKey("pem", passphrase = "pp"), c.secret)
+    }
+
+    @Test
+    fun `edit with a blank note clears it to null`() {
+        val controller = CredentialManagerController(CredentialStore(FakeCredVault())) { "gen" }
+        controller.save(CredentialDraft(label = "old", kind = CredentialKind.PASSWORD, password = "pw", notes = "some note"))
+
+        controller.edit("gen", "new", "")
+
+        val c = controller.credentials.single()
+        assertEquals("new", c.label)
+        assertNull(c.notes)
+    }
+
+    @Test
+    fun `edit of a missing id is a no-op`() {
+        val controller = CredentialManagerController(CredentialStore(FakeCredVault())) { "gen" }
+
+        controller.edit("missing", "x", "note")
+
+        assertEquals(emptyList(), controller.credentials)
+    }
+
+    @Test
     fun `delete removes the credential`() {
         val controller = CredentialManagerController(CredentialStore(FakeCredVault())) { "gen" }
         controller.save(CredentialDraft(label = "Key", kind = CredentialKind.PASSWORD, password = "p"))

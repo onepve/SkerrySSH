@@ -44,7 +44,9 @@ import app.skerry.ui.generated.resources.vault_export_failed_message
 import app.skerry.ui.generated.resources.vault_export_failed_title
 import app.skerry.ui.generated.resources.vault_add_password
 import app.skerry.ui.generated.resources.vault_badge_expired
+import app.skerry.ui.generated.resources.vault_copy
 import app.skerry.ui.generated.resources.vault_e2e_description
+import app.skerry.ui.generated.resources.vault_export
 import app.skerry.ui.generated.resources.vault_e2e_encrypted
 import app.skerry.ui.generated.resources.vault_empty_certificates_hint
 import app.skerry.ui.generated.resources.vault_empty_certificates_title
@@ -81,6 +83,7 @@ import app.skerry.ui.design.NoticeDialog
 import app.skerry.ui.design.Badge
 import app.skerry.ui.design.EmptyState
 import app.skerry.ui.design.GhostButton
+import app.skerry.ui.design.HelpDialog
 import app.skerry.ui.app.LocalCredentials
 import app.skerry.ui.design.LocalFonts
 import app.skerry.ui.app.LocalHosts
@@ -145,6 +148,7 @@ private fun LiveVaultView(credentials: CredentialManagerController) {
     var selectedId by remember { mutableStateOf<String?>(null) }
     var showGenerate by remember { mutableStateOf(false) }
     var showAddPassword by remember { mutableStateOf(false) }
+    var showHelp by remember { mutableStateOf(false) }
     val secretFiles = LocalSecretFileReader.current
     var showImportCert by remember { mutableStateOf(false) }
     var showLinkKeyFile by remember { mutableStateOf(false) }
@@ -172,6 +176,7 @@ private fun LiveVaultView(credentials: CredentialManagerController) {
                     onAddPassword = { showAddPassword = true },
                     onImportCert = { showImportCert = true },
                     onLinkKeyFile = { showLinkKeyFile = true },
+                    onHelp = { showHelp = true },
                 )
                 Row(Modifier.weight(1f).fillMaxWidth()) {
                     if (credItems.isEmpty()) {
@@ -197,6 +202,7 @@ private fun LiveVaultView(credentials: CredentialManagerController) {
                     }
                     selectedCred?.let { credential ->
                         VLine(Skerry.colors.line)
+                        // Resolved in composable context so the callbacks below (non-composable lambdas) can use them.
                         LiveSecretDetail(
                             credential = credential,
                             generator = generator,
@@ -231,7 +237,7 @@ private fun LiveVaultView(credentials: CredentialManagerController) {
         if (showGenerate && generator != null) {
             GenerateKeyDialog(
                 onDismiss = { showGenerate = false },
-                onCreate = { name, type ->
+                onCreate = { name, notes, type ->
                     showGenerate = false
                     category = VaultCategoryKind.SSH_KEYS
                     // Generation (especially RSA-4096) is expensive — off the main thread to avoid UI jank;
@@ -239,7 +245,7 @@ private fun LiveVaultView(credentials: CredentialManagerController) {
                     scope.launch {
                         val key = withContext(Dispatchers.Default) { generator.generate(type, comment = name) }
                         selectedId = credentials.save(
-                            CredentialDraft(label = name, kind = CredentialKind.PRIVATE_KEY, privateKeyPem = key.privateKeyPem),
+                            CredentialDraft(label = name, kind = CredentialKind.PRIVATE_KEY, privateKeyPem = key.privateKeyPem, notes = notes),
                         )
                     }
                 },
@@ -248,9 +254,9 @@ private fun LiveVaultView(credentials: CredentialManagerController) {
         if (showAddPassword) {
             AddPasswordDialog(
                 onDismiss = { showAddPassword = false },
-                onCreate = { name, password ->
+                onCreate = { name, notes, password ->
                     selectedId = credentials.save(
-                        CredentialDraft(label = name, kind = CredentialKind.PASSWORD, password = password),
+                        CredentialDraft(label = name, kind = CredentialKind.PASSWORD, password = password, notes = notes),
                     )
                     category = VaultCategoryKind.PASSWORDS
                     showAddPassword = false
@@ -261,7 +267,7 @@ private fun LiveVaultView(credentials: CredentialManagerController) {
             ImportCertificateDialog(
                 inspector = inspector,
                 onDismiss = { showImportCert = false },
-                onCreate = { name, pem, cert, passphrase ->
+                onCreate = { name, notes, pem, cert, passphrase ->
                     selectedId = credentials.save(
                         CredentialDraft(
                             label = name,
@@ -269,6 +275,7 @@ private fun LiveVaultView(credentials: CredentialManagerController) {
                             privateKeyPem = pem,
                             certificate = cert,
                             passphrase = passphrase ?: "",
+                            notes = notes,
                         ),
                     )
                     category = VaultCategoryKind.CERTIFICATES
@@ -279,7 +286,7 @@ private fun LiveVaultView(credentials: CredentialManagerController) {
         if (showLinkKeyFile) {
             LinkKeyFileDialog(
                 onDismiss = { showLinkKeyFile = false },
-                onCreate = { name, keyRef, certRef, passphrase ->
+                onCreate = { name, notes, keyRef, certRef, passphrase ->
                     selectedId = credentials.save(
                         CredentialDraft(
                             label = name,
@@ -287,6 +294,7 @@ private fun LiveVaultView(credentials: CredentialManagerController) {
                             privateKeyRef = keyRef,
                             certificateRef = certRef ?: "",
                             passphrase = passphrase ?: "",
+                            notes = notes,
                         ),
                     )
                     category = if (certRef == null) VaultCategoryKind.SSH_KEYS else VaultCategoryKind.CERTIFICATES
@@ -295,15 +303,16 @@ private fun LiveVaultView(credentials: CredentialManagerController) {
             )
         }
         pendingRenameCred?.let { target ->
-            // Rename edits only the label; the id (which hosts reference) and the secret stay put, and
-            // the change propagates to sync on its own (see CredentialManagerController.rename).
-            RenameSecretDialog(
+            // Edit changes only the label and note; the id (which hosts reference) and the secret stay
+            // put, and the change propagates to sync on its own (see CredentialManagerController.edit).
+            EditSecretDialog(
                 currentLabel = target.label,
+                currentNotes = target.notes,
                 onDismiss = { pendingRenameCred = null },
-                onConfirm = { newLabel ->
+                onConfirm = { newLabel, newNotes ->
                     // Abort on a lock race: idle auto-lock can fire while the dialog is open, and vault
                     // CRUD throws once locked. Mirrors the delete guard just below.
-                    if (vault?.isUnlocked == true) credentials.rename(target.id, newLabel)
+                    if (vault?.isUnlocked == true) credentials.edit(target.id, newLabel, newNotes)
                     pendingRenameCred = null
                 },
             )
@@ -345,6 +354,15 @@ private fun LiveVaultView(credentials: CredentialManagerController) {
                 access = copyAuth.access,
                 onDismiss = { copyAuth.dismiss() },
                 onConfirm = { copyAuth.submitPassword(it) },
+            )
+        }
+
+        if (showHelp) {
+            HelpDialog(
+                title = vaultHelpTitle(),
+                sections = vaultHelpSections(),
+                examples = emptyList(),
+                onDismiss = { showHelp = false },
             )
         }
     }
@@ -414,6 +432,7 @@ private fun VaultHeader(
     onAddPassword: () -> Unit,
     onImportCert: () -> Unit,
     onLinkKeyFile: () -> Unit,
+    onHelp: (() -> Unit)? = null,
 ) {
     SectionHeader(
         // The section names the whole keychain and how it is protected; which slice of it is on
@@ -423,6 +442,7 @@ private fun VaultHeader(
             Res.string.vault_header_summary,
             pluralStringResource(Res.plurals.vault_item_count, itemCount, itemCount),
         ),
+        help = onHelp,
         actions = {
             when (category) {
                 // "Link file" sits in both key and certificate categories: which one a file-backed

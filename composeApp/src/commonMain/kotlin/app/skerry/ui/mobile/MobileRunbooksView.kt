@@ -38,6 +38,8 @@ import app.skerry.ui.app.LocalSessions
 import app.skerry.ui.app.MobileDesignState
 import app.skerry.ui.app.MobileRoute
 import app.skerry.ui.connection.ConnectionUiState
+import app.skerry.ui.design.FilterChipRow
+import app.skerry.ui.design.HelpDialog
 import app.skerry.ui.design.LocalFonts
 import app.skerry.ui.design.Sym
 import app.skerry.ui.design.Txt
@@ -52,11 +54,30 @@ import app.skerry.ui.generated.resources.runbook_save
 import app.skerry.ui.generated.resources.runbook_section
 import app.skerry.ui.generated.resources.runbook_step_count
 import app.skerry.ui.generated.resources.runbook_untitled
+import app.skerry.ui.generated.resources.convert_confirm
+import app.skerry.ui.generated.resources.convert_name_conflict_snippet
+import app.skerry.ui.generated.resources.convert_name_label
+import app.skerry.ui.generated.resources.convert_skipped_transfer
+import app.skerry.ui.generated.resources.convert_to_snippet
+import app.skerry.ui.runbook.ALL_RUNBOOKS_CHIP
+import app.skerry.ui.convert.ConvertDialog
+import app.skerry.shared.runbook.RunbookConverter
+import app.skerry.ui.snippet.SnippetDraft
 import app.skerry.ui.runbook.RunbookEditorFields
 import app.skerry.ui.runbook.RunbookEntry
 import app.skerry.ui.runbook.RunbookFormState
 import app.skerry.ui.runbook.RunbookManager
+import app.skerry.ui.app.LocalSnippets
+import app.skerry.ui.runbook.groupRunbooksByCategory
+import app.skerry.ui.runbook.hasRunbookCategories
+import app.skerry.ui.runbook.runbookChipLabel
+import app.skerry.ui.runbook.runbookHelpExamples
+import app.skerry.ui.runbook.runbookHelpSections
+import app.skerry.ui.runbook.runbookHelpTitle
 import app.skerry.ui.runbook.runbookTarget
+import app.skerry.ui.runbook.runbookExampleTemplatesByKey
+import app.skerry.ui.runbook.shouldGroupRunbooks
+import app.skerry.ui.snippet.SnippetCategoryHeader
 import app.skerry.ui.theme.Skerry
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.platform.testTag
@@ -91,6 +112,8 @@ fun MobileRunbooksScreen(state: MobileDesignState) {
 
     var editing by remember { mutableStateOf<RunbookEntry?>(null) }
     var adding by remember { mutableStateOf(false) }
+    var showHelp by remember { mutableStateOf(false) }
+    var convertTarget by remember { mutableStateOf<RunbookEntry?>(null) }
     val sheetOpen = adding || editing != null
 
     // An open sheet hides the tab bar, which would otherwise float over the fields above the keyboard.
@@ -101,19 +124,52 @@ fun MobileRunbooksScreen(state: MobileDesignState) {
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().background(Skerry.colors.bg).verticalScroll(rememberScrollState())) {
-            MobilePushHeader(stringResource(Res.string.runbook_section), onBack = state::pop)
+            MobilePushHeader(
+                stringResource(Res.string.runbook_section),
+                onBack = state::pop,
+                onHelp = { showHelp = true },
+            )
             if (runbooks.isEmpty()) {
                 Txt(
                     stringResource(Res.string.runbook_empty_mobile), color = Skerry.colors.faint, size = 13.sp,
                     modifier = Modifier.padding(horizontal = 22.dp, vertical = 30.dp),
                 )
             } else {
+                val library = state.runbookLibrary
+                val shown = library.visible(runbooks)
+                if (hasRunbookCategories(runbooks)) {
+                    FilterChipRow(
+                        chips = library.chips(runbooks),
+                        activeChip = library.effectiveChip(runbooks) ?: ALL_RUNBOOKS_CHIP,
+                        onSelect = { library.activeChip = it },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                        label = { runbookChipLabel(it) },
+                    )
+                }
                 Column(
                     Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    runbooks.forEach { entry ->
-                        key(entry.id) { RunbookCard(entry, mono) { editing = entry; adding = false } }
+                    if (shouldGroupRunbooks(shown, library.effectiveChip(runbooks) ?: ALL_RUNBOOKS_CHIP)) {
+                        groupRunbooksByCategory(shown).forEach { category ->
+                            key(category.name) {
+                                SnippetCategoryHeader(
+                                    category = category.name,
+                                    count = category.runbooks.size,
+                                    collapsed = library.isTagCollapsed(category.name),
+                                    onToggle = { library.toggleTagCollapsed(category.name) },
+                                )
+                                if (!library.isTagCollapsed(category.name)) {
+                                    category.runbooks.forEach { entry ->
+                                        key(entry.id) { RunbookCard(entry, mono) { editing = entry; adding = false } }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        shown.forEach { entry ->
+                            key(entry.id) { RunbookCard(entry, mono) { editing = entry; adding = false } }
+                        }
                     }
                 }
             }
@@ -144,6 +200,7 @@ fun MobileRunbooksScreen(state: MobileDesignState) {
                 onDismiss = { adding = false; editing = null },
                 onSaved = { adding = false; editing = null },
                 onDeleted = { adding = false; editing = null },
+                onConvert = target?.let { e -> { convertTarget = e; adding = false; editing = null } },
                 onRun = run@{
                     val entry = target ?: return@run
                     if (runner == null || session == null || terminal == null) return@run
@@ -157,6 +214,48 @@ fun MobileRunbooksScreen(state: MobileDesignState) {
                     if (started) state.push(MobileRoute.Terminal)
                 },
             )
+        }
+
+        if (showHelp) {
+            val exampleRunbooks = runbookExampleTemplatesByKey()
+            HelpDialog(
+                title = runbookHelpTitle(),
+                sections = runbookHelpSections(),
+                examples = runbookHelpExamples(),
+                onDismiss = { showHelp = false },
+                onExampleAction = { example ->
+                    exampleRunbooks[example.key]?.let { manager.save(it) }
+                    showHelp = false
+                },
+            )
+        }
+
+        // Convert to snippet: same shared dialog as desktop, opened from the edit sheet.
+        val snippetManager = LocalSnippets.current
+        convertTarget?.let { target ->
+            if (snippetManager != null) {
+                val (converted, skipped) = remember(target.id) { RunbookConverter.runbookToSnippet(target.runbook) }
+                ConvertDialog(
+                    title = stringResource(Res.string.convert_to_snippet),
+                    initialName = target.runbook.label,
+                    nameLabel = stringResource(Res.string.convert_name_label),
+                    confirmLabel = stringResource(Res.string.convert_confirm),
+                    nameConflict = { name -> snippetManager.snippets.any { it.snippet.label == name } },
+                    conflictMessage = stringResource(Res.string.convert_name_conflict_snippet),
+                    info = if (skipped > 0) stringResource(Res.string.convert_skipped_transfer, skipped) else null,
+                    onConfirm = { name ->
+                        snippetManager.save(
+                            SnippetDraft(
+                                label = name,
+                                command = converted.command,
+                                tags = converted.tags,
+                            )
+                        )
+                        convertTarget = null
+                    },
+                    onDismiss = { convertTarget = null },
+                )
+            }
         }
     }
 }
@@ -206,13 +305,17 @@ private fun MobileRunbookEditSheet(
     onSaved: () -> Unit,
     onDeleted: () -> Unit,
     onRun: () -> Unit,
+    onConvert: (() -> Unit)? = null,
 ) {
     // Shared form state (desktop <-> mobile): same fields, same validation, same draft assembly.
     val form = remember(entry) { RunbookFormState.fromEntry(entry) }
     val history = LocalRunbookHistory.current
 
     MobileBottomSheet(onDismiss = onDismiss, maxHeightFraction = 0.92f) {
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
             Txt(
                 if (entry == null) stringResource(Res.string.runbook_new) else stringResource(Res.string.runbook_section),
                 color = Skerry.colors.text, size = 18.sp, weight = FontWeight.Bold,
@@ -226,6 +329,12 @@ private fun MobileRunbookEditSheet(
                         icon = "play_arrow", filled = false, modifier = Modifier.fillMaxWidth(),
                     )
                     if (runHint != null) Txt(runHint, color = Skerry.colors.faint, size = 11.sp)
+                }
+                if (onConvert != null) {
+                    MobileSheetButton(
+                        stringResource(Res.string.convert_to_snippet), onClick = onConvert,
+                        icon = "swap_horiz", filled = false, modifier = Modifier.fillMaxWidth(),
+                    )
                 }
                 MobileSheetButton(
                     stringResource(Res.string.runbook_save),

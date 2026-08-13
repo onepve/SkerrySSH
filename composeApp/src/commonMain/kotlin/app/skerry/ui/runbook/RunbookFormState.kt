@@ -94,6 +94,9 @@ class RunbookFormState private constructor(private val editingId: String?) {
     var stopOnFirstFailure: Boolean by mutableStateOf(RunbookPolicy().stopOnFirstFailure)
     var watchdogMinutes: Int by mutableStateOf(RunbookPolicy().watchdogMinutes)
 
+    /** Interactive run mode ([Runbook.interactive]) — steps sent bare, marked complete by the user. */
+    var interactive: Boolean by mutableStateOf(false)
+
     /** A runbook needs a name and something to run; empty rows are dropped on save. */
     val canSave: Boolean get() = label.isNotBlank() && steps.any { it.filled }
 
@@ -139,6 +142,7 @@ class RunbookFormState private constructor(private val editingId: String?) {
         steps = steps.map { it.toStep() },
         tags = (tags + parseSnippetTags(tagDraft)).distinct(),
         policy = RunbookPolicy(stopOnFirstFailure = stopOnFirstFailure, watchdogMinutes = watchdogMinutes),
+        interactive = interactive,
     )
 
     companion object {
@@ -151,6 +155,7 @@ class RunbookFormState private constructor(private val editingId: String?) {
                 tags = runbook.tags
                 stopOnFirstFailure = runbook.policy.stopOnFirstFailure
                 watchdogMinutes = runbook.policy.watchdogMinutes
+                interactive = runbook.interactive
                 if (runbook.steps.isNotEmpty()) steps = runbook.steps.map { it.toDraft() }
             }
     }

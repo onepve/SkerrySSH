@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Whole-library import/export of snippets and runbooks (desktop). -->
+    <string name="transfer_export">Export</string>
+    <string name="transfer_import">Import</string>
+    <string name="transfer_dialog_import_snippets">Import snippets</string>
+    <string name="transfer_dialog_import_runbooks">Import runbooks</string>
+    <string name="transfer_dialog_pick_snippets">Choose snippets file</string>
+    <string name="transfer_dialog_pick_runbooks">Choose runbooks file</string>
+    <string name="transfer_dialog_summary">%1$d new · %2$d updated · %3$d local-only</string>
+    <string name="transfer_dialog_merge">Merge changes</string>
+    <string name="transfer_dialog_merge_sub">Keeps local-only entries; adds and updates from the file</string>
+    <string name="transfer_dialog_replace">Replace all</string>
+    <string name="transfer_dialog_replace_sub">Deletes all local entries first (including %1$d local-only)</string>
+    <string name="transfer_dialog_confirm">Import</string>
+    <string name="transfer_dialog_import_done">Import done</string>
+    <string name="transfer_dialog_result">%1$d added, %2$d updated</string>
+    <string name="transfer_dialog_error_title">Cannot import</string>
+    <string name="transfer_dialog_corrupted">The file is not a valid import file. Nothing was changed.</string>
+</resources>

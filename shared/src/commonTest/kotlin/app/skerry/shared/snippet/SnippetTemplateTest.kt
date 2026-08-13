@@ -101,7 +101,7 @@ class SnippetTemplateTest {
     private val env = SnippetRunEnvironment(
         moment = SnippetMoment(year = 2026, month = 7, day = 3, hour = 9, minute = 5, second = 42, epochSeconds = 1_782_000_000L),
         newUuid = { "aabbccdd-0000-0000-0000-000000000000" },
-        randomChars = { n -> "x".repeat(n) },
+        randomChars = { n, _ -> "x".repeat(n) },
     )
 
     private fun variable(cmd: String) = SnippetTemplate.parse(cmd).single() as Variable
@@ -135,6 +135,31 @@ class SnippetTemplateTest {
     }
 
     @Test
+    fun `random honors charset parameter and falls back to alnum on garbage`() {
+        var alphabet = ""
+        val probing = SnippetRunEnvironment(
+            env.moment,
+            newUuid = env.newUuid,
+            randomChars = { n, a -> alphabet = a; "x".repeat(n) },
+        )
+        fun chars(cmd: String): String {
+            SnippetTemplate.resolveMachine(variable(cmd), probing)
+            return alphabet
+        }
+
+        assertEquals(SnippetTemplate.RANDOM_ALPHABET_DEFAULT, chars("${'$'}{{random}}"))
+        assertEquals(SnippetTemplate.RANDOM_ALPHABET_DEFAULT, chars("${'$'}{{random:12}}"))
+        assertEquals(SnippetTemplate.RANDOM_ALPHABET_DEFAULT, chars("${'$'}{{random:12,alnum}}"))
+        assertEquals(SnippetTemplate.RANDOM_ALPHABET_HEX, chars("${'$'}{{random:12,hex}}"))
+        assertEquals(SnippetTemplate.RANDOM_ALPHABET_SPECIAL, chars("${'$'}{{random:12,special}}"))
+        // Unknown charset and a dangling comma both fall back to the default alphabet.
+        assertEquals(SnippetTemplate.RANDOM_ALPHABET_DEFAULT, chars("${'$'}{{random:12,bogus}}"))
+        assertEquals(SnippetTemplate.RANDOM_ALPHABET_DEFAULT, chars("${'$'}{{random:12,}}"))
+        // Length still comes from the part before the comma.
+        assertEquals(16, SnippetTemplate.resolveMachine(variable("${'$'}{{random:16,hex}}"), env)!!.length)
+    }
+
+    @Test
     fun `context variables are not machine-resolvable`() {
         assertNull(SnippetTemplate.resolveMachine(variable("${'$'}{{clipboard}}"), env))
         assertNull(SnippetTemplate.resolveMachine(variable("${'$'}{{vault:prod}}"), env))
@@ -162,7 +187,7 @@ class SnippetTemplateTest {
     @Test
     fun `machine values are drawn once and stay stable across assemble calls`() {
         var draws = 0
-        val counting = SnippetRunEnvironment(env.moment, newUuid = { "uuid-${++draws}" }, randomChars = { "r".repeat(it) })
+        val counting = SnippetRunEnvironment(env.moment, newUuid = { "uuid-${++draws}" }, randomChars = { n, _ -> "r".repeat(n) })
         val segments = SnippetTemplate.parse("a ${'$'}{{uuid}} b ${'$'}{{uuid}} c")
 
         val machine = SnippetTemplate.machineValues(segments, counting)

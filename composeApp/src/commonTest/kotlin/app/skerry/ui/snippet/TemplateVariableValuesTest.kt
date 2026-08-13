@@ -11,7 +11,7 @@ class TemplateVariableValuesTest {
         paramNames = params.keys.toList(),
         vaultRefs = emptyList(),
         needsClipboard = false,
-        vaultResolutions = emptyMap(),
+        vaultResolutions = mutableStateMapOf<String, VaultRef>().apply { putAll(emptyMap()) },
         params = mutableStateMapOf<String, String>().apply { putAll(params) },
     )
 

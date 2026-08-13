@@ -46,7 +46,7 @@
     <string name="conn_protocol_rdp">RDP</string>
     <string name="conn_protocol_local">Локальный</string>
     <string name="conn_telnet_plaintext_warning">Telnet не шифруется — учётные данные и содержимое сессии идут открытым текстом. Используйте SSH вне доверенной сети.</string>
-    <string name="conn_vnc_plaintext_warning">VNC (RFB) не шифруется — экран и ввод идут открытым текстом. Используйте доверенную сеть или SSH-туннель.</string>
+    <string name="conn_vnc_plaintext_warning">VNC не шифруется или шифруется без проверки сертификата — используйте доверенную сеть или SSH-туннель.</string>
 
     <string name="conn_jump_none">Нет — напрямую</string>
     <string name="conn_jump_error_title">Прыжковый хост недоступен</string>

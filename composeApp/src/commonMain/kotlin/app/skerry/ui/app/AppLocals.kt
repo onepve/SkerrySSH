@@ -12,6 +12,7 @@ import app.skerry.shared.vault.SshCertificateInspector
 import app.skerry.shared.vault.SshKeyGenerator
 import app.skerry.shared.vault.SecurityLog
 import app.skerry.shared.vault.Vault
+import app.skerry.shared.vault.VaultCrypto
 import app.skerry.shared.vault.VaultBiometrics
 import app.skerry.ui.ai.AiAssistantController
 import app.skerry.ui.host.HostManagerController
@@ -256,6 +257,13 @@ val LocalRunSnippetOnHost: ProvidableCompositionLocal<(Host, String) -> Unit> = 
  * biometric unlock (wrapping `dataKey` under `bioKey`). `null` — mock path/preview without a vault.
  */
 val LocalVault: ProvidableCompositionLocal<Vault?> = staticCompositionLocalOf { null }
+
+/**
+ * Vault crypto primitives — needed by the data backup flow (Settings → Security) to derive the
+ * backup-file key from the master password. Supplied behind the vault gate next to [LocalVault];
+ * `null` in mock/preview.
+ */
+val LocalVaultCrypto: ProvidableCompositionLocal<VaultCrypto?> = staticCompositionLocalOf { null }
 
 /**
  * Vault biometrics orchestrator. `null` — biometrics not configured on this platform (desktop

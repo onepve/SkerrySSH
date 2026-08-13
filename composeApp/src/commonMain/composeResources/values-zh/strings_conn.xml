@@ -46,7 +46,7 @@
     <string name="conn_protocol_rdp">RDP</string>
     <string name="conn_protocol_local">本地</string>
     <string name="conn_telnet_plaintext_warning">Telnet 未加密 — 凭据和会话数据以明文传输。非可信网络请使用 SSH。</string>
-    <string name="conn_vnc_plaintext_warning">VNC (RFB) 未加密 — 屏幕和输入以明文传输。请使用可信网络或 SSH 隧道。</string>
+    <string name="conn_vnc_plaintext_warning">VNC 不加密或加密但不校验证书 — 请仅在可信网络使用，或走 SSH 隧道。</string>
 
     <string name="conn_jump_none">无 — 直连</string>
     <string name="conn_jump_error_title">跳板主机不可用</string>

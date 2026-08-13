@@ -37,9 +37,16 @@ import app.skerry.ui.connection.ConnectionUiState
 import app.skerry.ui.snippet.SnippetDraft
 import app.skerry.ui.snippet.SnippetEntry
 import app.skerry.ui.snippet.SnippetFormState
+import app.skerry.ui.snippet.SnippetLibraryState
 import app.skerry.ui.snippet.SnippetManager
+import app.skerry.ui.snippet.SnippetCategoryHeader
+import app.skerry.ui.snippet.groupSnippetsByCategory
+import app.skerry.ui.snippet.hasCategories
 import app.skerry.ui.snippet.installStarterPack
-import app.skerry.ui.snippet.matches
+import app.skerry.ui.snippet.shouldGroupSnippets
+import app.skerry.ui.snippet.snippetHelpExamples
+import app.skerry.ui.snippet.snippetHelpSections
+import app.skerry.ui.snippet.snippetHelpTitle
 import app.skerry.ui.snippet.snippetTagSuggestions
 import app.skerry.ui.generated.resources.Res
 import app.skerry.ui.generated.resources.lib_snippets_add_tag
@@ -64,13 +71,22 @@ import app.skerry.ui.generated.resources.lib_snippets_screen_title
 import app.skerry.ui.generated.resources.shell_save
 import app.skerry.ui.generated.resources.lib_snippets_search
 import app.skerry.ui.generated.resources.lib_snippets_untitled
+import app.skerry.ui.generated.resources.convert_confirm
+import app.skerry.ui.generated.resources.convert_name_conflict_runbook
+import app.skerry.ui.generated.resources.convert_name_label
+import app.skerry.ui.generated.resources.convert_to_runbook
 import org.jetbrains.compose.resources.stringResource
 import app.skerry.ui.design.ChipButton
+import app.skerry.ui.design.HelpDialog
 import app.skerry.ui.design.LocalFonts
 import app.skerry.ui.app.LocalSessions
 import app.skerry.ui.app.LocalSnippets
+import app.skerry.ui.app.LocalRunbooks
 import app.skerry.ui.app.MobileDesignState
 import app.skerry.ui.app.MobileRoute
+import app.skerry.ui.convert.ConvertDialog
+import app.skerry.shared.runbook.RunbookConverter
+import app.skerry.ui.runbook.RunbookDraft
 import app.skerry.ui.design.Sym
 import app.skerry.ui.design.Txt
 import app.skerry.ui.theme.Skerry
@@ -112,6 +128,8 @@ private fun MobileSnippetsLive(state: MobileDesignState, manager: SnippetManager
     var editing by remember { mutableStateOf<SnippetEntry?>(null) }
     var adding by remember { mutableStateOf(false) }
     var renamingTag by remember { mutableStateOf<String?>(null) }
+    var showHelp by remember { mutableStateOf(false) }
+    var convertTarget by remember { mutableStateOf<SnippetEntry?>(null) }
     val editSheetOpen = adding || editing != null
     // Any sheet (edit or rename) hides the tab bar and the add FAB.
     val sheetOpen = editSheetOpen || renamingTag != null
@@ -126,7 +144,11 @@ private fun MobileSnippetsLive(state: MobileDesignState, manager: SnippetManager
         Column(Modifier.fillMaxSize().background(Skerry.colors.bg).verticalScroll(rememberScrollState())) {
             // A push screen since the library left the tab bar (More → Snippets), so it carries a
             // back arrow instead of a bare title.
-            MobilePushHeader(stringResource(Res.string.lib_snippets_screen_title), onBack = state::pop)
+            MobilePushHeader(
+                stringResource(Res.string.lib_snippets_screen_title),
+                onBack = state::pop,
+                onHelp = { showHelp = true },
+            )
             if (snippets.isEmpty()) {
                 Column(
                     Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 30.dp),
@@ -191,7 +213,44 @@ private fun MobileSnippetsLive(state: MobileDesignState, manager: SnippetManager
                     adding = false; editing = null
                     sessions?.active?.let { state.push(MobileRoute.Terminal) }
                 },
+                onConvert = target?.let { e -> { convertTarget = e; adding = false; editing = null } },
             )
+        }
+
+        if (showHelp) {
+            HelpDialog(
+                title = snippetHelpTitle(),
+                sections = snippetHelpSections(),
+                examples = snippetHelpExamples(),
+                onDismiss = { showHelp = false },
+            )
+        }
+
+        // Convert to runbook: same shared dialog as desktop, opened from the edit sheet.
+        val runbookManager = LocalRunbooks.current
+        convertTarget?.let { target ->
+            if (runbookManager != null) {
+                ConvertDialog(
+                    title = stringResource(Res.string.convert_to_runbook),
+                    initialName = target.snippet.label,
+                    nameLabel = stringResource(Res.string.convert_name_label),
+                    confirmLabel = stringResource(Res.string.convert_confirm),
+                    nameConflict = { name -> runbookManager.runbooks.any { it.runbook.label == name } },
+                    conflictMessage = stringResource(Res.string.convert_name_conflict_runbook),
+                    onConfirm = { name ->
+                        val converted = RunbookConverter.snippetToRunbook(target.snippet.copy(label = name))
+                        runbookManager.save(
+                            RunbookDraft(
+                                label = converted.label,
+                                steps = converted.steps,
+                                tags = converted.tags,
+                            )
+                        )
+                        convertTarget = null
+                    },
+                    onDismiss = { convertTarget = null },
+                )
+            }
         }
     }
 }
@@ -236,23 +295,64 @@ private fun SnippetTagChip(tag: String) {
 }
 
 /**
- * Snippet-run picker opened from the terminal header (`bolt` icon): list of saved commands, tap
- * runs the selected snippet in the active session via [onRun].
+ * Snippet-run picker opened from the terminal header (`bolt` icon): search + tag chips narrow the
+ * list, tap runs the selected snippet in the active session via [onRun]. Same filtering model as
+ * the full library ([SnippetLibraryState]), scoped to this sheet so the library's active chip and
+ * query are untouched.
  */
 @Composable
-internal fun MobileSnippetRunSheet(manager: SnippetManager, onRun: (SnippetEntry) -> Unit, onDismiss: () -> Unit) {
+internal fun MobileSnippetRunSheet(
+    manager: SnippetManager,
+    onRun: (SnippetEntry) -> Unit,
+    onDismiss: () -> Unit,
+    initialCollapsedTags: Set<String> = emptySet(),
+    onCollapsedTagsChange: (Set<String>) -> Unit = {},
+) {
     val mono = LocalFonts.current.mono
-    var query by remember { mutableStateOf("") }
     val all = manager.snippets
-    val filtered = if (query.isBlank()) all else all.filter { it.matches(query) }
+    // Inherits the library's collapse memory and writes toggles back to the same persisted store
+    // (the sheet's own query/chip stay session-local, dropped on close).
+    val library = remember { SnippetLibraryState(initialCollapsedTags, onCollapsedTagsChange) }
+    val filtered = library.visible(all)
     // Inline sheet (like the Vault/New connection sheets), rendered at the screen's top-level Box,
     // not via Popup: a focusable Popup shifted window insets and slightly moved the terminal header.
     MobileBottomSheet(onDismiss = onDismiss, maxHeightFraction = 0.7f) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Txt(stringResource(Res.string.lib_snippets_run_title), color = Skerry.colors.text, size = 18.sp, weight = FontWeight.Bold)
-            MobileFormInput(query, { query = it }, stringResource(Res.string.lib_snippets_search))
+            MobileFormInput(library.query, { library.query = it }, stringResource(Res.string.lib_snippets_search))
+            if (hasCategories(all)) {
+                // Same tag strip as the library (no rename pencil — this sheet is a picker).
+                MobileSnippetChips(
+                    chips = library.chips(all),
+                    active = library.effectiveChip(all),
+                    onSelect = { library.activeChip = it },
+                    onRename = null,
+                    edgePadding = 0.dp,
+                )
+            }
             if (filtered.isEmpty()) {
                 Txt(if (all.isEmpty()) stringResource(Res.string.lib_snippets_run_empty) else stringResource(Res.string.lib_snippets_no_matches), color = Skerry.colors.faint, size = 13.sp)
+            } else if (shouldGroupSnippets(filtered, library.effectiveChip(all))) {
+                // Same collapsible tag sections as the library ("All" view): the header is the
+                // whole click target, a collapsed section shows only its header.
+                groupSnippetsByCategory(filtered).forEach { category ->
+                    key(category.name) {
+                        SnippetCategoryHeader(
+                            category = category.name,
+                            count = category.snippets.size,
+                            collapsed = library.isTagCollapsed(category.name),
+                            onToggle = { library.toggleTagCollapsed(category.name) },
+                        )
+                        if (!library.isTagCollapsed(category.name)) {
+                            category.snippets.forEach { entry ->
+                                key(entry.id) {
+                                    val onClick = remember(entry.id) { { onRun(entry) } }
+                                    MobileSnippetCard(entry.snippet, mono, onClick)
+                                }
+                            }
+                        }
+                    }
+                }
             } else {
                 filtered.forEach { entry ->
                     key(entry.id) {
@@ -282,6 +382,7 @@ private fun MobileSnippetEditSheet(
     onSave: (SnippetDraft) -> Unit,
     onDelete: (() -> Unit)?,
     onRun: () -> Unit,
+    onConvert: (() -> Unit)? = null,
 ) {
     // Shared form state (desktop <-> mobile): seeds from entry (including shortcut, so Save
     // doesn't drop a hotkey assigned on desktop), canSave, tags, draft assembly.
@@ -291,7 +392,9 @@ private fun MobileSnippetEditSheet(
         Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Txt(if (entry == null) stringResource(Res.string.lib_snippets_new) else stringResource(Res.string.lib_snippets_edit), color = Skerry.colors.text, size = 18.sp, weight = FontWeight.Bold)
             MobileFormField(stringResource(Res.string.lib_snippets_field_name)) {
-                MobileFormInput(form.label, { form.label = it }, stringResource(Res.string.lib_snippets_ph_name))
+                MobileFormInput(form.label, { form.label = it }, stringResource(Res.string.lib_snippets_ph_name),
+                    // Editing: the pre-filled label is selected on focus so typing replaces it.
+                    selectAllOnFocus = true)
             }
             MobileFormField(stringResource(Res.string.lib_snippets_field_command)) {
                 MobileFormInput(form.command, { form.command = it }, "df -h | sort -k5 -r", mono = true, background = Skerry.colors.terminalBg, singleLine = false, minHeightDp = 88)
@@ -315,6 +418,9 @@ private fun MobileSnippetEditSheet(
             }
             if (canRun) {
                 MobileSheetButton(stringResource(Res.string.lib_snippets_run_in_terminal), onClick = onRun, icon = "bolt", filled = false, modifier = Modifier.fillMaxWidth())
+            }
+            if (onConvert != null) {
+                MobileSheetButton(stringResource(Res.string.convert_to_runbook), onClick = onConvert, icon = "swap_horiz", filled = false, modifier = Modifier.fillMaxWidth())
             }
             MobileSheetButton(
                 stringResource(Res.string.lib_snippets_save_snippet),

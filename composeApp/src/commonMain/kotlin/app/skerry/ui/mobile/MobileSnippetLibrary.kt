@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.skerry.ui.design.IconBtn
@@ -29,10 +30,13 @@ import app.skerry.ui.generated.resources.lib_snippets_no_matches
 import app.skerry.ui.generated.resources.lib_snippets_rename_tag
 import app.skerry.ui.generated.resources.lib_snippets_search
 import app.skerry.ui.snippet.ALL_SNIPPETS_CHIP
+import app.skerry.ui.snippet.SnippetCategoryHeader
 import app.skerry.ui.snippet.SnippetEntry
 import app.skerry.ui.snippet.SnippetLibraryState
 import app.skerry.ui.snippet.UNCATEGORIZED_KEY
+import app.skerry.ui.snippet.groupSnippetsByCategory
 import app.skerry.ui.snippet.hasCategories
+import app.skerry.ui.snippet.shouldGroupSnippets
 import app.skerry.ui.snippet.snippetChipLabel
 import org.jetbrains.compose.resources.stringResource
 import app.skerry.ui.theme.Skerry
@@ -76,10 +80,32 @@ internal fun MobileSnippetLibrary(
         Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        visible.forEach { entry ->
-            key(entry.id) {
-                val onClick = remember(entry.id) { { onEdit(entry) } }
-                MobileSnippetCard(entry.snippet, mono, onClick)
+        // "All" view with tags renders as collapsible category sections (like host folders on the
+        // terminal screen); a chip or an untagged library stays flat.
+        if (shouldGroupSnippets(visible, library.activeChip)) {
+            groupSnippetsByCategory(visible).forEach { category ->
+                val collapsed = library.isTagCollapsed(category.name)
+                SnippetCategoryHeader(
+                    category = category.name,
+                    count = category.snippets.size,
+                    collapsed = collapsed,
+                    onToggle = { library.toggleTagCollapsed(category.name) },
+                )
+                if (!collapsed) {
+                    category.snippets.forEach { entry ->
+                        key(entry.id) {
+                            val onClick = remember(entry.id) { { onEdit(entry) } }
+                            MobileSnippetCard(entry.snippet, mono, onClick)
+                        }
+                    }
+                }
+            }
+        } else {
+            visible.forEach { entry ->
+                key(entry.id) {
+                    val onClick = remember(entry.id) { { onEdit(entry) } }
+                    MobileSnippetCard(entry.snippet, mono, onClick)
+                }
             }
         }
     }
@@ -88,18 +114,21 @@ internal fun MobileSnippetLibrary(
 /**
  * Tag chip row: "All" + `#tag` + "Uncategorized"; active chip highlighted, horizontally scrollable.
  * The pencil after the row renames whichever real tag is active — the one thing the old collapsible
- * sections offered that a filter strip has to keep.
+ * sections offered that a filter strip has to keep. [edgePadding] matches the caller's horizontal
+ * rhythm (the library screen passes its 22.dp; the run sheet reuses this inside its own padded
+ * column and passes 0.dp).
  */
 @Composable
-private fun MobileSnippetChips(
+internal fun MobileSnippetChips(
     chips: List<String>,
     active: String,
     onSelect: (String) -> Unit,
     onRename: (() -> Unit)?,
+    edgePadding: Dp = 22.dp,
 ) {
     Row(Modifier.fillMaxWidth().padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(
-            Modifier.weight(1f).horizontalScroll(rememberScrollState()).padding(horizontal = 22.dp, vertical = 6.dp),
+            Modifier.weight(1f).horizontalScroll(rememberScrollState()).padding(horizontal = edgePadding, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(7.dp),
         ) {
             chips.forEach { chip ->

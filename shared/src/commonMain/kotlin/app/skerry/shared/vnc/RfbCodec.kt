@@ -17,14 +17,25 @@ import app.skerry.shared.graphics.RemoteFramebuffer
  * it and then requests the next incremental update.
  */
 class RfbCodec(
-    private val source: VncSource,
-    private val sink: VncSink,
+    source: VncSource,
+    sink: VncSink,
     private val fb: RemoteFramebuffer,
     private val inflaterFactory: InflaterFactory,
     private val challengeResponder: VncChallengeResponder,
     private val imageDecoder: VncImageDecoder? = null,
     private val requestedEncodings: IntArray = DEFAULT_ENCODINGS,
+    /**
+     * Mid-handshake TLS upgrade for the VeNCrypt/TLS security types. The codec is pure bytes and
+     * cannot wrap the socket itself; when the negotiated security type requires TLS, this is invoked
+     * (once) and the codec switches to the returned [VncTlsUpgrade.source]/[VncTlsUpgrade.sink].
+     * `null` in tests and on platforms without TLS wiring — a server demanding TLS then fails with
+     * a clear error instead of hanging the handshake.
+     */
+    private val tlsUpgrader: (suspend () -> VncTlsUpgrade)? = null,
 ) {
+    // var: a TLS upgrade mid-handshake replaces the byte streams (see [tlsUpgrader]).
+    private var source = source
+    private var sink = sink
     // Current quality/compression preference, advertised as Tight pseudo-encodings in SetEncodings.
     private var quality: VncQuality = VncQuality.Auto
 
@@ -60,10 +71,16 @@ class RfbCodec(
      */
     suspend fun handshake(auth: VncAuth): String {
         val minor = readProtocolVersion()
-        val chosenType = negotiateSecurity(auth, minor)
-        if (chosenType == SEC_VNC_AUTH) performVncAuth(auth)
+        val security = negotiateSecurity(auth, minor)
+        if (security.tlsRequired) {
+            val upgrade = tlsUpgrader?.invoke()
+                ?: throw VncProtocolException("server requires TLS encryption, but TLS support is unavailable")
+            source = upgrade.source
+            sink = upgrade.sink
+        }
+        if (security.authType == SEC_VNC_AUTH) performVncAuth(auth)
         // SecurityResult: always in 3.8; in 3.3/3.7 only after a non-None security type.
-        if (minor >= 8 || chosenType != SEC_NONE) readSecurityResult(minor)
+        if (minor >= 8 || security.authType != SEC_NONE) readSecurityResult(minor)
         sink.write(byteArrayOf(1)) // ClientInit: shared = 1 (don't kick other viewers)
         val name = readServerInit()
         writeSetPixelFormat()
@@ -108,13 +125,14 @@ class RfbCodec(
         return minor
     }
 
-    private suspend fun negotiateSecurity(auth: VncAuth, minor: Int): Int {
+    private suspend fun negotiateSecurity(auth: VncAuth, minor: Int): SecurityResult {
         if (minor < 7) {
             // 3.3: the server dictates a single security type as a u32.
             val type = readU32()
             return when (type) {
                 SEC_INVALID -> throw VncAuthException(readFailureReason(minor))
-                SEC_NONE, SEC_VNC_AUTH -> type
+                SEC_NONE -> SecurityResult(authType = SEC_NONE, tlsRequired = false)
+                SEC_VNC_AUTH -> SecurityResult(authType = SEC_VNC_AUTH, tlsRequired = false)
                 else -> throw VncAuthException("server requires unsupported security type $type")
             }
         }
@@ -123,16 +141,85 @@ class RfbCodec(
         if (count == 0) throw VncAuthException(readFailureReason(minor))
         val offered = readBytes(count).map { it.toInt() and 0xFF }.toSet()
         val want = if (auth is VncAuth.Password) SEC_VNC_AUTH else SEC_NONE
-        val chosen = when {
-            offered.contains(want) -> want
-            // Fall back: if we wanted None but only VNC-Auth is offered, still try it (empty password).
-            offered.contains(SEC_VNC_AUTH) -> SEC_VNC_AUTH
-            offered.contains(SEC_NONE) -> SEC_NONE
-            else -> throw VncAuthException("no supported security type offered: $offered")
+        if (offered.contains(want)) {
+            sink.write(byteArrayOf(want.toByte()))
+            return SecurityResult(authType = want, tlsRequired = false)
         }
-        sink.write(byteArrayOf(chosen.toByte()))
-        return chosen
+        // Fall back: if we wanted None but only VNC-Auth is offered, still try it (empty password).
+        if (offered.contains(SEC_VNC_AUTH)) {
+            sink.write(byteArrayOf(SEC_VNC_AUTH.toByte()))
+            return SecurityResult(authType = SEC_VNC_AUTH, tlsRequired = false)
+        }
+        if (offered.contains(SEC_NONE)) {
+            sink.write(byteArrayOf(SEC_NONE.toByte()))
+            return SecurityResult(authType = SEC_NONE, tlsRequired = false)
+        }
+        // Encrypted servers (TigerVNC's default SecurityTypes=TLSVnc, RealVNC's encrypted mode,
+        // vino with require-encryption) offer only VeNCrypt (19) or the rarer plain TLS (18) here.
+        if (offered.contains(SEC_VENCRYPT)) return negotiateVeNCrypt(auth)
+        if (offered.contains(SEC_TLS)) {
+            // Legacy RFB "TLS" type: the server starts the TLS handshake directly, then the
+            // classic VNC password challenge over the encrypted channel.
+            sink.write(byteArrayOf(SEC_TLS.toByte()))
+            return SecurityResult(authType = SEC_VNC_AUTH, tlsRequired = true)
+        }
+        throw VncAuthException("no supported security type offered: $offered")
     }
+
+    /**
+     * VeNCrypt (security type 19): the server lists encryption subtypes and we pick one. TLS subtypes
+     * wrap the rest of the handshake in TLS (the transport upgrades the socket via [tlsUpgrader]);
+     * X509 subtypes are the same over a server-supplied certificate, which we read and accept —
+     * this is an intranet tool, so the certificate itself is not verified beyond the TLS handshake.
+     *
+     * Plain/TLSPlain/X509Plain need a username the app has no field for, so they are never chosen;
+     * a server offering only those fails with a clear message.
+     */
+    private suspend fun negotiateVeNCrypt(auth: VncAuth): SecurityResult {
+        sink.write(byteArrayOf(SEC_VENCRYPT.toByte()))
+        val version = readU8()
+        if (version != 0) throw VncAuthException("unsupported VeNCrypt version $version")
+        sink.write(byteArrayOf(0)) // echo the version we accept
+        val count = readU8()
+        if (count == 0) throw VncAuthException("VeNCrypt offered no subtypes")
+        val subtypes = readBytes(count).map { it.toInt() and 0xFF }.toSet()
+        val hasPassword = auth is VncAuth.Password
+        val priority = if (hasPassword) {
+            intArrayOf(SUBTYPE_TLSVNC, SUBTYPE_X509VNC, SUBTYPE_TLSNONE, SUBTYPE_X509NONE)
+        } else {
+            intArrayOf(SUBTYPE_TLSNONE, SUBTYPE_X509NONE, SUBTYPE_TLSVNC, SUBTYPE_X509VNC)
+        }
+        val chosen = priority.firstOrNull { it in subtypes }
+            ?: throw VncAuthException("server requires unsupported VeNCrypt subtype: $subtypes")
+        sink.write(byteArrayOf(chosen.toByte()))
+        if (chosen == SUBTYPE_X509NONE || chosen == SUBTYPE_X509VNC) readX509Certificates()
+        val authType = when (chosen) {
+            SUBTYPE_TLSNONE, SUBTYPE_X509NONE -> SEC_NONE
+            else -> SEC_VNC_AUTH // TLSVnc / X509Vnc
+        }
+        return SecurityResult(authType = authType, tlsRequired = true)
+    }
+
+    /** VeNCrypt X509 subtypes: the server first sends its certificate chain, which we read and discard. */
+    private suspend fun readX509Certificates() {
+        val count = readU8()
+        if (count == 0 || count > MAX_VENCRYPT_CERTS) {
+            throw VncProtocolException("bad VeNCrypt certificate count $count")
+        }
+        repeat(count) {
+            val len = readU32()
+            if (len > MAX_VENCRYPT_CERT_BYTES) {
+                throw VncProtocolException("oversized VeNCrypt certificate ($len bytes)")
+            }
+            readBytes(len)
+        }
+    }
+
+    /** Outcome of security negotiation: what authentication follows, and whether TLS wraps it. */
+    private class SecurityResult(
+        val authType: Int,
+        val tlsRequired: Boolean,
+    )
 
     private suspend fun performVncAuth(auth: VncAuth) {
         val challenge = readBytes(16)
@@ -484,6 +571,21 @@ class RfbCodec(
         const val SEC_INVALID = 0
         const val SEC_NONE = 1
         const val SEC_VNC_AUTH = 2
+        const val SEC_TLS = 18
+        const val SEC_VENCRYPT = 19
+
+        // VeNCrypt subtypes (after the version exchange).
+        const val SUBTYPE_PLAIN = 1
+        const val SUBTYPE_TLSNONE = 2
+        const val SUBTYPE_TLSVNC = 3
+        const val SUBTYPE_TLSPLAIN = 4
+        const val SUBTYPE_X509NONE = 5
+        const val SUBTYPE_X509VNC = 6
+        const val SUBTYPE_X509PLAIN = 7
+
+        /** Caps on the VeNCrypt X509 certificate chain, applied before allocation. */
+        const val MAX_VENCRYPT_CERTS = 16
+        const val MAX_VENCRYPT_CERT_BYTES = 1024 * 1024
 
         // Server→client message types.
         const val MSG_FRAMEBUFFER_UPDATE = 0
@@ -520,9 +622,15 @@ class RfbCodec(
          * Encodings advertised to the server, most-preferred first — the client only ever offers what
          * it can decode (the server picks from this list). [ENC_CURSOR] is NOT here: it's toggled per
          * session by [setLocalCursor], not a fixed preference.
+         *
+         * ZRLE is preferred over Tight: on any link with real bandwidth (the common case, LANs
+         * included) Tight's JPEG path spends the CPU of both ends — the server compresses a JPEG and
+         * the client decodes it (soft, via ImageIO) — to save bandwidth that isn't the bottleneck,
+         * while ZRLE is zlib-only: cheap to inflate and still compresses UI frames well. Tight stays
+         * last as the fallback for servers that only speak it.
          */
         val DEFAULT_ENCODINGS = intArrayOf(
-            ENC_TIGHT, ENC_ZRLE, ENC_HEXTILE, ENC_COPY_RECT, ENC_RAW,
+            ENC_ZRLE, ENC_HEXTILE, ENC_COPY_RECT, ENC_RAW, ENC_TIGHT,
             ENC_EXTENDED_DESKTOP_SIZE, ENC_DESKTOP_SIZE,
         )
 

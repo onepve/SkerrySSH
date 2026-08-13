@@ -43,6 +43,7 @@
     <string name="runbook_panel_failed">因失败而停止</string>
     <string name="runbook_panel_stopped">已停止</string>
     <string name="runbook_panel_run_step">执行此步骤</string>
+    <string name="runbook_panel_complete_step">完成本步</string>
     <string name="runbook_panel_skip_step">跳过</string>
     <string name="runbook_panel_stop">停止运行</string>
     <string name="runbook_panel_close">关闭</string>
@@ -52,7 +53,6 @@
     <string name="runbook_panel_shell_note">步骤在本会话的 shell 中执行；退出码通过带外序列返回，不会有任何输出。</string>
     <string name="runbook_panel_transfer_failed">传输失败：%1$s</string>
     <string name="runbook_panel_no_sftp">本会话没有 SFTP 通道。</string>
-
     <!-- Library screen -->
     <string name="runbook_edit">编辑</string>
     <string name="runbook_cancel">取消</string>
@@ -62,7 +62,6 @@
     <plurals name="runbook_steps_total">
         <item quantity="other">%1$d 个步骤</item>
     </plurals>
-
     <!-- Step kinds -->
     <string name="runbook_kind_command">命令</string>
     <string name="runbook_kind_transfer">文件</string>
@@ -73,15 +72,15 @@
     <string name="runbook_direction_upload">上传</string>
     <string name="runbook_direction_download">下载</string>
     <string name="runbook_transfer_note">传输使用同一会话的 SFTP 通道。</string>
-    <string name="runbook_vars_hint">${{name}} 会在运行前询问取值；${{vault:条目}} 与 ${{clipboard}} 自动填入。</string>
-
+    <string name="runbook_vars_hint">${{名称}} 会在运行前询问取值；${{vault:条目}} 与 ${{clipboard}} 自动填入。</string>
     <!-- Run policy -->
     <string name="runbook_policy">运行策略</string>
+    <string name="runbook_interactive">交互运行</string>
+    <string name="runbook_interactive_sub">命令原样发送，每步完成后点“完成本步”继续</string>
     <string name="runbook_policy_stop">首次失败即停止</string>
     <string name="runbook_policy_watchdog">看门狗</string>
     <string name="runbook_policy_watchdog_value">%1$d 分钟</string>
     <string name="runbook_policy_watchdog_off">关闭</string>
-
     <!-- Run screen -->
     <string name="runbook_run_kind">运行手册</string>
     <string name="runbook_run_step_of">第 %1$d / %2$d 步</string>
@@ -98,10 +97,28 @@
     <string name="runbook_dur_seconds">%1$s 秒</string>
     <string name="runbook_dur_minutes">%1$d 分 %2$d 秒</string>
     <string name="runbook_transfer_of">%1$s / %2$s</string>
-
     <!-- Run history -->
     <string name="runbook_history">历史运行</string>
     <string name="runbook_history_empty">尚无运行记录</string>
     <string name="runbook_history_failed_at">第 %1$d 步失败</string>
     <string name="runbook_history_last">上次运行 %1$s</string>
+    <!-- Runbook help dialog (HelpDialog) -->
+    <string name="help_runbook_title">运行手册帮助</string>
+    <string name="help_runbook_intro">运行手册是一组按顺序执行的命令，在你当前打开的终端里逐条运行，执行过程全程可见。步骤命令支持与代码片段相同的 ${{}} 变量。</string>
+    <string name="help_runbook_flow">每一条命令执行完毕（按退出码判断，不会死等固定时间）才执行下一条。默认每条执行前会停下来等你确认；某一步失败会停止整个手册（除非该步标记为失败后继续）。</string>
+    <string name="help_runbook_examples_intro">范例（点一行创建示例手册）：</string>
+    <string name="help_runbook_example_load">创建示例：系统负载体检</string>
+    <string name="help_runbook_example_install">创建示例：安装并检查软件</string>
+    <string name="help_runbook_example_disk">创建示例：检查磁盘空间</string>
+    <string name="help_runbook_sample_load">系统负载体检</string>
+    <string name="help_runbook_sample_install">安装并检查软件</string>
+    <string name="help_runbook_sample_disk">检查磁盘空间</string>
+    <string name="help_runbook_step_uptime">运行时间</string>
+    <string name="help_runbook_step_memory">内存</string>
+    <string name="help_runbook_step_top_processes">占用最高的进程</string>
+    <string name="help_runbook_step_check_installed">检查是否已安装</string>
+    <string name="help_runbook_step_install">安装</string>
+    <string name="help_runbook_step_verify">验证</string>
+    <string name="help_runbook_step_usage">磁盘使用情况</string>
+    <string name="help_runbook_step_largest_dirs">占用最大的目录</string>
 </resources>

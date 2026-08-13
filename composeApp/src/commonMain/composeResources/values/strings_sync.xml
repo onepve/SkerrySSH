@@ -37,9 +37,9 @@
     <string name="sync_reconnect_password">Reconnect with your master password.</string>
 
     <!-- Поля формы -->
-    <string name="sync_field_server_url">Server URL</string>
-    <string name="sync_placeholder_server_url">https://sync.example.com</string>
-    <string name="sync_field_account">Account</string>
+<string name="sync_field_server_url">Server URL</string>
+<string name="sync_placeholder_server_url">https://ssh.onepve.com</string>
+<string name="sync_field_account">Account</string>
     <string name="sync_placeholder_account">you@example.com</string>
     <string name="sync_field_master_password">Master password</string>
     <string name="sync_placeholder_master_password">master password</string>

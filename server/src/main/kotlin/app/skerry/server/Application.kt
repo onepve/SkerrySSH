@@ -10,6 +10,7 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.TimeZone
 
 /**
  * Skerry self-hosted sync server (AGPL-3.0). Zero-knowledge: stores only ciphertext and sync
@@ -17,6 +18,8 @@ import kotlinx.coroutines.launch
  * environment variables (see [ServerConfig], `.env.example`).
  */
 fun main() {
+    val tz = System.getenv("SKERRY_TZ")?.takeIf { it.isNotBlank() } ?: "Asia/Shanghai"
+    TimeZone.setDefault(TimeZone.getTimeZone(tz))
     val config = ServerConfig.fromEnv()
     embeddedServer(Netty, port = config.port, host = config.host) {
         module(config)

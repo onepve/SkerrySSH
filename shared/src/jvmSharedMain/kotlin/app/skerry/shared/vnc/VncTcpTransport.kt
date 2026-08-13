@@ -7,7 +7,11 @@ import java.io.DataInputStream
 import java.io.EOFException
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.security.cert.X509Certificate
 import java.util.concurrent.atomic.AtomicBoolean
+import javax.net.ssl.SSLContext
+import javax.net.ssl.SSLSocket
+import javax.net.ssl.X509TrustManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -68,15 +72,19 @@ class VncSocketSession(
     challengeResponder: VncChallengeResponder,
     imageDecoder: VncImageDecoder?,
 ) : VncSession {
-    private val input = DataInputStream(socket.getInputStream().buffered())
-    private val out = BufferedOutputStream(socket.getOutputStream())
+    // var: a VeNCrypt/TLS upgrade replaces the streams mid-handshake (see [tlsUpgrade]).
+    private var input = DataInputStream(socket.getInputStream().buffered())
+    private var out = BufferedOutputStream(socket.getOutputStream())
     private val writeLock = Mutex()
 
     override val framebuffer = RemoteFramebuffer(1, 1)
 
     private val source = VncSource { dst, offset, len -> input.readFully(dst, offset, len) }
     private val sink = VncSink { bytes -> writeRaw(bytes) }
-    private val codec = RfbCodec(source, sink, framebuffer, inflaterFactory, challengeResponder, imageDecoder)
+    private val codec = RfbCodec(
+        source, sink, framebuffer, inflaterFactory, challengeResponder, imageDecoder,
+        tlsUpgrader = { tlsUpgrade() },
+    )
 
     private var _serverName = ""
     override val serverName: String get() = _serverName
@@ -160,6 +168,42 @@ class VncSocketSession(
     private suspend fun writeRaw(bytes: ByteArray) = writeLock.withLock {
         out.write(bytes)
         out.flush()
+    }
+
+    /**
+     * Wrap the socket in TLS (VeNCrypt TLS* and X509* subtypes, or the legacy RFB TLS type). The
+     * server's certificate is accepted as-is: this is an intranet tool and the connection is
+     * already password-authenticated, so verifying an often self-signed intranet cert would only
+     * add failure modes. Returns the fresh streams for the codec to switch to.
+     */
+    private suspend fun tlsUpgrade(): VncTlsUpgrade = withContext(Dispatchers.IO) {
+        val ssl = tlsContext.socketFactory.createSocket(
+            socket,
+            socket.inetAddress.hostAddress,
+            socket.port,
+            true,
+        ) as SSLSocket
+        ssl.useClientMode = true
+        ssl.startHandshake()
+        input = DataInputStream(ssl.getInputStream().buffered())
+        out = BufferedOutputStream(ssl.getOutputStream())
+        VncTlsUpgrade(
+            source = VncSource { dst, offset, len -> input.readFully(dst, offset, len) },
+            sink = VncSink { bytes -> writeRaw(bytes) },
+        )
+    }
+
+    private companion object {
+        /** Trust-all TLS context for intranet VNC servers (often self-signed). */
+        val tlsContext: SSLContext by lazy {
+            SSLContext.getInstance("TLS").apply { init(null, arrayOf(TRUST_ALL), null) }
+        }
+
+        private val TRUST_ALL = object : X509TrustManager {
+            override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String) = Unit
+            override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) = Unit
+            override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
+        }
     }
 
     private fun closeSocket() {

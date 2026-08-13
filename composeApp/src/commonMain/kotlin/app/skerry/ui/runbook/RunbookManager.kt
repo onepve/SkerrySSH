@@ -23,6 +23,7 @@ data class RunbookDraft(
     val steps: List<RunbookStep> = emptyList(),
     val tags: List<String> = emptyList(),
     val policy: RunbookPolicy = RunbookPolicy(),
+    val interactive: Boolean = false,
 )
 
 /** One row of the runbook list: the saved [runbook], updated via [RunbookManager.save]. */
@@ -77,6 +78,7 @@ class RunbookManager(
             steps = steps,
             tags = normalizeTags(draft.tags),
             policy = draft.policy,
+            interactive = draft.interactive,
         )
         store.put(runbook)
         val existing = find(id)
