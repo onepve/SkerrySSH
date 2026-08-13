@@ -9,6 +9,9 @@ import app.skerry.server.model.AdminActivityDto
 import app.skerry.server.model.AdminActivityResponse
 import app.skerry.server.model.AdminDeviceDto
 import app.skerry.server.model.AdminDevicesResponse
+import app.skerry.server.model.AdminInviteCreateRequest
+import app.skerry.server.model.AdminInviteDto
+import app.skerry.server.model.AdminInvitesResponse
 import app.skerry.server.model.AdminObservabilityDto
 import app.skerry.server.model.AdminPurgeResponse
 import app.skerry.server.model.AdminRecordsResponse
@@ -23,6 +26,7 @@ import io.ktor.server.application.Hook
 import io.ktor.server.application.call
 import io.ktor.server.application.createRouteScopedPlugin
 import io.ktor.server.application.install
+import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.RouteSelector
@@ -30,7 +34,15 @@ import io.ktor.server.routing.RouteSelectorEvaluation
 import io.ktor.server.routing.RoutingResolveContext
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
+import io.ktor.server.routing.post
 import io.ktor.server.routing.route
+import java.security.SecureRandom
+
+/** Random human-typable invite code: 8 chars from a 32-char alphabet (no I/O/0/1). */
+private val inviteRng = SecureRandom()
+private const val INVITE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+private fun newInviteCode(length: Int = 8): String =
+    buildString { repeat(length) { append(INVITE_ALPHABET[inviteRng.nextInt(INVITE_ALPHABET.length)]) } }
 
 /**
  * Admin endpoints for the self-hosted console. `/admin/health` is open (liveness); the rest of
@@ -48,7 +60,7 @@ import io.ktor.server.routing.route
  */
 fun Route.adminHealthRoute(services: Services) {
     get("/admin/health") {
-        call.respond(HealthResponse("ok", SERVER_VERSION, services.config.registrationOpen))
+        call.respond(HealthResponse("ok", SERVER_VERSION, services.config.registration.name.lowercase()))
     }
 }
 
@@ -192,6 +204,35 @@ fun Route.adminRoutes(services: Services) {
                 outcome.notifyAccounts.forEach { services.notifier.publishMembership(it) }
             }
             call.respond(if (outcome != null) HttpStatusCode.NoContent else HttpStatusCode.NotFound)
+        }
+
+        get("/invites") {
+            val invites = services.invites.list()
+            call.respond(
+                AdminInvitesResponse(
+                    invites = invites.map { AdminInviteDto(it.code, it.remainingUses, it.public, it.createdAt) },
+                    total = invites.size,
+                ),
+            )
+        }
+
+        post("/invites") {
+            val req = call.receive<AdminInviteCreateRequest>()
+            val uses = req.uses.coerceIn(1, 100_000)
+            val code = newInviteCode()
+            services.invites.create(code, uses, req.public)
+            val created = services.invites.list().first { it.code == code }
+            call.respond(AdminInviteDto(created.code, created.remainingUses, created.public, created.createdAt))
+        }
+
+        delete("/invites/{code}") {
+            val code = call.parameters["code"]
+            if (code.isNullOrBlank()) {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("code is required"))
+                return@delete
+            }
+            val deleted = services.invites.delete(code)
+            call.respond(if (deleted) HttpStatusCode.NoContent else HttpStatusCode.NotFound)
         }
     }
 }

@@ -240,3 +240,32 @@ object Pairing : Table("pairing") {
 
     override val primaryKey = PrimaryKey(code)
 }
+
+/**
+ * Invite codes (fork's gated registration). A code carries a remaining-use count and a public
+ * flag: public codes are listed on the front page, private ones are handed out of band. Spending a
+ * use is a conditional UPDATE (see [InviteRepository.consume]) so a code can't be overspent under
+ * a race.
+ */
+object InviteCodes : Table("invite_codes") {
+    val code = varchar("code", 64)
+    val remainingUses = integer("remaining_uses")
+    val public = bool("public").default(false)
+    val createdAt = long("created_at")
+
+    override val primaryKey = PrimaryKey(code)
+}
+
+/**
+ * Invite pre-registrations: an account id (the same free-form string the client registers under —
+ * deliberately NOT assumed to be an email) that has redeemed a valid invite code and may now
+ * register, until [expiresAt]. The row is consumed (deleted) on successful registration.
+ */
+object Preregistrations : Table("preregistrations") {
+    val accountId = varchar("account_id", 320)
+    val inviteCode = varchar("invite_code", 64)
+    val expiresAt = long("expires_at")
+    val createdAt = long("created_at")
+
+    override val primaryKey = PrimaryKey(accountId)
+}

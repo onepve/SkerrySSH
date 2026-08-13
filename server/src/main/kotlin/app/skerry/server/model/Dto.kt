@@ -136,8 +136,9 @@ data class StatsResponse(
 
 /**
  * `GET /admin/health`, the one open endpoint under `/admin` — it is what the public front page
- * reads. [registrationOpen] is there because a visitor otherwise has no way to tell whether an
- * account on this instance is possible; it says nothing about who already has one.
+ * reads. [registration] is there because a visitor otherwise has no way to tell whether an account
+ * on this instance is possible ("open"), gated behind an invite code ("invite"), or impossible
+ * ("closed"); it says nothing about who already has one.
  */
 @Serializable
 data class HealthResponse(
@@ -146,7 +147,7 @@ data class HealthResponse(
     // @EncodeDefault, or the field silently disappears from the response whenever it equals the
     // default — which is the open case, i.e. the usual one. The default itself stays for reading a
     // response from a server that predates the field.
-    @EncodeDefault val registrationOpen: Boolean = true,
+    @EncodeDefault val registration: String = "open",
 )
 
 /**
@@ -171,3 +172,35 @@ data class ReadyResponse(val status: String, val db: String)
 
 @Serializable
 data class ErrorResponse(val error: String)
+
+// --- invites (fork's gated registration) ---
+
+/** One invite code as the admin console lists it. */
+@Serializable
+data class AdminInviteDto(
+    val code: String,
+    val remainingUses: Int,
+    val public: Boolean,
+    val createdAt: Long,
+)
+
+@Serializable
+data class AdminInvitesResponse(val invites: List<AdminInviteDto>, val total: Int)
+
+/** What the console POSTs to mint a code; the code itself is generated server-side. */
+@Serializable
+data class AdminInviteCreateRequest(
+    val uses: Int = 1,
+    val public: Boolean = false,
+)
+
+/** A public code as the front page lists it (no admin metadata). */
+@Serializable
+data class PublicInviteDto(val code: String, val remainingUses: Int)
+
+@Serializable
+data class PublicInvitesResponse(val invites: List<PublicInviteDto>)
+
+/** What the front page POSTs to redeem a code for an account id (free-form, not an email). */
+@Serializable
+data class InviteRedeemRequest(val accountId: String, val code: String)

@@ -84,6 +84,8 @@ private fun Application.scheduleCleanup(services: Services) {
             delay(15 * 60 * 1000L)
             runCatching { services.pairing.cleanupExpired() }
                 .onFailure { log.warn("pairing cleanup failed", it) }
+            runCatching { services.invites.cleanupExpired() }
+                .onFailure { log.warn("invite cleanup failed", it) }
             runCatching {
                 val cutoff = java.time.Instant
                     .ofEpochMilli(System.currentTimeMillis() - TEAM_TOMBSTONE_TTL_MILLIS)

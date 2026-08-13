@@ -47,6 +47,7 @@ class Services(
     // On PostgreSQL, serialize upserts with an account-row lock; not needed on SQLite (pool=1).
     val records = RecordRepository(database, lockAccountRow = config.isPostgres)
     val pairing = PairingRepository(database)
+    val invites = InviteRepository(database)
     val teams = TeamRepository(database)
     val teamRecords = TeamRecordRepository(database, lockTeamRow = config.isPostgres)
     val teamScopes = TeamScopeRepository(database)

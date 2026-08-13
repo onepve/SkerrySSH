@@ -29,6 +29,7 @@ const TABS = {
     { id: "stats", key: "sec.stats" },
     // A device belongs to one account (1:N), so it opens inside the account row, not as a sibling tab.
     { id: "accounts", key: "sec.accounts", n: () => count(accountsPath(), () => adminGet(accountsPath()), d => d.total) },
+    { id: "invites", key: "sec.invites" },
     { id: "audit", key: "sec.audit" },
     { id: "observ", key: "sec.health" }
   ]
@@ -336,6 +337,51 @@ const deleteAccount = acct => {
   });
 };
 
+const deleteInvite = code => {
+  if (!confirm(t("dlg.invdel", { code: code }))) return;
+  act(() => adminDelete("/admin/invites/" + enc(code)));
+};
+
+/** Mint a code from the console form; the server generates the code and we show it to copy. */
+async function genInvite() {
+  const uses = Math.max(1, Number(el("inv-uses").value) || 1);
+  const pub = el("inv-public").checked;
+  const btn = el("inv-gen");
+  btn.disabled = true;
+  try {
+    const created = await adminPost("/admin/invites", { uses: uses, public: pub });
+    alert(t("inv.panel.gen.done") + "\n\n" + created.code);
+  } catch (e) {
+    if (e.status === 401) setAdminToken(null);
+    alert(errText(e));
+  }
+  btn.disabled = false;
+  reload();
+  render();
+}
+
+/** Redeem a public/private code for an account id on the front page. */
+async function submitInvite() {
+  const accountId = el("inv-acct").value.trim();
+  const code = el("inv-code").value.trim();
+  const fail = text => { el("inv-err").textContent = text; el("inv-go").disabled = false; };
+  if (!accountId || !code) { fail(t("inv.form.err.empty")); return; }
+  el("inv-go").disabled = true;
+  el("inv-err").textContent = "";
+  el("inv-err").style.color = "";
+  try {
+    await publicPost("/invites/redeem", { accountId: accountId, code: code });
+  } catch (e) {
+    fail(e.status === 410 ? t("inv.form.err.bad") : e.status === 429 ? t("gate.throttled") : errText(e));
+    return;
+  }
+  el("inv-err").textContent = t("inv.form.ok");
+  el("inv-err").style.color = "var(--moss)";
+  el("inv-go").disabled = false;
+  reload();
+  render();
+}
+
 /**
  * Revokes every device of the account, this browser session last — it is the one holding the page.
  *
@@ -443,6 +489,12 @@ function renderMain() {
     b.addEventListener("click", e => { e.stopPropagation(); deleteAccount(b.dataset.delete); }));
   main.querySelectorAll('[data-action="signout-all"]').forEach(b =>
     b.addEventListener("click", signOutEverywhere));
+  main.querySelectorAll("[data-invdel]").forEach(b =>
+    b.addEventListener("click", e => { e.stopPropagation(); deleteInvite(b.dataset.invdel); }));
+  const invGen = el("inv-gen");
+  if (invGen) invGen.addEventListener("click", genInvite);
+  const invGo = el("inv-go");
+  if (invGo) invGo.addEventListener("click", submitInvite);
   main.querySelectorAll("[data-size]").forEach(b =>
     b.addEventListener("click", () => {
       const [key, size] = b.dataset.size.split(":");

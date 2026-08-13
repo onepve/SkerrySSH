@@ -192,7 +192,33 @@ const DICT = {
     "n.viewers":  { one: "{n} viewer",  other: "{n} viewers" },
 
     "t.now":  "just now",
-    "unit.b": "B", "unit.kib": "KiB", "unit.mib": "MiB"
+    "unit.b": "B", "unit.kib": "KiB", "unit.mib": "MiB",
+
+    "instance.reg.invite":  "Invite only",
+    "sec.invites":          "Invites",
+    "inv.head":             "Invite codes",
+    "inv.empty.public":     "No public invite codes right now.",
+    "inv.code":             "Code",
+    "inv.uses":             "uses left",
+    "inv.form.acct":        "Account id",
+    "inv.form.code":        "Invite code",
+    "inv.form.go":          "Redeem",
+    "inv.form.ok":          "Redeemed. Register this same account id in the app.",
+    "inv.form.err.empty":   "Enter an account id and a code.",
+    "inv.form.err.bad":     "Invite code invalid or exhausted.",
+    "inv.panel.h":          "Invite codes",
+    "inv.panel.p":          "Mint codes for gated registration (SKERRY_REGISTRATION=invite). Public codes are listed on the front page.",
+    "inv.panel.gen":        "Generate",
+    "inv.panel.uses":       "Uses",
+    "inv.panel.public":     "Public",
+    "inv.panel.gen.done":   "New invite code",
+    "inv.panel.col.code":   "Code",
+    "inv.panel.col.uses":   "Uses left",
+    "inv.panel.col.public": "Public",
+    "inv.panel.col.created":"Created",
+    "inv.panel.yes":        "Public",
+    "inv.panel.no":         "Private",
+    "dlg.invdel":           "Delete invite {code}?"
   },
 
   ru: {
@@ -374,7 +400,33 @@ const DICT = {
     "n.viewers":  { one: "{n} зритель",    few: "{n} зрителя",    many: "{n} зрителей",   other: "{n} зрителя" },
 
     "t.now":  "только что",
-    "unit.b": "Б", "unit.kib": "КиБ", "unit.mib": "МиБ"
+    "unit.b": "Б", "unit.kib": "КиБ", "unit.mib": "МиБ",
+
+    "instance.reg.invite":  "По приглашениям",
+    "sec.invites":          "Приглашения",
+    "inv.head":             "Пригласительные коды",
+    "inv.empty.public":     "Сейчас открытых кодов нет.",
+    "inv.code":             "Код",
+    "inv.uses":             "осталось",
+    "inv.form.acct":        "Идентификатор аккаунта",
+    "inv.form.code":        "Пригласительный код",
+    "inv.form.go":          "Активировать",
+    "inv.form.ok":          "Активировано. Зарегистрируйте этот же идентификатор в приложении.",
+    "inv.form.err.empty":   "Введите идентификатор и код.",
+    "inv.form.err.bad":     "Код недействителен или исчерпан.",
+    "inv.panel.h":          "Пригласительные коды",
+    "inv.panel.p":          "Создание кодов для регистрации по приглашениям (SKERRY_REGISTRATION=invite). Открытые коды видны на главной.",
+    "inv.panel.gen":        "Создать",
+    "inv.panel.uses":       "Использований",
+    "inv.panel.public":     "Открытый",
+    "inv.panel.gen.done":   "Новый код",
+    "inv.panel.col.code":   "Код",
+    "inv.panel.col.uses":   "Осталось",
+    "inv.panel.col.public": "Открытый",
+    "inv.panel.col.created":"Создан",
+    "inv.panel.yes":        "Открытый",
+    "inv.panel.no":         "Приватный",
+    "dlg.invdel":           "Удалить приглашение {code}?"
   },
 
   zh: {
@@ -556,6 +608,32 @@ const DICT = {
     "n.viewers":  { other: "{n} 位观看者" },
 
     "t.now":  "刚刚",
-    "unit.b": "B", "unit.kib": "KiB", "unit.mib": "MiB"
+    "unit.b": "B", "unit.kib": "KiB", "unit.mib": "MiB",
+
+    "instance.reg.invite":  "邀请码",
+    "sec.invites":          "邀请码",
+    "inv.head":             "邀请码",
+    "inv.empty.public":     "当前没有公开邀请码。",
+    "inv.code":             "邀请码",
+    "inv.uses":             "剩余",
+    "inv.form.acct":        "账号",
+    "inv.form.code":        "邀请码",
+    "inv.form.go":          "预注册",
+    "inv.form.ok":          "预注册成功。请在客户端用同一账号完成注册。",
+    "inv.form.err.empty":   "请填写账号和邀请码。",
+    "inv.form.err.bad":     "邀请码无效或已用完。",
+    "inv.panel.h":          "邀请码",
+    "inv.panel.p":          "为邀请制注册生成邀请码（SKERRY_REGISTRATION=invite）。公开邀请码会显示在首页。",
+    "inv.panel.gen":        "生成",
+    "inv.panel.uses":       "次数",
+    "inv.panel.public":     "公开",
+    "inv.panel.gen.done":   "新邀请码",
+    "inv.panel.col.code":   "邀请码",
+    "inv.panel.col.uses":   "剩余",
+    "inv.panel.col.public": "公开",
+    "inv.panel.col.created":"创建时间",
+    "inv.panel.yes":        "公开",
+    "inv.panel.no":         "非公开",
+    "dlg.invdel":           "删除邀请码 {code}？"
   }
 };
