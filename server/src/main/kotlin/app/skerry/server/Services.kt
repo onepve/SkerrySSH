@@ -7,6 +7,7 @@ import app.skerry.server.db.AccountRepository
 import app.skerry.server.db.ActivityRepository
 import app.skerry.server.db.AdminRepository
 import app.skerry.server.db.DeviceRepository
+import app.skerry.server.db.InviteRepository
 import app.skerry.server.db.PairingRepository
 import app.skerry.server.db.RecordRepository
 import app.skerry.server.db.StatsRepository
