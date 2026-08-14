@@ -50,6 +50,8 @@ function frontPage() {
 
     '<div class="seclabel">' + t("front.doors") + "</div>" +
     '<div class="doors">' +
+      '<button class="door" id="inv-entry"><div class="t">' + t("front.pre") + '</div>' +
+        '<div class="d">' + t("front.pre.d") + '</div><div class="go">' + t("act.enter") + " →</div></button>" +
       '<button class="door" data-go="/account"><div class="t">' + t("zone.account") + '</div>' +
         '<div class="d">' + t("zone.account.d") + '</div><div class="go">' + t("act.enter") + " →</div></button>" +
       '<button class="door" data-go="/console"><div class="t">' + t("zone.operator") + '</div>' +
@@ -62,7 +64,22 @@ function frontPage() {
       '<div class="step"><div class="n"></div><div class="t">' + t("connect." + s) + "</div>" +
       '<div class="d">' + t("connect." + s + "d") + "</div></div>").join("") + "</div>" +
 
-    '<div class="foot"><span>Skerry Sync ' + version + " · AGPL-3.0</span></div></div>";
+    '<div class="foot"><span>Skerry Sync ' + version + " · AGPL-3.0</span></div></div>" +
+    '<div class="modal" id="inv-modal" hidden>' +
+      '<div class="modal-card">' +
+        '<h3 class="modal-title">' + t("pre.h") + "</h3>" +
+        '<label class="modal-label" for="inv-code">' + t("pre.code") + "</label>" +
+        '<input id="inv-code" class="modal-input" autocomplete="off" spellcheck="false"/>' +
+        '<label class="modal-label" for="inv-acct">' + t("pre.acct") + "</label>" +
+        '<input id="inv-acct" class="modal-input" autocomplete="off" spellcheck="false"/>' +
+        '<p class="modal-hint">' + t("pre.acct.hint") + "</p>" +
+        '<div class="modal-actions">' +
+          '<button class="btn ghost" id="inv-cancel">' + t("pre.cancel") + "</button>" +
+          '<button class="btn primary" id="inv-submit">' + t("pre.submit") + "</button>" +
+        "</div>" +
+        '<p class="modal-err" id="inv-err" role="status"></p>' +
+      "</div>" +
+    "</div>";
 }
 
 /* ===== sign-in ======================================================== */

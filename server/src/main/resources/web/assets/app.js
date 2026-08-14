@@ -398,6 +398,75 @@ async function clearUsedInvites() {
   });
 }
 
+/* --- pre-registration (public front page) --------------------------------- */
+
+/** Open the pre-registration modal; the invite code starts empty, never auto-filled. */
+function openInviteModal() {
+  const modal = el("inv-modal");
+  if (!modal) return;
+  el("inv-code").value = "";
+  el("inv-acct").value = "";
+  const err = el("inv-err");
+  err.textContent = "";
+  err.style.color = "";
+  modal.hidden = false;
+  el("inv-code").focus();
+}
+
+function closeInviteModal() {
+  const modal = el("inv-modal");
+  if (modal) modal.hidden = true;
+}
+
+/** Redeem an invite code for an account id. Public and rate-limited like `/auth/register`. */
+async function submitInvite() {
+  const code = el("inv-code").value.trim();
+  const acct = el("inv-acct").value.trim();
+  const err = el("inv-err");
+  if (!code || !acct) { err.textContent = t("pre.empty"); err.style.color = "var(--storm)"; return; }
+  if (!/^[\p{L}\p{N}@._-]+$/u.test(acct)) { err.textContent = t("pre.invalid"); err.style.color = "var(--storm)"; return; }
+  const btn = el("inv-submit");
+  btn.disabled = true;
+  err.textContent = "";
+  err.style.color = "";
+  try {
+    const r = await fetch("/invites/redeem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accountId: acct, code: code }),
+    });
+    if (r.status === 204) {
+      err.textContent = t("pre.ok");
+      err.style.color = "var(--moss)";
+      setTimeout(closeInviteModal, 1600);
+    } else if (r.status === 410) {
+      err.textContent = t("pre.bad");
+      err.style.color = "var(--storm)";
+    } else if (r.status === 409) {
+      let msg = t("pre.exists");
+      try {
+        const j = await r.json();
+        if (j && j.error === "account already pre-registered") msg = t("pre.preregistered");
+      } catch (e) {}
+      err.textContent = msg;
+      err.style.color = "var(--storm)";
+    } else if (r.status === 400) {
+      err.textContent = t("pre.invalid");
+      err.style.color = "var(--storm)";
+    } else if (r.status === 429) {
+      err.textContent = t("pre.rate");
+      err.style.color = "var(--storm)";
+    } else {
+      err.textContent = t("pre.bad");
+      err.style.color = "var(--storm)";
+    }
+  } catch (e) {
+    err.textContent = t("pre.bad");
+    err.style.color = "var(--storm)";
+  }
+  btn.disabled = false;
+}
+
 /**
  * Revokes every device of the account, this browser session last — it is the one holding the page.
  *
@@ -555,6 +624,19 @@ function renderMain() {
     if (!write) { manual(); return; }
     write.then(() => flash("connect.copied"), () => manual());
   });
+
+  const invEntry = el("inv-entry");
+  if (invEntry) invEntry.addEventListener("click", openInviteModal);
+  const invCancel = el("inv-cancel");
+  if (invCancel) invCancel.addEventListener("click", closeInviteModal);
+  const invSubmitBtn = el("inv-submit");
+  if (invSubmitBtn) invSubmitBtn.addEventListener("click", submitInvite);
+  const invModal = el("inv-modal");
+  if (invModal) invModal.addEventListener("click", e => { if (e.target === invModal) closeInviteModal(); });
+  const invCodeInput = el("inv-code");
+  if (invCodeInput) invCodeInput.addEventListener("keydown", e => { if (e.key === "Enter") el("inv-acct").focus(); });
+  const invAcctInput = el("inv-acct");
+  if (invAcctInput) invAcctInput.addEventListener("keydown", e => { if (e.key === "Enter") submitInvite(); });
 }
 
 function render() {
