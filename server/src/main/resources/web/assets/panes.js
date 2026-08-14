@@ -22,8 +22,6 @@ function frontPage() {
   const registration = health.state === "ready"
     ? t("instance.reg." + (reg === "invite" || reg === "closed" ? reg : "open"))
     : unknown;
-  // The invite block (public codes + redeem form) appears only when registration is invite-only.
-  const inviteBlock = reg === "invite" ? inviteSection() : "";
   // The scheme is printed verbatim, like every other API value: the page cannot know the TLS
   // version, and a "TLS 1.3" it did not measure would be decoration, not a fact. Plain http is not
   // a neutral one of two schemes — tokens and wrapped keys cross the wire readable — so it is
@@ -50,8 +48,6 @@ function frontPage() {
         (tls || loopback ? "" : '<div class="s warn">' + t("instance.transport.plain") + "</div>") + "</div>" +
     "</div>" +
 
-    inviteBlock +
-
     '<div class="seclabel">' + t("front.doors") + "</div>" +
     '<div class="doors">' +
       '<button class="door" data-go="/account"><div class="t">' + t("zone.account") + '</div>' +
@@ -67,35 +63,6 @@ function frontPage() {
       '<div class="d">' + t("connect." + s + "d") + "</div></div>").join("") + "</div>" +
 
     '<div class="foot"><span>Skerry Sync ' + version + " · AGPL-3.0</span></div></div>";
-}
-
-/** The invite block on the front page: public codes to copy, and a redeem form. */
-function inviteSection() {
-  const r = res("/invites/public", () => publicGet("/invites/public"));
-  let list;
-  if (r.state === "loading") {
-    list = '<div class="empty">' + t("state.loading") + "</div>";
-  } else if (r.state === "error") {
-    list = '<div class="empty bad">' + esc(errText(r.error)) + "</div>";
-  } else if (!r.data.invites.length) {
-    list = '<div class="empty">' + t("inv.empty.public") + "</div>";
-  } else {
-    list = r.data.invites.map(c =>
-      '<div class="urlrow"><span class="lbl">' + t("inv.code") + "</span>" +
-      "<code>" + esc(c.code) + "</code>" +
-      '<span class="mono" style="color:var(--text-faint);white-space:nowrap">' + t("inv.uses") + " " + fmtNum(c.remainingUses) + "</span></div>"
-    ).join("");
-  }
-  const input = (id, ph) =>
-    '<input id="' + id + '" style="flex:1;min-width:0;background:rgba(4,11,18,0.9);border:1px solid var(--line-strong);color:var(--text);padding:12px 15px;border-radius:11px;font:inherit;font-size:14px" placeholder="' + t(ph) + '" autocomplete="off"/>';
-  return '<div class="seclabel">' + t("inv.head") + "</div>" +
-    '<div class="panel" style="margin-bottom:16px">' + list +
-    '<div style="display:flex;gap:10px;margin-top:16px">' +
-    input("inv-acct", "inv.form.acct") + input("inv-code", "inv.form.code") +
-    '<button class="btn primary" id="inv-go">' + t("inv.form.go") + "</button>" +
-    "</div>" +
-    '<div id="inv-err" role="alert" style="color:var(--storm);font-size:13px;margin-top:10px;min-height:18px"></div>' +
-    "</div>";
 }
 
 /* ===== sign-in ======================================================== */
@@ -435,21 +402,42 @@ const PANE = {
       '<div class="dhead">' +
       '<input id="inv-uses" type="number" min="1" max="100000" value="1" style="width:90px;background:rgba(4,11,18,0.9);border:1px solid var(--line-strong);color:var(--text);padding:9px 12px;border-radius:10px;font:inherit;font-size:13px"/>' +
       '<span class="dmeta">' + t("inv.panel.uses") + "</span>" +
+      '<input id="inv-count" type="number" min="1" max="100" value="1" style="width:70px;background:rgba(4,11,18,0.9);border:1px solid var(--line-strong);color:var(--text);padding:9px 12px;border-radius:10px;font:inherit;font-size:13px"/>' +
+      '<span class="dmeta">' + t("inv.panel.count") + "</span>" +
       '<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-dim)"><input id="inv-public" type="checkbox"/>' + t("inv.panel.public") + "</label>" +
       '<button class="btn primary" id="inv-gen">' + t("inv.panel.gen") + "</button>" +
-      "</div>";
+      "</div>" +
+      '<div id="inv-msg" role="status" style="color:var(--moss);font-size:13px;margin-top:10px;min-height:18px;word-break:break-all"></div>';
     const r = res("/admin/invites", () => adminGet("/admin/invites"));
     if (r.state !== "ready") return head + form + pending(r);
+    const filter =
+      '<div class="dhead">' +
+      '<select id="inv-filter" style="background:rgba(4,11,18,0.9);border:1px solid var(--line-strong);color:var(--text);padding:8px 12px;border-radius:10px;font:inherit;font-size:13px">' +
+      '<option value="all">' + t("inv.filter.all") + "</option>" +
+      '<option value="unused">' + t("inv.filter.unused") + "</option>" +
+      '<option value="used">' + t("inv.filter.used") + "</option>" +
+      '<option value="public">' + t("inv.filter.public") + "</option>" +
+      '<option value="private">' + t("inv.filter.private") + "</option>" +
+      "</select>" +
+      '<button class="btn sm" id="inv-del-sel">' + t("inv.batch.del") + "</button>" +
+      '<button class="btn sm danger" id="inv-clear-used">' + t("inv.batch.clear") + "</button>" +
+      "</div>";
     const cols = [
-      { key: "inv.panel.col.code" }, { key: "inv.panel.col.uses", cls: "num" },
-      { key: "inv.panel.col.public" }, { key: "inv.panel.col.created" }, { key: "", cls: "num" },
+      { key: "" }, { key: "inv.panel.col.code" }, { key: "inv.panel.col.uses", cls: "num" },
+      { key: "inv.panel.col.usedby" }, { key: "inv.panel.col.public" },
+      { key: "inv.panel.col.created" }, { key: "", cls: "num" },
     ];
-    const rows = r.data.invites.map(c =>
-      "<tr><td class='id mono'>" + esc(c.code) + "</td>" +
-      '<td class="num">' + fmtNum(c.remainingUses) + "</td>" +
-      '<td><span class="badge ' + (c.public ? "cyan" : "dim") + '">' + t(c.public ? "inv.panel.yes" : "inv.panel.no") + "</span></td>" +
-      "<td>" + fmtDate(c.createdAt) + "</td>" +
-      '<td class="num"><button class="btn sm danger" data-invdel="' + esc(c.code) + '">' + t("act.delete") + "</button></td></tr>");
-    return head + form + tablecard(cols, rows);
+    const rows = r.data.invites.map(c => {
+      const used = c.remainingUses <= 0;
+      return "<tr data-used='" + (used ? "1" : "0") + "' data-public='" + (c.public ? "1" : "0") + "'>" +
+        '<td><input type="checkbox" class="inv-sel" value="' + esc(c.code) + '"/></td>' +
+        "<td class='id mono'>" + esc(c.code) + "</td>" +
+        '<td class="num">' + fmtNum(c.remainingUses) + "</td>" +
+        "<td>" + (c.usedBy ? esc(c.usedBy) + '<div class="s" style="color:var(--text-faint)">' + fmtDate(c.usedAt) + "</div>" : "—") + "</td>" +
+        '<td><span class="badge ' + (c.public ? "cyan" : "dim") + '">' + t(c.public ? "inv.panel.yes" : "inv.panel.no") + "</span></td>" +
+        "<td>" + fmtDate(c.createdAt) + "</td>" +
+        '<td class="num"><button class="btn sm danger" data-invdel="' + esc(c.code) + '">' + t("act.delete") + "</button></td></tr>";
+    });
+    return head + form + filter + tablecard(cols, rows);
   }
 };

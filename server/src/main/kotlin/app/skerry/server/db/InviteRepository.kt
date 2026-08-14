@@ -18,6 +18,8 @@ data class InviteRow(
     val remainingUses: Int,
     val public: Boolean,
     val createdAt: Long,
+    val usedBy: String?,
+    val usedAt: Long?,
 )
 
 /**
@@ -55,6 +57,8 @@ class InviteRepository(private val db: Database) {
                     remainingUses = it[InviteCodes.remainingUses],
                     public = it[InviteCodes.public],
                     createdAt = it[InviteCodes.createdAt],
+                    usedBy = it[InviteCodes.usedBy],
+                    usedAt = it[InviteCodes.usedAt],
                 )
             }
     }
@@ -69,6 +73,8 @@ class InviteRepository(private val db: Database) {
                     remainingUses = it[InviteCodes.remainingUses],
                     public = it[InviteCodes.public],
                     createdAt = it[InviteCodes.createdAt],
+                    usedBy = it[InviteCodes.usedBy],
+                    usedAt = it[InviteCodes.usedAt],
                 )
             }
     }
@@ -76,6 +82,11 @@ class InviteRepository(private val db: Database) {
     /** Admin: delete a code. Returns true if it existed. */
     suspend fun delete(code: String): Boolean = dbTransaction(db) {
         InviteCodes.deleteWhere { InviteCodes.code eq code } > 0
+    }
+
+    /** Whether an account id already exists (registered). */
+    suspend fun accountExists(accountId: String): Boolean = dbTransaction(db) {
+        Accounts.selectAll().where { Accounts.id eq accountId }.any()
     }
 
     /**
@@ -94,6 +105,8 @@ class InviteRepository(private val db: Database) {
             (InviteCodes.code eq code) and (InviteCodes.remainingUses greater 0)
         }) {
             it[remainingUses] = InviteCodes.remainingUses - 1
+            it[usedBy] = accountId
+            it[usedAt] = now
         }
         if (spent != 1) return@dbTransaction false
 

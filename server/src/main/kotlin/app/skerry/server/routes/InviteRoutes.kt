@@ -40,6 +40,10 @@ fun Route.inviteRoutes(services: Services) {
                 call.respond(HttpStatusCode.BadRequest, ErrorResponse("identifier too long"))
                 return@post
             }
+            if (services.invites.accountExists(req.accountId)) {
+                call.respond(HttpStatusCode.Conflict, ErrorResponse("account already registered"))
+                return@post
+            }
             val now = System.currentTimeMillis()
             val expiresAt = now + services.config.preregTtlSeconds * 1000
             val ok = services.invites.preregister(req.accountId, req.code, expiresAt, now)

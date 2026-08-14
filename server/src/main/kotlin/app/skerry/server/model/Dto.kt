@@ -182,16 +182,19 @@ data class AdminInviteDto(
     val remainingUses: Int,
     val public: Boolean,
     val createdAt: Long,
+    val usedBy: String? = null,
+    val usedAt: Long? = null,
 )
 
 @Serializable
 data class AdminInvitesResponse(val invites: List<AdminInviteDto>, val total: Int)
 
-/** What the console POSTs to mint a code; the code itself is generated server-side. */
+/** What the console POSTs to mint codes; the code itself is generated server-side. */
 @Serializable
 data class AdminInviteCreateRequest(
     val uses: Int = 1,
     val public: Boolean = false,
+    val count: Int = 1,
 )
 
 /** A public code as the front page lists it (no admin metadata). */

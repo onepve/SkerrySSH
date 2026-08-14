@@ -252,6 +252,10 @@ object InviteCodes : Table("invite_codes") {
     val remainingUses = integer("remaining_uses")
     val public = bool("public").default(false)
     val createdAt = long("created_at")
+    /** Last account id that redeemed this code (null until first use). */
+    val usedBy = varchar("used_by", 320).nullable()
+    /** When it was last redeemed (null until first use). */
+    val usedAt = long("used_at").nullable()
 
     override val primaryKey = PrimaryKey(code)
 }

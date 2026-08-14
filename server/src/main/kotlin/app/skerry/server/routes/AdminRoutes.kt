@@ -210,7 +210,7 @@ fun Route.adminRoutes(services: Services) {
             val invites = services.invites.list()
             call.respond(
                 AdminInvitesResponse(
-                    invites = invites.map { AdminInviteDto(it.code, it.remainingUses, it.public, it.createdAt) },
+                    invites = invites.map { AdminInviteDto(it.code, it.remainingUses, it.public, it.createdAt, it.usedBy, it.usedAt) },
                     total = invites.size,
                 ),
             )
@@ -219,10 +219,14 @@ fun Route.adminRoutes(services: Services) {
         post("/invites") {
             val req = call.receive<AdminInviteCreateRequest>()
             val uses = req.uses.coerceIn(1, 100_000)
-            val code = newInviteCode()
-            services.invites.create(code, uses, req.public)
-            val created = services.invites.list().first { it.code == code }
-            call.respond(AdminInviteDto(created.code, created.remainingUses, created.public, created.createdAt))
+            val count = req.count.coerceIn(1, 100)
+            val now = System.currentTimeMillis()
+            val created = (1..count).map {
+                val code = newInviteCode()
+                services.invites.create(code, uses, req.public, now)
+                AdminInviteDto(code, uses, req.public, now)
+            }
+            call.respond(AdminInvitesResponse(created, created.size))
         }
 
         delete("/invites/{code}") {

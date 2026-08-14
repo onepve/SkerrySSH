@@ -342,44 +342,60 @@ const deleteInvite = code => {
   act(() => adminDelete("/admin/invites/" + enc(code)));
 };
 
-/** Mint a code from the console form; the server generates the code and we show it to copy. */
+/** Mint codes from the console form; the server generates them and we list them inline. */
 async function genInvite() {
   const uses = Math.max(1, Number(el("inv-uses").value) || 1);
   const pub = el("inv-public").checked;
+  const count = Math.max(1, Number(el("inv-count").value) || 1);
   const btn = el("inv-gen");
+  const msg = el("inv-msg");
   btn.disabled = true;
+  msg.textContent = "";
   try {
-    const created = await adminPost("/admin/invites", { uses: uses, public: pub });
-    alert(t("inv.panel.gen.done") + "\n\n" + created.code);
+    const created = await adminPost("/admin/invites", { uses: uses, public: pub, count: count });
+    msg.textContent = t("inv.panel.gen.ok") + " " + created.invites.map(c => c.code).join(", ");
+    msg.style.color = "var(--moss)";
   } catch (e) {
     if (e.status === 401) setAdminToken(null);
-    alert(errText(e));
+    msg.textContent = errText(e);
+    msg.style.color = "var(--storm)";
   }
   btn.disabled = false;
   reload();
   render();
 }
 
-/** Redeem a public/private code for an account id on the front page. */
-async function submitInvite() {
-  const accountId = el("inv-acct").value.trim();
-  const code = el("inv-code").value.trim();
-  const fail = text => { el("inv-err").textContent = text; el("inv-go").disabled = false; };
-  if (!accountId || !code) { fail(t("inv.form.err.empty")); return; }
-  el("inv-go").disabled = true;
-  el("inv-err").textContent = "";
-  el("inv-err").style.color = "";
-  try {
-    await publicPost("/invites/redeem", { accountId: accountId, code: code });
-  } catch (e) {
-    fail(e.status === 410 ? t("inv.form.err.bad") : e.status === 429 ? t("gate.throttled") : errText(e));
-    return;
-  }
-  el("inv-err").textContent = t("inv.form.ok");
-  el("inv-err").style.color = "var(--moss)";
-  el("inv-go").disabled = false;
-  reload();
-  render();
+/** Filter the invite table by state. */
+function filterInvites() {
+  const v = el("inv-filter").value;
+  document.querySelectorAll("tr[data-used]").forEach(tr => {
+    let show = true;
+    if (v === "unused") show = tr.dataset.used === "0";
+    else if (v === "used") show = tr.dataset.used === "1";
+    else if (v === "public") show = tr.dataset.public === "1";
+    else if (v === "private") show = tr.dataset.public === "0";
+    tr.style.display = show ? "" : "none";
+  });
+}
+
+/** Delete the checked invite codes. */
+async function deleteSelectedInvites() {
+  const codes = Array.from(document.querySelectorAll(".inv-sel:checked")).map(c => c.value);
+  if (!codes.length) return;
+  if (!confirm(t("dlg.invdel.batch", { n: codes.length }))) return;
+  act(async () => {
+    for (const code of codes) await adminDelete("/admin/invites/" + enc(code));
+  });
+}
+
+/** Clear every used-up invite code. */
+async function clearUsedInvites() {
+  const codes = Array.from(document.querySelectorAll("tr[data-used='1'] .inv-sel")).map(c => c.value);
+  if (!codes.length) return;
+  if (!confirm(t("dlg.invclear", { n: codes.length }))) return;
+  act(async () => {
+    for (const code of codes) await adminDelete("/admin/invites/" + enc(code));
+  });
 }
 
 /**
@@ -493,8 +509,12 @@ function renderMain() {
     b.addEventListener("click", e => { e.stopPropagation(); deleteInvite(b.dataset.invdel); }));
   const invGen = el("inv-gen");
   if (invGen) invGen.addEventListener("click", genInvite);
-  const invGo = el("inv-go");
-  if (invGo) invGo.addEventListener("click", submitInvite);
+  const invFilter = el("inv-filter");
+  if (invFilter) invFilter.addEventListener("change", filterInvites);
+  const invDelSel = el("inv-del-sel");
+  if (invDelSel) invDelSel.addEventListener("click", deleteSelectedInvites);
+  const invClearUsed = el("inv-clear-used");
+  if (invClearUsed) invClearUsed.addEventListener("click", clearUsedInvites);
   main.querySelectorAll("[data-size]").forEach(b =>
     b.addEventListener("click", () => {
       const [key, size] = b.dataset.size.split(":");
