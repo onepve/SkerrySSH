@@ -34,6 +34,13 @@ fun Route.inviteRoutes(services: Services) {
     rateLimit(RateLimits.INVITE_REDEEM) {
         post("/invites/redeem") {
             val req = call.receive<InviteRedeemRequest>()
+            // A blank account id would consume a code for a row that can never be claimed by a real
+            // registration, so reject it before touching the DB (an attacker could otherwise burn
+            // the whole public pool with empty ids).
+            if (req.accountId.isBlank()) {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("account id required"))
+                return@post
+            }
             // Validate lengths before touching the DB: an oversized code/accountId would fail the
             // insert into a varchar column with a 500 on PostgreSQL.
             if (tooLong(req.accountId) || req.code.length > MAX_INVITE_CODE) {
