@@ -18,10 +18,11 @@ import io.ktor.server.routing.post
 private const val MAX_INVITE_CODE = 64
 
 /**
- * Account-id whitelist for pre-registration: normal username/email characters only — Unicode
- * letters (Latin, CJK, Cyrillic, …), digits, and `@ . _ -`. Blank, whitespace, control chars,
- * emoji and other punctuation are rejected before any DB work, so an attacker can't burn the
- * public pool with junk ids and we don't persist pre-registration rows no real sign-up can claim.
+ * Account-id whitelist for pre-registration: Unicode letters (`\p{L}` — Latin, Han, Cyrillic,
+ * kana, …, i.e. every script SkerrySSH localises for), digits (`\p{N}`), and the username/email
+ * separators `@ . _ -`. Everything else (whitespace, control chars, emoji, punctuation, symbols)
+ * is rejected before any DB work, so an attacker can't burn the public pool with junk ids and we
+ * don't persist pre-registration rows no real sign-up can claim.
  */
 private val ACCOUNT_ID_PATTERN = Regex("^[\\p{L}\\p{N}@._-]+$")
 
