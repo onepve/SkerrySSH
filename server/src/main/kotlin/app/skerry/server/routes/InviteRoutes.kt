@@ -18,6 +18,14 @@ import io.ktor.server.routing.post
 private const val MAX_INVITE_CODE = 64
 
 /**
+ * Account-id whitelist for pre-registration: normal username/email characters only — Unicode
+ * letters (Latin, CJK, Cyrillic, …), digits, and `@ . _ -`. Blank, whitespace, control chars,
+ * emoji and other punctuation are rejected before any DB work, so an attacker can't burn the
+ * public pool with junk ids and we don't persist pre-registration rows no real sign-up can claim.
+ */
+private val ACCOUNT_ID_PATTERN = Regex("^[\\p{L}\\p{N}@._-]+$")
+
+/**
  * Public invite endpoints (fork's gated registration): the front page lists the public codes via
  * [GET /invites/public], and a visitor redeems one for an account id via [POST /invites/redeem].
  * Both are unauthenticated; the redeem is rate-limited like `/auth/register`.
@@ -34,11 +42,9 @@ fun Route.inviteRoutes(services: Services) {
     rateLimit(RateLimits.INVITE_REDEEM) {
         post("/invites/redeem") {
             val req = call.receive<InviteRedeemRequest>()
-            // A blank account id would consume a code for a row that can never be claimed by a real
-            // registration, so reject it before touching the DB (an attacker could otherwise burn
-            // the whole public pool with empty ids).
-            if (req.accountId.isBlank()) {
-                call.respond(HttpStatusCode.BadRequest, ErrorResponse("account id required"))
+            // Reject anything that isn't a normal username/email before touching the DB.
+            if (!ACCOUNT_ID_PATTERN.matches(req.accountId)) {
+                call.respond(HttpStatusCode.BadRequest, ErrorResponse("invalid account id"))
                 return@post
             }
             // Validate lengths before touching the DB: an oversized code/accountId would fail the
