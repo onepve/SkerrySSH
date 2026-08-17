@@ -37,7 +37,11 @@ import app.skerry.ui.snippet.SnippetHelpDialog
 import app.skerry.ui.snippet.SnippetDraft
 import app.skerry.ui.snippet.SnippetEntry
 import app.skerry.ui.snippet.SnippetFormState
+import app.skerry.ui.snippet.SnippetLibraryState
 import app.skerry.ui.snippet.SnippetManager
+import app.skerry.ui.snippet.SnippetCategoryHeader
+import app.skerry.ui.snippet.groupSnippetsByCategory
+import app.skerry.ui.snippet.hasCategories
 import app.skerry.ui.snippet.installStarterPack
 import app.skerry.ui.snippet.matches
 import app.skerry.ui.snippet.snippetTagSuggestions
@@ -259,8 +263,10 @@ private fun SnippetTagChip(tag: String) {
 }
 
 /**
- * Snippet-run picker opened from the terminal header (`bolt` icon): list of saved commands, tap
- * runs the selected snippet in the active session via [onRun].
+ * Snippet-run picker opened from the terminal header (`bolt` icon): search + tag chips narrow the
+ * list, tap runs the selected snippet in the active session via [onRun]. Same filtering model as
+ * the full library ([SnippetLibraryState]), scoped to this sheet so the library's active chip and
+ * query are untouched.
  */
 @Composable
 internal fun MobileSnippetRunSheet(manager: SnippetManager, onRun: (SnippetEntry) -> Unit, onDismiss: () -> Unit) {

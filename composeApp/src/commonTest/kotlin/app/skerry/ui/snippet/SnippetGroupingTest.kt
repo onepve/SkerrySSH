@@ -3,6 +3,7 @@ package app.skerry.ui.snippet
 import app.skerry.shared.snippet.Snippet
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SnippetGroupingTest {
@@ -88,5 +89,16 @@ class SnippetGroupingTest {
 
         assertEquals(listOf("Disk usage"), filterSnippets(all, activeChip = "disk", query = "disk").map { it.snippet.label })
         assertTrue(filterSnippets(all, activeChip = "disk", query = "iostat").isEmpty())
+    }
+
+    @Test
+    fun all_view_with_tags_groups_but_a_chip_or_untagged_library_stays_flat() {
+        val tagged = listOf(entry("Disk", listOf("disk")), entry("Loose"))
+
+        assertTrue(shouldGroupSnippets(tagged, ALL_SNIPPETS_CHIP))
+        assertFalse(shouldGroupSnippets(tagged, "disk"))
+        assertFalse(shouldGroupSnippets(tagged, UNCATEGORIZED_KEY))
+        assertFalse(shouldGroupSnippets(listOf(entry("Loose")), ALL_SNIPPETS_CHIP))
+        assertFalse(shouldGroupSnippets(emptyList(), ALL_SNIPPETS_CHIP))
     }
 }

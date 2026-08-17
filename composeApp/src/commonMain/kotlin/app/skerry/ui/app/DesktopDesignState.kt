@@ -170,6 +170,11 @@ class DesktopDesignState(
     // preserve prior behavior for mock/preview/tests.
     initialCollapsedGroups: Set<String> = emptySet(),
     private val onCollapsedGroupsChange: (Set<String>) -> Unit = {},
+    // Collapsed snippet categories in the library, persisted like the host folders (read at
+    // startup, written back via the callback, survives a restart). Defaults (all expanded, no-op)
+    // preserve prior behavior for mock/preview/tests.
+    initialSnippetCollapsedTags: Set<String> = emptySet(),
+    private val onSnippetCollapsedTagsChange: (Set<String>) -> Unit = {},
     // Recent connections (RECENT section in the sidebar): host ids, newest first. Read from
     // persistence, written back via the callback, so the list survives a restart. Defaults (empty,
     // no-op) preserve prior behavior for mock/preview/tests.
@@ -255,10 +260,13 @@ class DesktopDesignState(
 
     /**
      * View state of the snippet library (search, category chip, collapsed sections). Lives here so
-     * leaving the Snippets section and coming back doesn't reset the view; not persisted across
-     * restarts (see [app.skerry.ui.snippet.SnippetLibraryState]).
+     * leaving the Snippets section and coming back doesn't reset the view; collapsed categories are
+     * persisted across restarts like the host folders (see [SnippetLibraryState]).
      */
-    val snippetLibrary = SnippetLibraryState()
+    val snippetLibrary = SnippetLibraryState(
+        initialCollapsedTags = initialSnippetCollapsedTags,
+        onCollapsedTagsChange = onSnippetCollapsedTagsChange,
+    )
 
     /** Names of collapsed host folders in the sidebar (their host lists are hidden). */
     var collapsedGroups: Set<String> by mutableStateOf(initialCollapsedGroups); private set

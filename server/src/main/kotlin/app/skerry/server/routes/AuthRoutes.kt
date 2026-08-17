@@ -3,6 +3,7 @@ package app.skerry.server.routes
 import app.skerry.server.RateLimits
 import app.skerry.server.Services
 import app.skerry.server.accountId
+import app.skerry.server.config.RegistrationMode
 import app.skerry.server.db.WebSession
 import app.skerry.server.deviceId
 import app.skerry.server.jwtPrincipal
@@ -47,7 +48,7 @@ fun Route.authRoutes(services: Services) {
             // even read, so an EXISTING account gets this same 403 — a connect under the device's own
             // vault password probes register first. The client treats 403 like the 409 it gets on an
             // open instance and falls back to login, which is how existing accounts still get in here.
-            if (!services.config.registrationOpen) {
+            if (services.config.registration == RegistrationMode.CLOSED) {
                 services.metrics.registrationRejected(RegistrationRejection.CLOSED)
                 services.metrics.authAttempt(AuthKind.REGISTER, AuthOutcome.DENIED)
                 call.respond(HttpStatusCode.Forbidden, ErrorResponse("registration is closed"))
@@ -56,6 +57,15 @@ fun Route.authRoutes(services: Services) {
             val req = call.receive<RegisterRequest>()
             if (tooLong(req.accountId, req.deviceId)) {
                 call.respond(HttpStatusCode.BadRequest, ErrorResponse("identifier too long"))
+                return@post
+            }
+            // Invite-only mode: the id must hold a live pre-registration (redeemed via /invites).
+            if (services.config.registration == RegistrationMode.INVITE &&
+                !services.invites.isPreregistered(req.accountId)
+            ) {
+                services.metrics.registrationRejected(RegistrationRejection.INVITE_REQUIRED)
+                services.metrics.authAttempt(AuthKind.REGISTER, AuthOutcome.DENIED)
+                call.respond(HttpStatusCode.Forbidden, ErrorResponse("invite required"))
                 return@post
             }
             // Optional per-instance cap (backstop for an instance left open). The count/create window
@@ -84,6 +94,10 @@ fun Route.authRoutes(services: Services) {
                 return@post
             }
             services.devices.register(req.accountId, req.deviceId, req.deviceName, req.platform)
+            // Consume the pre-registration: an invite is spent for good once the account exists.
+            if (services.config.registration == RegistrationMode.INVITE) {
+                services.invites.removePreregistration(req.accountId)
+            }
             services.activity.record(req.accountId, "auth.register", "new account + device", deviceId = req.deviceId)
             services.metrics.authAttempt(AuthKind.REGISTER, AuthOutcome.OK)
             services.metrics.tokensIssued(TokenType.ACCESS)

@@ -10,6 +10,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import app.skerry.ui.app.UiTags
 import app.skerry.ui.desktop.runForm
+import app.skerry.ui.vault.MIN_MASTER_PASSWORD_LENGTH
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -69,8 +70,8 @@ class CreateVaultFormTest {
     fun `a password that fails the strength check is refused`() {
         var created = false
         runForm({ DesktopCreateScreen(error = null, onCreate = { _, _ -> created = true }) }) {
-            password().performTextInput("abc")
-            confirmation().performTextInput("abc")
+            password().performTextInput(WEAK_PASSWORD)
+            confirmation().performTextInput(WEAK_PASSWORD)
             acknowledge()
             onNodeWithTag(UiTags.FORM_SAVE).assertIsNotEnabled()
         }
@@ -88,3 +89,6 @@ class CreateVaultFormTest {
 }
 
 private const val PASSWORD = "long-enough-master-password"
+
+/** One char below the configured minimum — the strength check has to refuse it on every build. */
+private val WEAK_PASSWORD = "x".repeat(MIN_MASTER_PASSWORD_LENGTH - 1)

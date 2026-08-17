@@ -5,6 +5,7 @@
     <string name="term_new_connection">Новое подключение</string>
     <string name="term_search_hosts_placeholder">Поиск хостов, тегов, IP…</string>
     <string name="term_menu_run_snippet">Запустить сниппет…</string>
+    <string name="term_menu_open_native">Открыть снаружи</string>
     <string name="term_menu_edit">Изменить</string>
     <string name="term_menu_duplicate">Дублировать</string>
     <string name="term_menu_delete">Удалить</string>

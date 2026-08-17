@@ -17,10 +17,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +38,7 @@ import app.skerry.ui.app.LocalSecurityLog
 import app.skerry.ui.app.LocalSync
 import app.skerry.ui.app.LocalVault
 import app.skerry.ui.app.LocalVaultBiometrics
+import app.skerry.ui.app.LocalVaultCrypto
 import app.skerry.ui.app.SettingsTab
 import app.skerry.ui.app.UiTags
 import androidx.compose.ui.platform.testTag
@@ -46,9 +49,21 @@ import app.skerry.ui.design.Txt
 import app.skerry.ui.design.VLine
 import app.skerry.ui.design.consumeClicks
 import app.skerry.ui.sync.SyncStatus
+import app.skerry.ui.sync.nowMillis
+import app.skerry.shared.vault.BackupLoadResult
+import app.skerry.shared.vault.VaultBackupCodec
+import app.skerry.shared.vault.applyBackup
+import app.skerry.ui.vault.BackupExportDialog
+import app.skerry.ui.vault.BackupImportDialog
+import app.skerry.ui.vault.ExportOutcome
+import app.skerry.ui.vault.exportTextFile
+import app.skerry.ui.vault.importTextFile
 import app.skerry.ui.generated.resources.Res
 import app.skerry.ui.generated.resources.appearance_subtitle
 import app.skerry.ui.generated.resources.settings_ai_live_subtitle
+import app.skerry.ui.generated.resources.settings_backup_err_corrupted
+import app.skerry.ui.generated.resources.settings_backup_err_password
+import app.skerry.ui.generated.resources.settings_backup_import
 import app.skerry.ui.generated.resources.settings_keyboard_subtitle
 import app.skerry.ui.generated.resources.settings_nav_header
 import app.skerry.ui.generated.resources.settings_security_subtitle
@@ -64,6 +79,9 @@ import app.skerry.ui.generated.resources.shtail_nav_sync
 import app.skerry.ui.generated.resources.shtail_nav_terminal
 import app.skerry.ui.generated.resources.shtail_nav_trash
 import app.skerry.ui.vault.VaultGateController
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.stringResource
 import app.skerry.ui.theme.Skerry
 
@@ -88,6 +106,21 @@ fun SettingsPanel(state: DesktopDesignState) {
     var securityReload by remember { mutableStateOf(0) }
     var changePwOpen by remember { mutableStateOf(false) }
     var changeAccountPwOpen by remember { mutableStateOf(false) }
+    // Data backup dialogs (export/import) are hosted here — at overlay level over the whole
+    // settings card — so their ModalScrim renders as a real modal, not inlined in the scroll
+    // content (same pattern as ChangeMasterPasswordDialog below).
+    val vault = LocalVault.current
+    val vaultCrypto = LocalVaultCrypto.current
+    val scope = rememberCoroutineScope()
+    var backupError by remember { mutableStateOf<String?>(null) }
+    var backupBusy by remember { mutableStateOf(false) }
+    var showExport by remember { mutableStateOf(false) }
+    var showImport by remember { mutableStateOf(false) }
+    var importFile by remember { mutableStateOf<ByteArray?>(null) }
+    var importPreview by remember { mutableStateOf<BackupLoadResult.Ok?>(null) }
+    val errPassword = stringResource(Res.string.settings_backup_err_password)
+    val errCorrupted = stringResource(Res.string.settings_backup_err_corrupted)
+    val importTitle = stringResource(Res.string.settings_backup_import)
     ModalScrim(onDismiss = state::closeSettings, scrimColor = Skerry.colors.modalScrim) {
         Box(
             Modifier
@@ -142,6 +175,8 @@ fun SettingsPanel(state: DesktopDesignState) {
                             onChangeMasterPassword = { changePwOpen = true },
                             onChangeAccountPassword = { changeAccountPwOpen = true },
                             onBiometricToggled = { securityReload++ },
+                            onExportBackup = { backupError = null; showExport = true },
+                            onImportBackup = { backupError = null; importFile = null; importPreview = null; showImport = true },
                         )
                         SettingsTab.Trash -> TrashSection()
                         SettingsTab.Keyboard -> KeyboardSection()
@@ -196,8 +231,85 @@ fun SettingsPanel(state: DesktopDesignState) {
                 onChanged = { securityReload++ },
             )
         }
+        // Data backup dialogs — same overlay-level hosting as the password dialogs above.
+        if (showExport && vault != null && vaultCrypto != null) {
+            BackupExportDialog(
+                busy = backupBusy,
+                error = backupError,
+                onDismiss = { showExport = false },
+                onExport = { password, encrypt ->
+                    backupBusy = true
+                    backupError = null
+                    scope.launch {
+                        val done = withContext(Dispatchers.Default) {
+                            if (!vault.verifyPassword(password)) {
+                                false
+                            } else {
+                                val text = VaultBackupCodec.export(vault, vaultCrypto, password, encrypt = encrypt) { nowMillis().toString() }
+                                val name = if (encrypt) {
+                                    "skerry-backup-" + nowMillis() + ".skerryvault"
+                                } else {
+                                    "skerry-backup-" + nowMillis() + ".json"
+                                }
+                                exportTextFile(name, text) == ExportOutcome.Saved
+                            }
+                        }
+                        backupBusy = false
+                        if (done) showExport = false else backupError = errPassword
+                    }
+                },
+            )
         }
+        if (showImport && vault != null && vaultCrypto != null) {
+            // Pick the file on first open; plain files parse immediately, sealed ones wait for the password.
+            if (importFile == null && importPreview == null) {
+                LaunchedEffect(Unit) {
+                    val picked = importTextFile(importTitle)
+                    if (picked != null) {
+                        when (val result = VaultBackupCodec.load(picked.text, vaultCrypto, password = null)) {
+                            is BackupLoadResult.Ok -> { importFile = picked.text.encodeToByteArray(); importPreview = result }
+                            is BackupLoadResult.WrongPassword -> importFile = picked.text.encodeToByteArray()
+                            is BackupLoadResult.Corrupted -> {
+                                backupError = errCorrupted
+                                showImport = false
+                            }
+                        }
+                    } else {
+                        showImport = false
+                    }
+                }
+            }
+            if (importFile != null) {
+                val preview = importPreview
+                BackupImportDialog(
+                    records = preview?.backup?.records?.size,
+                    encrypted = preview == null,
+                    busy = backupBusy,
+                    error = backupError,
+                    onDismiss = { showImport = false },
+                    onImport = { password, mode ->
+                        backupBusy = true
+                        backupError = null
+                        scope.launch {
+                            val applied = withContext(Dispatchers.Default) {
+                                val text = importFile!!.decodeToString()
+                                val loaded = preview ?: when (val result = VaultBackupCodec.load(text, vaultCrypto, password)) {
+                                    is BackupLoadResult.Ok -> result
+                                    is BackupLoadResult.WrongPassword -> { backupError = errPassword; null }
+                                    is BackupLoadResult.Corrupted -> { backupError = errCorrupted; null }
+                                }
+                                loaded?.let { applyBackup(vault, it.backup, mode) } ?: -1
+                            }
+                            backupBusy = false
+                            if (applied >= 0) showImport = false
+                        }
+                    },
+                )
+            }
+        }
+
     }
+}
 }
 
 /**

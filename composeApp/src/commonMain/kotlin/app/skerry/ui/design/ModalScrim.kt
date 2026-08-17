@@ -52,6 +52,7 @@ fun ModalScrim(
      * reading it aloud. Left null where a field inside takes the focus and names itself.
      */
     label: String? = null,
+    dismissOnScrimClick: Boolean = false,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val noop = remember { MutableInteractionSource() }
@@ -65,7 +66,7 @@ fun ModalScrim(
         Modifier
             .fillMaxSize()
             .background(scrimColor)
-            .clickable(interactionSource = noop, indication = null, onClick = {}) // consume, never dismiss
+            .clickable(interactionSource = noop, indication = null, onClick = { if (dismissOnScrimClick) onDismiss() })
             .onFocusChanged { subtreeFocused = it.hasFocus }
             .focusRequester(escFocus)
             .onKeyEvent { event ->
