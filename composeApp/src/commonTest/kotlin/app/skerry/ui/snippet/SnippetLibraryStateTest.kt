@@ -3,6 +3,8 @@ package app.skerry.ui.snippet
 import app.skerry.shared.snippet.Snippet
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class SnippetLibraryStateTest {
 
@@ -73,5 +75,69 @@ class SnippetLibraryStateTest {
         s.onTagRenamed("db", "database") // "db" was not the active chip
 
         assertEquals("net", s.activeChip)
+    }
+
+    @Test
+    fun collapsed_categories_toggle_off_and_on() {
+        val s = SnippetLibraryState()
+
+        assertFalse(s.isTagCollapsed("disk"))
+
+        s.toggleTagCollapsed("disk")
+        assertTrue(s.isTagCollapsed("disk"))
+
+        s.toggleTagCollapsed("disk")
+        assertFalse(s.isTagCollapsed("disk"))
+    }
+
+    @Test
+    fun collapsing_one_category_leaves_the_others_open() {
+        val s = SnippetLibraryState()
+        s.toggleTagCollapsed("disk")
+
+        assertTrue(s.isTagCollapsed("disk"))
+        assertFalse(s.isTagCollapsed("net"))
+    }
+
+    @Test
+    fun a_rename_moves_the_collapsed_state() {
+        val s = SnippetLibraryState()
+        s.toggleTagCollapsed("db")
+
+        s.onTagRenamed("db", "database")
+
+        assertTrue(s.isTagCollapsed("database"))
+        assertFalse(s.isTagCollapsed("db"))
+    }
+
+    @Test
+    fun collapsed_state_starts_from_persistence() {
+        val s = SnippetLibraryState(initialCollapsedTags = setOf("disk"))
+
+        assertTrue(s.isTagCollapsed("disk"))
+        assertFalse(s.isTagCollapsed("net"))
+    }
+
+    @Test
+    fun toggling_reports_the_new_set_to_persistence() {
+        val persisted = mutableListOf<Set<String>>()
+        val s = SnippetLibraryState(onCollapsedTagsChange = { persisted += it })
+
+        s.toggleTagCollapsed("disk")
+        assertEquals(setOf("disk"), persisted.last())
+
+        s.toggleTagCollapsed("disk")
+        assertEquals(emptySet<String>(), persisted.last())
+        assertEquals(2, persisted.size)
+    }
+
+    @Test
+    fun a_rename_reports_the_migrated_set_to_persistence() {
+        val persisted = mutableListOf<Set<String>>()
+        val s = SnippetLibraryState(initialCollapsedTags = setOf("db"), onCollapsedTagsChange = { persisted += it })
+
+        s.onTagRenamed("db", "database")
+
+        assertEquals(setOf("database"), persisted.last())
     }
 }

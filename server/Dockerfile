@@ -17,7 +17,10 @@ COPY --from=build /src/server/build/install/server/ /app/
 # 1000 is taken by the base image's "ubuntu" user. Bind-mount owners: chown to 999:999.
 RUN groupadd --system --gid 999 skerry && useradd --system --uid 999 --gid skerry --home /app skerry \
     && mkdir -p /data && chown -R skerry:skerry /app /data
-USER skerry
+
+# Entrypoint wrapper — runs as root, self-heals /data permissions, then drops to skerry.
+COPY server/docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 # SQLite file lives in the /data volume by default; mount a volume for persistence.
 # /app/bin on PATH so the admin CLI is callable by name: `docker exec <c> skerry-admin stats`.
@@ -32,4 +35,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=20s \
     CMD ["sh", "-c", "wget -qO- http://localhost:${SKERRY_PORT}/healthz || exit 1"]
 
-ENTRYPOINT ["/app/bin/server"]
+ENTRYPOINT ["/docker-entrypoint.sh"]

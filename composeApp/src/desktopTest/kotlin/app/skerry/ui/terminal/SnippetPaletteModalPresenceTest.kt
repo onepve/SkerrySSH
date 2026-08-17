@@ -46,7 +46,7 @@ class SnippetPaletteModalPresenceTest {
             CompositionLocalProvider(
                 LocalFonts provides DesignFonts(FontFamily.Default, FontFamily.Monospace, FontFamily.Default),
             ) {
-                SnippetPalette(manager) {}
+                SnippetPalette(manager, onPick = {})
             }
         }
     }
