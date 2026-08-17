@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -54,6 +55,12 @@ import app.skerry.ui.generated.resources.settings_autolock_30m
 import app.skerry.ui.generated.resources.settings_autolock_5m
 import app.skerry.ui.generated.resources.settings_autolock_never
 import app.skerry.ui.generated.resources.settings_badge_soon
+import app.skerry.ui.generated.resources.settings_backup_desc
+import app.skerry.ui.generated.resources.settings_backup_err_corrupted
+import app.skerry.ui.generated.resources.settings_backup_err_password
+import app.skerry.ui.generated.resources.settings_backup_export
+import app.skerry.ui.generated.resources.settings_backup_import
+import app.skerry.ui.generated.resources.settings_backup_title
 import app.skerry.ui.generated.resources.settings_cancel
 import app.skerry.ui.generated.resources.settings_change
 import app.skerry.ui.generated.resources.settings_change_pw_confirm
@@ -108,6 +115,8 @@ import app.skerry.ui.sync.SyncFailureReason
 import app.skerry.ui.sync.SyncField
 import app.skerry.ui.sync.SyncStatus
 import app.skerry.ui.sync.syncFailureText
+import app.skerry.ui.app.LocalVault
+import app.skerry.ui.app.LocalVaultCrypto
 import app.skerry.ui.vault.AutoLockDuration
 import app.skerry.ui.vault.MIN_MASTER_PASSWORD_LENGTH
 import app.skerry.ui.vault.VaultGateController
@@ -141,6 +150,8 @@ internal fun SecuritySection(
     onChangeMasterPassword: () -> Unit,
     onChangeAccountPassword: () -> Unit,
     onBiometricToggled: () -> Unit,
+    onExportBackup: () -> Unit,
+    onImportBackup: () -> Unit,
 ) {
 
     // Master password subtitle is the real "last changed" from the log (or a neutral fallback).
@@ -237,7 +248,7 @@ internal fun SecuritySection(
     }
     HLine()
 
-    // Two-factor auth isn't implemented yet: SOON badge instead of a fake "enabled" state.
+    // 2FA — coming soon
     Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -246,7 +257,6 @@ internal fun SecuritySection(
             }
             Txt(stringResource(Res.string.settings_security_2fa_desc), color = Skerry.colors.faint, size = 11.5.sp, modifier = Modifier.padding(top = 3.dp))
         }
-        // Inert (dimmed) button: feature not ready yet.
         GhostButton(stringResource(Res.string.settings_manage), onClick = {}, fg = Skerry.colors.faint, border = Skerry.colors.line)
     }
     HLine()
@@ -274,6 +284,22 @@ internal fun SecuritySection(
                 Txt("●", color = Skerry.colors.moss, size = 9.sp)
                 Txt(securityEventLine(event), color = Skerry.colors.dim, size = 12.sp)
             }
+        }
+    }
+
+    // Data backup: export/import everything the account syncs, gated on the master password.
+    // The dialogs are hosted at SettingsPanel level (modal over the whole card); here we only
+    // surface the entry buttons, visible once the vault is unlocked.
+    val vault = LocalVault.current
+    val vaultCrypto = LocalVaultCrypto.current
+
+    if (vault != null && vaultCrypto != null) {
+        HLine()
+        SectionLabel(stringResource(Res.string.settings_backup_title), top = 16.dp, bottom = 8.dp)
+        Txt(stringResource(Res.string.settings_backup_desc), color = Skerry.colors.faint, size = 11.5.sp, lineHeight = 16.sp)
+        Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            GhostButton(stringResource(Res.string.settings_backup_export), onClick = onExportBackup, modifier = Modifier.weight(1f))
+            GhostButton(stringResource(Res.string.settings_backup_import), onClick = onImportBackup, modifier = Modifier.weight(1f))
         }
     }
 }

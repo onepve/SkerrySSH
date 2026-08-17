@@ -103,24 +103,20 @@ import java.util.UUID
  * Skerry config directory. Defaults to `~/.config/skerry`; honors XDG_CONFIG_HOME. Created with
  * mode 0700 (and upgraded if an old install left 0755), so UI prefs and config files inside are
  * not accessible to other local users regardless of their permissions. Internal: shared by the
- * app root and per-feature caches that live in the config dir (see `AiModelCache`).
+ * app root and per-feature caches that live in the config dir (see `AiModelCache`). Fork:
+ * delegates to [portableConfigDir] so a `portable` marker dir (or a writable Windows exe dir)
+ * wins first — the Windows portable ZIP keeps its config next to the exe, not under the user's
+ * home.
  */
-internal fun configDir(): Path {
-    val xdg = System.getenv("XDG_CONFIG_HOME")?.takeIf { it.isNotBlank() }
-    val base = xdg?.let { Path.of(it) } ?: Path.of(System.getProperty("user.home"), ".config")
-    return base.resolve("skerry").also { PrivateConfig.ensureDir(it) }
-}
+internal fun configDir(): Path = portableConfigDir()
 
 /**
  * Skerry data directory (not config): large artifacts such as downloaded local-AI GGUF models.
  * Defaults to `~/.local/share/skerry`; honors XDG_DATA_HOME. Models are public weights, so 0600
- * hardening is not required.
+ * hardening is not required. Fork: delegates to [portableDataDir] so portable mode redirects
+ * data next to the app too.
  */
-private fun dataDir(): Path {
-    val xdg = System.getenv("XDG_DATA_HOME")?.takeIf { it.isNotBlank() }
-    val base = xdg?.let { Path.of(it) } ?: Path.of(System.getProperty("user.home"), ".local", "share")
-    return base.resolve("skerry").also { Files.createDirectories(it) }
-}
+private fun dataDir(): Path = portableDataDir()
 
 /**
  * Stable device identifier for vault records (provenance + sync LWW). Generated once and
@@ -668,7 +664,7 @@ fun main(args: Array<String>) {
                             onShowRecentChange = { prefs.set("recent_show", it) },
                             initialRecentLimit = prefs.int("recent_limit", DesktopSettingsState.MAX_RECENT_HOSTS),
                             onRecentLimitChange = { prefs.set("recent_limit", it) },
-                            )
+                        )
                     },
                     vault = deps.vault,
                     biometrics = deps.biometrics,

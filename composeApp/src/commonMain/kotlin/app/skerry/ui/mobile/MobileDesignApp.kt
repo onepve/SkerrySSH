@@ -19,11 +19,14 @@ import app.skerry.ui.ai.aiProviderFactory
 import app.skerry.ui.AppDependencies
 import app.skerry.ui.ai.AiAssistantController
 import app.skerry.shared.terminal.VaultTerminalHistoryStore
+import app.skerry.shared.vault.IonspinVaultCrypto
+import app.skerry.ui.app.LocalVaultCrypto
 import app.skerry.ui.connection.ConnectionController
 import app.skerry.ui.session.SessionsController
 import app.skerry.ui.sync.SyncStatus
 import app.skerry.ui.sync.SyncOnboardingScreen
 import app.skerry.ui.terminal.LocalTerminalAppearance
+import app.skerry.ui.terminal.terminalFontDefaultForLocale
 import app.skerry.ui.terminal.LocalTerminalHighlight
 import app.skerry.ui.terminal.TerminalHighlight
 import app.skerry.ui.terminal.LocalTerminalTheme
@@ -81,7 +84,9 @@ fun MobileDesignApp(
     deps: AppDependencies = AppDependencies(),
     // Keyboard-interactive prompts (2FA codes a server asks for mid-connect); null in preview.
     keyboardInteractive: app.skerry.ui.connection.KeyboardInteractivePromptController? = null,
-    state: MobileDesignState = remember { MobileDesignState() },
+    state: MobileDesignState = remember {
+        MobileDesignState(initialTerminalFont = terminalFontDefaultForLocale())
+    },
     features: FeatureFlags = FeatureFlags(),
     sessions: SessionsController? = null,
     // AI controller supplied externally (offscreen render of the AI screen with a fake provider);
@@ -294,6 +299,7 @@ fun MobileDesignApp(
         LocalTerminalHistory provides termHistory,
         // Vault + biometrics — for the More screen's "unlock with biometrics" toggle (enable/reconfigure).
         LocalVault provides deps.vault,
+        LocalVaultCrypto provides remember { IonspinVaultCrypto() },
         LocalVaultBiometrics provides deps.biometrics,
         LocalSecurityLog provides deps.securityLog,
         // Self-hosted sync coordinator — More → "Sync" push screen.

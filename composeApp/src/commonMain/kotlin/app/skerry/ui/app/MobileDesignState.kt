@@ -130,6 +130,11 @@ class MobileDesignState(
     // preserve prior behavior for previews/tests.
     initialCollapsedGroups: Set<String> = emptySet(),
     private val onCollapsedGroupsChange: (Set<String>) -> Unit = {},
+    // Collapsed snippet categories in the library, persisted like the host folders (read at
+    // startup, written back via the callback, survives a restart). Defaults (all expanded, no-op)
+    // preserve prior behavior for previews/tests.
+    initialSnippetCollapsedTags: Set<String> = emptySet(),
+    private val onSnippetCollapsedTagsChange: (Set<String>) -> Unit = {},
     // Terminal font (More -> Appearance -> Font) and its size. Initial values are read from
     // persistence at startup, callbacks write back — the choice survives restart. Defaults
     // (Hack 13px, no-op) are for previews/tests.
@@ -274,10 +279,13 @@ class MobileDesignState(
 
     /**
      * View state of the snippet library (search, category chip, collapsed sections). Lives here so
-     * switching tabs doesn't reset the view; not persisted across restarts (see
-     * [app.skerry.ui.snippet.SnippetLibraryState]).
+     * switching tabs doesn't reset the view; collapsed categories are persisted across restarts
+     * like the host folders (see [SnippetLibraryState]).
      */
-    val snippetLibrary = SnippetLibraryState()
+    val snippetLibrary = SnippetLibraryState(
+        initialCollapsedTags = initialSnippetCollapsedTags,
+        onCollapsedTagsChange = onSnippetCollapsedTagsChange,
+    )
 
     /** Recording being played back over the app, or `null` when the player is closed. */
     var castRecording: Asciicast? by mutableStateOf(null); private set
@@ -427,8 +435,7 @@ class MobileDesignState(
      */
     var confirmProductionWarnings: Boolean by mutableStateOf(initialConfirmProductionWarnings); private set
 
-    /**
-     * Whether a session screen (terminal, remote desktop) hides the phone's system bars (More →
+    /** Whether a session screen (terminal, remote desktop) hides the phone's system bars (More →
      * Appearance → Interface). Off by default; read by the mobile shell to decide both the immersive
      * request ([app.skerry.ui.immersive.ImmersiveScreen]) and whether those screens run edge to edge.
      */

@@ -157,6 +157,11 @@ async function adminRequest(path, init) {
 }
 
 const adminGet = path => adminRequest(path, undefined);
+const adminPost = (path, payload) => adminRequest(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+});
 const adminDelete = path => adminRequest(path, { method: "DELETE" });
 
 // --- public ---
@@ -164,6 +169,16 @@ const adminDelete = path => adminRequest(path, { method: "DELETE" });
 /** `/admin/health` is the one open endpoint under /admin; the front page reads nothing else. */
 async function publicGet(path) {
   const response = await request(path, undefined);
+  if (!response.ok) throw new ApiError(response.status);
+  return body(response);
+}
+
+async function publicPost(path, payload) {
+  const response = await request(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
   if (!response.ok) throw new ApiError(response.status);
   return body(response);
 }

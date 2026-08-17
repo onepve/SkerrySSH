@@ -12,7 +12,7 @@ class TemplateVariableValuesTest {
         paramChoices = emptyMap(),
         vaultRefs = emptyList(),
         needsClipboard = false,
-        vaultResolutions = emptyMap(),
+        vaultResolutions = mutableStateMapOf<String, VaultRef>().apply { putAll(emptyMap()) },
         params = mutableStateMapOf<String, String>().apply { putAll(params) },
     )
 

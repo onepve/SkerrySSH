@@ -9,6 +9,7 @@ import app.skerry.shared.vault.CredentialSecret
 import app.skerry.shared.vault.CredentialStore
 import app.skerry.shared.vault.CredentialUsage
 import app.skerry.shared.vault.CredentialUsageLog
+import app.skerry.shared.host.normalizeNotes
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,6 +39,8 @@ data class CredentialDraft(
     val privateKeyRef: String = "",
     /** Location of its certificate; blank means "use the `<key>-cert.pub` sibling, if there is one". */
     val certificateRef: String = "",
+    /** Free-form remark, normalized on save like a host note (see [app.skerry.shared.host.normalizeNotes]). */
+    val notes: String = "",
 ) {
     fun toSecret(): CredentialSecret = when (kind) {
         CredentialKind.PASSWORD -> CredentialSecret.Password(password)
@@ -146,7 +149,7 @@ class CredentialManagerController(
         val secret = draft.toSecret()
         // Compared before the write: afterwards the store already holds the new material.
         val rotated = draft.id != null && find(draft.id)?.secret?.let { it != secret } == true
-        store.put(Credential(id = id, label = draft.label, secret = secret))
+        store.put(Credential(id = id, label = draft.label, secret = secret, notes = normalizeNotes(draft.notes)))
         // Only a new secret is born here; replacing the material of an existing one is a rotation,
         // which is what the row reports as "rotated 12 days ago". Re-saving the same material is
         // neither — a rename must not read as a key change.
@@ -165,6 +168,15 @@ class CredentialManagerController(
      */
     fun rename(id: String, label: String) {
         store.rename(id, label)
+        credentials = store.all()
+    }
+
+    /**
+     * Edits a secret's label and note in one sync edit (see [CredentialStore.edit]). [notes] is
+     * normalized on the way in; blank becomes `null`. A no-op if [id] is missing/deleted.
+     */
+    fun edit(id: String, label: String, notes: String?) {
+        store.edit(id, label, notes)
         credentials = store.all()
     }
 

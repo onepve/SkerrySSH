@@ -2,8 +2,10 @@ package app.skerry.ui.snippet
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -14,11 +16,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.snapshots.SnapshotStateMap
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,7 +41,9 @@ import app.skerry.shared.snippet.paramChoices
 import app.skerry.shared.snippet.paramDefault
 import app.skerry.shared.snippet.sanitizeSnippetValue
 import app.skerry.shared.vault.CredentialSecret
+import app.skerry.shared.vault.SshKeyGenerator
 import app.skerry.ui.app.LocalCredentials
+import app.skerry.ui.app.LocalSshKeyGenerator
 import app.skerry.ui.design.DropdownField
 import app.skerry.ui.design.FieldLabel
 import app.skerry.ui.design.LocalFonts
@@ -53,9 +60,14 @@ import app.skerry.ui.generated.resources.lib_snippet_vars_vault
 import app.skerry.ui.generated.resources.lib_snippet_vars_vault_missing
 import app.skerry.ui.generated.resources.lib_snippet_vars_vault_not_password
 import app.skerry.ui.generated.resources.lib_snippet_vars_vault_unnamed
+import app.skerry.ui.generated.resources.vault_subtitle_certificate
+import app.skerry.ui.generated.resources.vault_subtitle_password
+import app.skerry.ui.generated.resources.vault_subtitle_private_key
 import app.skerry.ui.identity.CredentialManagerController
 import app.skerry.ui.terminal.fetchSystemClipboardText
 import app.skerry.ui.theme.Skerry
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.stringResource
 import app.skerry.ui.design.FormField
 import androidx.compose.ui.text.style.TextDirection
@@ -105,17 +117,59 @@ internal fun maskSecrets(text: String, secrets: List<String>): String {
 internal fun vaultEntryLabel(name: String): String =
     spaceLabel(name, fallback = stringResource(Res.string.lib_snippet_vars_vault_unnamed))
 
+/** Vault entry type shown to the user when disambiguating same-name entries. */
+internal enum class VaultEntryKind { PASSWORD, SSH_KEY, CERTIFICATE, OTHER }
+
+/** One candidate among several same-name vault entries; the notes make them distinguishable. */
+internal data class VaultRefCandidate(
+    val id: String,
+    val label: String,
+    val kind: VaultEntryKind,
+    val notes: String?,
+)
+
 /** Vault reference resolution, done once when the confirmation opens. */
 internal sealed interface VaultRef {
     data class Ok(val secret: String) : VaultRef
+    /** SSH-key entry whose public half is still being inspected off the UI thread. */
+    data object Resolving : VaultRef
+    /** More than one entry shares the name; the user must pick one in the confirmation. */
+    data class Ambiguous(val candidates: List<VaultRefCandidate>) : VaultRef
     data object Missing : VaultRef
     data object NotAPassword : VaultRef
 }
 
-private fun resolveVaultRef(name: String, credentials: CredentialManagerController?): VaultRef {
-    val entry = credentials?.credentials?.firstOrNull { it.label == name } ?: return VaultRef.Missing
-    val password = entry.secret as? CredentialSecret.Password ?: return VaultRef.NotAPassword
-    return VaultRef.Ok(password.password)
+internal fun resolveVaultRef(name: String, credentials: CredentialManagerController?): VaultRef {
+    val matches = credentials?.credentials?.filter { it.label == name }
+    if (matches.isNullOrEmpty()) return VaultRef.Missing
+    // Same-name entries (allowed by the vault) are ambiguous: resolving to the first would silently
+    // splice the wrong type. Surface all of them and let the user pick (see VaultRef.Ambiguous).
+    if (matches.size > 1) {
+        return VaultRef.Ambiguous(
+            matches.map { entry ->
+                VaultRefCandidate(
+                    id = entry.id,
+                    label = entry.label,
+                    kind = when (entry.secret) {
+                        is CredentialSecret.Password -> VaultEntryKind.PASSWORD
+                        is CredentialSecret.PrivateKey -> VaultEntryKind.SSH_KEY
+                        is CredentialSecret.Certificate -> VaultEntryKind.CERTIFICATE
+                        else -> VaultEntryKind.OTHER
+                    },
+                    notes = entry.notes,
+                )
+            }
+        )
+    }
+    return when (val secret = matches.first().secret) {
+        is CredentialSecret.Password -> VaultRef.Ok(secret.password)
+        // An SSH-key entry injects its PUBLIC half (authorized_keys etc.) — the private key must
+        // never end up in a command line. Inspecting the PEM is CPU-heavy (RSA-4096), so the caller
+        // resolves this asynchronously.
+        is CredentialSecret.PrivateKey -> VaultRef.Resolving
+        // Certificates (and anything else that is not a password) are not injectable into a snippet.
+        else -> VaultRef.NotAPassword
+    }
 }
 
 /**
@@ -135,9 +189,24 @@ class TemplateVariableValues internal constructor(
     val vaultRefs: List<String>,
     /** Whether anything references `${{clipboard}}` (it is only read if so). */
     val needsClipboard: Boolean,
-    internal val vaultResolutions: Map<String, VaultRef>,
+    internal val vaultResolutions: SnapshotStateMap<String, VaultRef>,
     internal val params: SnapshotStateMap<String, String>,
 ) {
+    internal constructor(
+        paramNames: List<String>,
+        paramChoices: Map<String, List<String>>,
+        vaultRefs: List<String>,
+        needsClipboard: Boolean,
+        vaultResolutions: Map<String, VaultRef>,
+        params: SnapshotStateMap<String, String>,
+    ) : this(
+        paramNames,
+        paramChoices,
+        vaultRefs,
+        needsClipboard,
+        mutableStateMapOf<String, VaultRef>().apply { putAll(vaultResolutions) },
+        params,
+    )
     /** What each parameter was seeded with — the template's default, or the previous run's value. */
     private val seeded: Map<String, String> = params.toMap()
 
@@ -146,6 +215,9 @@ class TemplateVariableValues internal constructor(
 
     /** Clipboard contents; `null` while still being read. */
     internal var clipboard: String? by mutableStateOf(null)
+
+    /** Names currently being resolved (inspect in flight) — guards against re-entry in snapshotFlow. */
+    internal val inFlightResolutions: SnapshotStateList<String> = mutableStateListOf()
 
     /** Current parameter values, to remember for this template's next run. */
     fun paramValues(): Map<String, String> = params.toMap()
@@ -160,6 +232,18 @@ class TemplateVariableValues internal constructor(
     /** Whether every reference resolved: a missing vault entry has no value to send. */
     val canRun: Boolean
         get() = vaultResolutions.values.all { it is VaultRef.Ok } && (!needsClipboard || clipboard != null)
+
+    /**
+     * User's pick for an ambiguous vault reference ([VaultRef.Ambiguous]); the entry is resolved
+     * (off the UI thread for SSH keys) right after the pick.
+     */
+    internal val selectedVaultCandidate: SnapshotStateMap<String, VaultRefCandidate> = mutableStateMapOf()
+
+    /** Resolves [candidate] for [name]'s vault reference after the user picks it. */
+    internal fun selectVaultCandidate(name: String, candidate: VaultRefCandidate) {
+        selectedVaultCandidate[name] = candidate
+        vaultResolutions[name] = VaultRef.Resolving
+    }
 
     /**
      * Value for [variable]. [masked] replaces vault secrets with [SECRET_MASK] — the preview path;
@@ -188,6 +272,7 @@ fun rememberTemplateVariableValues(
     initialParams: Map<String, String> = emptyMap(),
 ): TemplateVariableValues {
     val credentials = LocalCredentials.current
+    val generator = LocalSshKeyGenerator.current
     val clipboard = LocalClipboard.current
     val values = remember(request) {
         val params = variables.filter { it.kind == SnippetVariableKind.PARAM }
@@ -199,11 +284,44 @@ fun rememberTemplateVariableValues(
             paramChoices = firstByName.mapValues { (_, v) -> v.paramChoices() }.filterValues { it.isNotEmpty() },
             vaultRefs = vaultRefs,
             needsClipboard = variables.any { it.kind == SnippetVariableKind.CLIPBOARD },
-            vaultResolutions = vaultRefs.associateWith { resolveVaultRef(it, credentials) },
+            vaultResolutions = mutableStateMapOf<String, VaultRef>().apply {
+                vaultRefs.forEach { put(it, resolveVaultRef(it, credentials)) }
+            },
             params = mutableStateMapOf<String, String>().apply {
                 paramNames.forEach { name -> put(name, paramSeed(firstByName.getValue(name), initialParams[name])) }
             },
         )
+    }
+    // SSH-key vault refs resolve to their public half by inspecting the PEM; that is CPU-heavy
+    // (RSA-4096 key derivation), so it runs off the UI thread and flips Resolving → Ok/error.
+    // Also resolves the user's pick for ambiguous (same-name) refs. snapshotFlow keeps this
+    // alive across state changes inside `values` (the remember instance itself never changes).
+    LaunchedEffect(request, values) {
+        snapshotFlow { values.vaultResolutions.toMap() }
+            .collect { resolutions ->
+                resolutions.forEach { (name, ref) ->
+                    if (ref is VaultRef.Resolving && !values.inFlightResolutions.contains(name)) {
+                        values.inFlightResolutions.add(name)
+                        val pick = values.selectedVaultCandidate[name]
+                        val entry = when {
+                            pick != null -> credentials?.credentials?.firstOrNull { it.id == pick.id }
+                            else -> credentials?.credentials?.firstOrNull { it.label == name }
+                        }
+                        val resolved: VaultRef = when (val secret = entry?.secret) {
+                            is CredentialSecret.Password -> VaultRef.Ok(secret.password)
+                            is CredentialSecret.PrivateKey -> {
+                                val pub = withContext(Dispatchers.Default) {
+                                    generator?.inspect(secret.privateKeyPem, secret.passphrase)?.publicKeyOpenSsh
+                                }
+                                if (pub != null) VaultRef.Ok(pub) else VaultRef.NotAPassword
+                            }
+                            // Only passwords and SSH-key public halves are injectable.
+                            else -> VaultRef.NotAPassword
+                        }
+                        values.vaultResolutions[name] = resolved
+                    }
+                }
+            }
     }
     if (values.needsClipboard) {
         LaunchedEffect(request) { values.clipboard = fetchSystemClipboardText(clipboard).orEmpty() }
@@ -274,7 +392,7 @@ fun TemplateVariableFields(values: TemplateVariableValues, autoFocus: Boolean = 
         values.vaultRefs.forEach { name ->
             key(name) {
                 val shown = vaultEntryLabel(name)
-                when (values.vaultResolutions[name]) {
+                when (val ref = values.vaultResolutions[name]) {
                     is VaultRef.Ok -> Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -282,6 +400,13 @@ fun TemplateVariableFields(values: TemplateVariableValues, autoFocus: Boolean = 
                         Txt(shown, color = Skerry.colors.text, size = 11.5.sp, font = mono)
                         Txt(SECRET_MASK, color = Skerry.colors.faint, size = 11.5.sp, font = mono)
                     }
+                    VaultRef.Resolving ->
+                        Txt("…", color = Skerry.colors.dim, size = 11.5.sp)
+                    is VaultRef.Ambiguous -> VaultCandidateList(
+                        name = name,
+                        candidates = ref.candidates,
+                        values = values,
+                    )
                     VaultRef.NotAPassword ->
                         Txt(stringResource(Res.string.lib_snippet_vars_vault_not_password, shown), color = Skerry.colors.sunset, size = 11.5.sp)
                     else ->
@@ -290,6 +415,42 @@ fun TemplateVariableFields(values: TemplateVariableValues, autoFocus: Boolean = 
             }
         }
     }
+}
+
+@Composable
+private fun VaultCandidateList(name: String, candidates: List<VaultRefCandidate>, values: TemplateVariableValues) {
+    val mono = LocalFonts.current.mono
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        candidates.forEach { candidate ->
+            val isSelected = values.selectedVaultCandidate[name]?.id == candidate.id
+            Row(
+                Modifier.fillMaxWidth()
+                    .clip(RoundedCornerShape(7.dp))
+                    .background(Skerry.colors.bg)
+                    .border(1.dp, if (isSelected) Skerry.colors.cyan else Skerry.colors.line, RoundedCornerShape(7.dp))
+                    .clickable { values.selectVaultCandidate(name, candidate) }
+                    .padding(horizontal = 9.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Txt(vaultEntryKindLabel(candidate.kind), color = Skerry.colors.cyan, size = 10.5.sp, font = mono)
+                Column(Modifier.weight(1f)) {
+                    Txt(candidate.label, color = Skerry.colors.text, size = 12.sp, font = mono)
+                    if (!candidate.notes.isNullOrBlank()) {
+                        Txt(candidate.notes, color = Skerry.colors.dim, size = 10.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun vaultEntryKindLabel(kind: VaultEntryKind): String = when (kind) {
+    VaultEntryKind.PASSWORD -> stringResource(Res.string.vault_subtitle_password)
+    VaultEntryKind.SSH_KEY -> stringResource(Res.string.vault_subtitle_private_key)
+    VaultEntryKind.CERTIFICATE -> stringResource(Res.string.vault_subtitle_certificate)
+    VaultEntryKind.OTHER -> ""
 }
 
 /**

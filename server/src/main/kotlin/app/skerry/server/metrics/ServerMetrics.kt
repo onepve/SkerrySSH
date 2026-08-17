@@ -1,6 +1,7 @@
 package app.skerry.server.metrics
 
 import app.skerry.server.config.MetricsExposure
+import app.skerry.server.config.RegistrationMode
 import app.skerry.server.config.ServerConfig
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.Meter
@@ -214,7 +215,7 @@ class ServerMetrics(
         inventoryGauge("skerry.team.members", "Team members", tags = Tags.of("status", "invited")) { it.invitedMembers }
         inventoryGauge("skerry.activity.log.rows", "Retained audit-log rows") { it.activityRows }
         // Config, not inventory: it is known from the start, so it must not wait for a collection.
-        Gauge.builder("skerry.registration.open") { if (config.registrationOpen) 1.0 else 0.0 }
+        Gauge.builder("skerry.registration.open") { if (config.registration == RegistrationMode.OPEN) 1.0 else 0.0 }
             .description("1 when POST /auth/register accepts new accounts")
             .register(registry)
     }
@@ -301,7 +302,7 @@ enum class JwtRejection(val label: String) {
     MISSING_CLAIMS("missing_claims"),
 }
 
-enum class RegistrationRejection(val label: String) { CLOSED("closed"), CAP_REACHED("cap_reached") }
+enum class RegistrationRejection(val label: String) { CLOSED("closed"), CAP_REACHED("cap_reached"), INVITE_REQUIRED("invite_required") }
 
 enum class RevokedBy(val label: String) { USER("user"), ADMIN("admin") }
 

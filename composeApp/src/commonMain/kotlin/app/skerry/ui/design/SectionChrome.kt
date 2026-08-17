@@ -3,6 +3,7 @@ package app.skerry.ui.design
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -221,6 +223,7 @@ fun SectionHeader(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    help: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     Column(modifier.fillMaxWidth().background(Skerry.colors.surface2)) {
@@ -229,10 +232,27 @@ fun SectionHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Column(Modifier.padding(end = 12.dp)) {
-                Txt(title, color = Skerry.colors.text, size = 15.sp, weight = FontWeight.SemiBold)
-                if (subtitle != null) {
-                    Txt(subtitle, modifier = Modifier.padding(top = 2.dp), color = Skerry.colors.dim, size = 12.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column {
+                    // The help icon sits on the title's own line, right after the name (title +
+                    // 8dp + ?): a subtitle below must not push it down the vertical center of the
+                    // two-line block, which would float it between the title and the content.
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Txt(title, color = Skerry.colors.text, size = 15.sp, weight = FontWeight.SemiBold)
+                        if (help != null) {
+                            Sym(
+                                "help_outline", size = 16.sp, color = Skerry.colors.dim,
+                                modifier = Modifier.padding(start = 8.dp).clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = help,
+                                ),
+                            )
+                        }
+                    }
+                    if (subtitle != null) {
+                        Txt(subtitle, modifier = Modifier.padding(top = 2.dp), color = Skerry.colors.dim, size = 12.sp)
+                    }
                 }
             }
             Row(

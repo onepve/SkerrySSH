@@ -169,7 +169,7 @@
   .fact .s { margin-top: 5px; font-size: 12px; line-height: 1.5; color: var(--text-faint); }
   .fact .s.warn { color: var(--amber); }
 
-  .doors { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+  .doors { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 16px; }
   .door {
     display: block; width: 100%; text-align: left; cursor: pointer;
     background: linear-gradient(150deg, rgba(43,189,238,0.07), rgba(43,189,238,0.015) 70%);
@@ -180,6 +180,32 @@
   .door .t { font-size: 17px; font-weight: 650; letter-spacing: -0.3px; display: flex; align-items: center; gap: 10px; }
   .door .d { font-size: 13px; color: var(--text-faint); margin-top: 8px; line-height: 1.6; }
   .door .go { margin-top: 16px; font-size: 12.5px; font-weight: 600; color: var(--cyan); }
+
+  /* Pre-registration modal: an overlay card, not a route, so it sits above the front page. */
+  .modal {
+    position: fixed; inset: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(4,11,18,0.72); backdrop-filter: blur(6px);
+    padding: 24px;
+  }
+  .modal[hidden] { display: none; }
+  .modal-card {
+    width: 100%; max-width: 380px;
+    background: var(--panel); border: 1px solid var(--line-strong);
+    border-radius: 18px; padding: 24px 26px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+  }
+  .modal-title { margin: 0 0 18px; font-size: 18px; font-weight: 650; letter-spacing: -0.3px; }
+  .modal-label { display: block; font-size: 12.5px; color: var(--text-faint); margin: 12px 0 6px; }
+  .modal-input {
+    width: 100%; background: rgba(4,11,18,0.9); border: 1px solid var(--line-strong);
+    color: var(--text); padding: 10px 12px; border-radius: 10px; font: inherit; font-size: 14px;
+  }
+  .modal-input:focus { outline: 2px solid var(--cyan); outline-offset: 1px; border-color: transparent; }
+  .modal-hint { font-size: 12px; color: var(--text-ghost); margin: 8px 0 0; line-height: 1.5; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .modal-actions .btn { flex: 1; }
+  .modal-err { font-size: 13px; margin: 12px 0 0; min-height: 18px; line-height: 1.5; }
 
   .urlrow {
     display: flex; align-items: center; gap: 12px; margin-top: 40px; padding: 14px 16px;

@@ -49,8 +49,10 @@ import app.skerry.ui.generated.resources.vault_copy_certificate
 import app.skerry.ui.generated.resources.vault_copy_password
 import app.skerry.ui.generated.resources.vault_copy_public_key
 import app.skerry.ui.generated.resources.vault_delete
+import app.skerry.ui.generated.resources.vault_edit
 import app.skerry.ui.generated.resources.vault_export_key
 import app.skerry.ui.generated.resources.vault_export_certificate
+import app.skerry.ui.generated.resources.vault_field_notes
 import app.skerry.ui.generated.resources.vault_key_unreadable
 import app.skerry.ui.generated.resources.vault_label_cert_path
 import app.skerry.ui.generated.resources.vault_label_key_path
@@ -60,7 +62,6 @@ import app.skerry.ui.generated.resources.vault_label_serial
 import app.skerry.ui.generated.resources.vault_label_signing_ca
 import app.skerry.ui.generated.resources.vault_label_valid
 import app.skerry.ui.generated.resources.vault_not_attached
-import app.skerry.ui.generated.resources.vault_rename
 import app.skerry.ui.generated.resources.vault_subtitle_certificate
 import app.skerry.ui.generated.resources.vault_subtitle_certificate_typed
 import app.skerry.ui.generated.resources.vault_subtitle_key_file
@@ -159,6 +160,11 @@ internal fun LiveSecretDetail(
     }
     Column(Modifier.width(DETAIL_PANEL_WIDTH).fillMaxHeight().background(Skerry.colors.surface2).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 18.dp)) {
         DetailLabel(credential.label)
+        // The note is free-form text the user wrote — shown right under the name, in its own block.
+        credential.notes?.let { note ->
+            Txt(stringResource(Res.string.vault_field_notes), color = Skerry.colors.faint, size = 10.5.sp, weight = FontWeight.SemiBold, letterSpacing = 0.6.sp, modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
+            Txt(note, color = Skerry.colors.dim, size = 11.5.sp, lineHeight = 16.sp, modifier = Modifier.padding(bottom = 16.dp))
+        }
         SecretFactRows(
             typeLabel = subtitle,
             // A password has no fingerprint, and a key still being parsed has none yet — the row is
@@ -199,7 +205,7 @@ internal fun LiveSecretDetail(
                 // Nothing to copy: the material is on disk, and the refs are already spelled out above.
                 is CredentialSecret.KeyFile -> Unit
             }
-            GhostButton(stringResource(Res.string.vault_rename), onClick = onRename, modifier = Modifier.fillMaxWidth())
+            GhostButton(stringResource(Res.string.vault_edit), onClick = onRename, modifier = Modifier.fillMaxWidth())
             // Export writes the private key — the half of a key or a certificate that is otherwise
             // trapped in the vault; it is labelled for what it hands out, and the host
             // re-authenticates first. A certificate's public half gets its own button rather than a

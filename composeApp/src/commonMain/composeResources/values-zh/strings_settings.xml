@@ -160,7 +160,7 @@
     <string name="settings_security_2fa">双因素认证</string>
     <string name="settings_security_2fa_desc">通过身份验证器应用使用 TOTP。</string>
     <string name="settings_security_report_team_sessions">报告共享主机上的会话</string>
-    <string name="settings_security_report_team_sessions_desc">当您在与团队共享的主机上开启会话时通知团队。您自己的主机永远不会被报告。</string>
+    <string name="settings_security_report_team_sessions_desc">开启后，当你连接团队共享的主机时，会向团队动态发送记录；连接个人主机绝不汇报。</string>
     <string name="settings_recent_security_events">最近安全事件</string>
     <string name="settings_security_no_events">暂无安全事件。</string>
     <string name="settings_event_vault_created">保险库已创建</string>
@@ -260,4 +260,41 @@
     <string name="settings_trash_locked">解锁保险库以查看回收站</string>
     <string name="settings_terminal_prod_warnings">在生产环境确认警告级命令</string>
     <string name="settings_terminal_prod_warnings_desc">在带 #prod 标签的主机上，除危险命令外也确认警告级命令（kill、停止服务、卸载软件包）。root 会话不适用 sudo 规则（在那里没有意义），但无论如何都会确认破坏性警告。</string>
+
+    <string name="settings_backup_title">数据备份</string>
+
+    <string name="settings_backup_desc">导出或导入账号同步的全部数据（主机、片段、运行手册、密钥）。</string>
+
+    <string name="settings_backup_export">导出数据…</string>
+
+    <string name="settings_backup_import">导入数据…</string>
+
+    <string name="settings_backup_pw_label">主密码</string>
+
+    <string name="settings_backup_pw_hint">输入主密码以解锁备份。</string>
+    <string name="settings_backup_export_encrypted">加密导出（默认）</string>
+    <string name="settings_backup_export_encrypted_sub">每条记录用主密码派生的密钥加密，文件需主密码才能打开。</string>
+    <string name="settings_backup_export_plain">明文导出</string>
+    <string name="settings_backup_export_plain_sub">所有记录完全解密成可读 JSON，可直接查看和手工修改。</string>
+    <string name="settings_backup_export_plain_warning">警告：明文文件包含所有密码与私钥，请妥善保管，不要发给他人。</string>    <string name="settings_backup_export_action">导出</string>
+
+    <string name="settings_backup_import_action">导入</string>
+
+    <string name="settings_backup_import_records">备份中包含 %1$d 条记录</string>
+
+    <string name="settings_backup_encrypted_note">此备份已加密，输入主密码以读取。</string>
+
+    <string name="settings_backup_merge">合并</string>
+
+    <string name="settings_backup_merge_sub">保留现有数据，备份中较新的记录生效。</string>
+
+    <string name="settings_backup_replace">覆盖</string>
+
+    <string name="settings_backup_replace_sub">将先删除当前全部同步数据。</string>
+
+    <string name="settings_backup_import_confirm">确认覆盖</string>
+
+    <string name="settings_backup_err_password">主密码错误</string>
+
+    <string name="settings_backup_err_corrupted">此文件不是有效的备份</string>
 </resources>
