@@ -337,10 +337,7 @@ class DesktopSettingsState(
         onShowRecentChange(on)
     }
 
-    /**
-     * Change the number of recent hosts shown (clamped to 1..[MAX_RECENT_HOSTS]) and report outward.
-     * The same (already-clamped) value is a no-op: no mutation, no write.
-     */
+    /** Change the number of recent hosts shown (clamped to 1..[MAX_RECENT_HOSTS]) and report outward. */
     fun chooseRecentLimit(n: Int) {
         val next = n.coerceIn(1, MAX_RECENT_HOSTS)
         if (next == recentLimit) return

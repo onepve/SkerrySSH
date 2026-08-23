@@ -12,6 +12,7 @@ import app.skerry.ui.desktop.runForm
 import app.skerry.ui.generated.resources.Res
 import app.skerry.ui.generated.resources.shell_master_password
 import app.skerry.ui.generated.resources.shell_repeat_password
+import app.skerry.ui.vault.MIN_MASTER_PASSWORD_LENGTH
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -86,8 +87,8 @@ class MobileLockFormTest {
     fun `a password that fails the strength check cannot create a vault`() {
         var created = false
         runForm({ MobileCreateScreen(error = null, onCreate = { _, _ -> created = true }) }) {
-            onField(Res.string.shell_master_password).performTextInput("abc")
-            onField(Res.string.shell_repeat_password).performTextInput("abc")
+            onField(Res.string.shell_master_password).performTextInput(WEAK_PASSWORD)
+            onField(Res.string.shell_repeat_password).performTextInput(WEAK_PASSWORD)
             onNodeWithTag(UiTags.FORM_SAVE).assertIsNotEnabled()
         }
         assertEquals(false, created)
@@ -95,3 +96,6 @@ class MobileLockFormTest {
 }
 
 private const val PASSWORD = "long-enough-master-password"
+
+/** One char below the configured minimum — the strength check has to refuse it on every build. */
+private val WEAK_PASSWORD = "x".repeat(MIN_MASTER_PASSWORD_LENGTH - 1)

@@ -7,6 +7,7 @@ import app.skerry.server.db.AccountRepository
 import app.skerry.server.db.ActivityRepository
 import app.skerry.server.db.AdminRepository
 import app.skerry.server.db.DeviceRepository
+import app.skerry.server.db.InviteRepository
 import app.skerry.server.db.PairingRepository
 import app.skerry.server.db.RecordRepository
 import app.skerry.server.db.StatsRepository
@@ -47,6 +48,7 @@ class Services(
     // On PostgreSQL, serialize upserts with an account-row lock; not needed on SQLite (pool=1).
     val records = RecordRepository(database, lockAccountRow = config.isPostgres)
     val pairing = PairingRepository(database)
+    val invites = InviteRepository(database)
     val teams = TeamRepository(database)
     val teamRecords = TeamRecordRepository(database, lockTeamRow = config.isPostgres)
     val teamScopes = TeamScopeRepository(database)

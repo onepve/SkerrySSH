@@ -225,6 +225,7 @@ internal fun TerminalSection(state: DesktopDesignState) {
         on = state.settings.allowServerClipboardWrite,
         onToggle = state.settings::toggleAllowServerClipboardWrite,
     )
+    HLine()
     HLine(modifier = Modifier.padding(top = 12.dp))
     // Local shell: the shell binary run for local-terminal sessions (launched from the empty-tab
     // placeholder). Blank uses the system default shell. Device-local, not synced with hosts.
