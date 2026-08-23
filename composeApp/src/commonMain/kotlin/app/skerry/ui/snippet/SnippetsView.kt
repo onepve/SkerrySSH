@@ -30,16 +30,16 @@ import app.skerry.ui.design.ChipButton
 import app.skerry.ui.design.EmptyState
 import app.skerry.ui.design.HLine
 import app.skerry.ui.design.LocalFonts
-import app.skerry.ui.design.GhostButton
 import app.skerry.ui.design.PrimaryButton
 import app.skerry.ui.design.SectionHeader
 import app.skerry.ui.design.SidebarSearchField
 import app.skerry.ui.design.VLine
 import app.skerry.ui.generated.resources.Res
+import app.skerry.ui.design.GhostButton
+import app.skerry.ui.generated.resources.help_button
 import app.skerry.ui.generated.resources.lib_snippets_command_count
 import app.skerry.ui.generated.resources.lib_snippets_empty
 import app.skerry.ui.generated.resources.lib_snippets_facts_variables
-import app.skerry.ui.generated.resources.help_button
 import app.skerry.ui.generated.resources.lib_snippets_new
 import app.skerry.ui.generated.resources.lib_snippets_no_matches
 import app.skerry.ui.generated.resources.lib_snippets_screen_title
@@ -95,7 +95,7 @@ private sealed interface PanelMode {
 private fun LiveSnippetsView(manager: SnippetManager, library: SnippetLibraryState, mono: FontFamily) {
     var selectedId by remember { mutableStateOf<String?>(null) }
     var mode by remember { mutableStateOf<PanelMode>(PanelMode.Run) }
-    var helpOpen by remember { mutableStateOf(false) }
+    var showHelp by remember { mutableStateOf(false) }
 
     val all = manager.snippets
     val visible = library.visible(all)
@@ -114,7 +114,7 @@ private fun LiveSnippetsView(manager: SnippetManager, library: SnippetLibrarySta
             query = library.query,
             onQuery = { library.query = it },
             onNew = { mode = PanelMode.New },
-            onHelp = { helpOpen = true },
+            onHelp = { showHelp = true },
         )
         if (all.any { it.snippet.tags.isNotEmpty() }) {
             SnippetTagFilterRow(
@@ -132,14 +132,12 @@ private fun LiveSnippetsView(manager: SnippetManager, library: SnippetLibrarySta
                     SnippetsEmptyList(libraryEmpty = all.isEmpty(), onInstallStarterPack = { manager.installStarterPack() })
                 } else {
                     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                        visible.forEach { entry ->
-                            key(entry.id) {
-                                // Keyed by id so selecting a row doesn't recreate every row's lambda.
-                                val onClick = remember(entry.id) { { selectedId = entry.id; mode = PanelMode.Run } }
-                                SnippetListRow(entry = entry, selected = entry.id == selected?.id, onClick = onClick)
-                                HLine()
-                            }
-                        }
+                        SnippetLibraryColumns(
+                            visible = visible,
+                            library = library,
+                            selectedId = selected?.id,
+                            onSelect = { id -> selectedId = id; mode = PanelMode.Run },
+                        )
                     }
                 }
             }
@@ -180,7 +178,9 @@ private fun LiveSnippetsView(manager: SnippetManager, library: SnippetLibrarySta
             }
         }
     }
-    if (helpOpen) SnippetHelpDialog(manager, onDismiss = { helpOpen = false })
+    if (showHelp) {
+        SnippetHelpDialog(manager, onDismiss = { showHelp = false })
+    }
 }
 
 @Composable
@@ -231,6 +231,51 @@ private fun SnippetsEmptyList(libraryEmpty: Boolean, onInstallStarterPack: () ->
             null
         },
     )
+}
+
+/**
+ * Snippet list of the library: flat rows, or collapsible category sections when the "All" view has
+ * tags to group by ([shouldGroupSnippets]). A collapsed section shows only its header. Selection
+ * works across sections — the selected row is highlighted wherever it appears.
+ */
+@Composable
+private fun SnippetLibraryColumns(
+    visible: List<SnippetEntry>,
+    library: SnippetLibraryState,
+    selectedId: String?,
+    onSelect: (String) -> Unit,
+) {
+    if (!shouldGroupSnippets(visible, library.activeChip)) {
+        FlatSnippetRows(visible, selectedId, onSelect)
+        return
+    }
+    groupSnippetsByCategory(visible).forEach { category ->
+        val collapsed = library.isTagCollapsed(category.name)
+        SnippetCategoryHeader(
+            category = category.name,
+            count = category.snippets.size,
+            collapsed = collapsed,
+            onToggle = { library.toggleTagCollapsed(category.name) },
+            modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 10.dp),
+        )
+        if (!collapsed) FlatSnippetRows(category.snippets, selectedId, onSelect)
+    }
+}
+
+/** One row per entry with a divider between them, keyed by id so selection keeps its lambda. */
+@Composable
+private fun FlatSnippetRows(
+    entries: List<SnippetEntry>,
+    selectedId: String?,
+    onSelect: (String) -> Unit,
+) {
+    entries.forEach { entry ->
+        key(entry.id) {
+            val onClick = remember(entry.id) { { onSelect(entry.id) } }
+            SnippetListRow(entry = entry, selected = entry.id == selectedId, onClick = onClick)
+            HLine()
+        }
+    }
 }
 
 /**

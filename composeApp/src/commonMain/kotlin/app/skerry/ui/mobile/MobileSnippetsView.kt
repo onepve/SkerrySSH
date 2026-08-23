@@ -37,7 +37,11 @@ import app.skerry.ui.snippet.SnippetHelpDialog
 import app.skerry.ui.snippet.SnippetDraft
 import app.skerry.ui.snippet.SnippetEntry
 import app.skerry.ui.snippet.SnippetFormState
+import app.skerry.ui.snippet.SnippetLibraryState
 import app.skerry.ui.snippet.SnippetManager
+import app.skerry.ui.snippet.SnippetCategoryHeader
+import app.skerry.ui.snippet.groupSnippetsByCategory
+import app.skerry.ui.snippet.hasCategories
 import app.skerry.ui.snippet.installStarterPack
 import app.skerry.ui.snippet.matches
 import app.skerry.ui.snippet.snippetTagSuggestions
@@ -51,10 +55,15 @@ import app.skerry.ui.generated.resources.lib_snippets_empty_mobile
 import app.skerry.ui.generated.resources.lib_snippets_starter_pack
 import app.skerry.ui.generated.resources.lib_snippets_field_command
 import app.skerry.ui.generated.resources.lib_snippets_field_name
+import app.skerry.ui.generated.resources.lib_snippets_field_notes
 import app.skerry.ui.generated.resources.lib_snippets_field_tags
 import app.skerry.ui.generated.resources.lib_snippets_new
 import app.skerry.ui.generated.resources.lib_snippets_no_matches
 import app.skerry.ui.generated.resources.lib_snippets_ph_name
+import app.skerry.ui.generated.resources.lib_snippets_ph_notes
+import app.skerry.ui.design.sanitizeServerText
+import app.skerry.ui.terminal.MAX_NOTE_CHARS
+import androidx.compose.ui.text.style.TextOverflow
 import app.skerry.ui.generated.resources.lib_snippets_rename_tag_placeholder
 import app.skerry.ui.generated.resources.lib_snippets_rename_tag_subtitle
 import app.skerry.ui.generated.resources.lib_snippets_rename_tag_title
@@ -234,6 +243,18 @@ internal fun MobileSnippetCard(snippet: Snippet, onClick: () -> Unit) {
             Sym("code_blocks", size = 18.sp, color = Skerry.colors.cyanBright)
             Txt(remember(snippet) { untrustedLabel(snippet.label) }.ifBlank { stringResource(Res.string.lib_snippets_untitled) }, color = Skerry.colors.text, size = 14.5.sp, weight = FontWeight.SemiBold)
         }
+        val note = snippet.notes
+        val shownNote = remember(note) { note?.let { sanitizeServerText(it, MAX_NOTE_CHARS, allowNewlines = true) } }
+        if (!shownNote.isNullOrBlank()) {
+            Txt(
+                shownNote,
+                color = Skerry.colors.dim,
+                size = 11.5.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
         if (snippet.command.isNotBlank()) {
             Box(
                 Modifier.fillMaxWidth().padding(top = 8.dp).clip(RoundedCornerShape(8.dp)).background(Skerry.colors.terminalBg).padding(horizontal = 11.dp, vertical = 9.dp),
@@ -259,8 +280,10 @@ private fun SnippetTagChip(tag: String) {
 }
 
 /**
- * Snippet-run picker opened from the terminal header (`bolt` icon): list of saved commands, tap
- * runs the selected snippet in the active session via [onRun].
+ * Snippet-run picker opened from the terminal header (`bolt` icon): search + tag chips narrow the
+ * list, tap runs the selected snippet in the active session via [onRun]. Same filtering model as
+ * the full library ([SnippetLibraryState]), scoped to this sheet so the library's active chip and
+ * query are untouched.
  */
 @Composable
 internal fun MobileSnippetRunSheet(manager: SnippetManager, onRun: (SnippetEntry) -> Unit, onDismiss: () -> Unit) {
@@ -322,6 +345,9 @@ private fun MobileSnippetEditSheet(
             }
             MobileFormField(stringResource(Res.string.lib_snippets_field_command)) {
                 MobileFormInput(form.command, { form.command = it }, "df -h | sort -k5 -r", mono = true, background = Skerry.colors.terminalBg, singleLine = false, minHeightDp = 88)
+            }
+            MobileFormField(stringResource(Res.string.lib_snippets_field_notes)) {
+                MobileFormInput(form.notes, { form.notes = it }, stringResource(Res.string.lib_snippets_ph_notes), singleLine = false, minHeightDp = 64)
             }
             MobileFormField(stringResource(Res.string.lib_snippets_field_tags)) {
                 // Own tags are excluded via selected; suggestions come from all snippets (including the

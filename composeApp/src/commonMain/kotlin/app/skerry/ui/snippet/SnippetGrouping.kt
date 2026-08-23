@@ -63,6 +63,15 @@ fun groupSnippetsByCategory(snippets: List<SnippetEntry>): List<SnippetCategory>
 fun hasCategories(snippets: List<SnippetEntry>): Boolean = snippets.any { it.snippet.tags.isNotEmpty() }
 
 /**
+ * Whether the library should render as collapsible category sections instead of a flat list: the
+ * "All" view (a chip is already one category, so a section header around it would be redundant)
+ * and at least one tag among the visible snippets (otherwise there is only the Uncategorized
+ * bucket). Search keeps the sections, like host folders do — a match appears under each of its tags.
+ */
+fun shouldGroupSnippets(visible: List<SnippetEntry>, activeChip: String): Boolean =
+    activeChip == ALL_SNIPPETS_CHIP && hasCategories(visible)
+
+/**
  * Filter chips: `All`, then the categories in the same order [groupSnippetsByCategory] renders them.
  * The uncategorized chip appears only when something is actually untagged.
  */

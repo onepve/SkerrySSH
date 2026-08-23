@@ -158,7 +158,7 @@ class DesktopSettingsStateTest {
     fun setThemeMode_updates_and_reports_once_skipping_repeat() {
         val seen = mutableListOf<ThemeMode>()
         val s = DesktopSettingsState(onThemeModeChange = { seen += it })
-        assertEquals(ThemeMode.DEFAULT, s.themeMode) // default is night-sea dark, preserving the prior look
+        assertEquals(ThemeMode.DEFAULT, s.themeMode) // default follows the OS; explicit choice persisted
         s.chooseThemeMode(ThemeMode.LIGHT)
         s.chooseThemeMode(ThemeMode.LIGHT) // repeat of the same mode — no-op
         assertEquals(ThemeMode.LIGHT, s.themeMode)

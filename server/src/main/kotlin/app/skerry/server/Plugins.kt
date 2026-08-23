@@ -12,6 +12,7 @@ import app.skerry.server.routes.adminHealthRoute
 import app.skerry.server.routes.adminRoutes
 import app.skerry.server.routes.authRoutes
 import app.skerry.server.routes.deviceRoutes
+import app.skerry.server.routes.inviteRoutes
 import app.skerry.server.routes.metricsRoutes
 import app.skerry.server.routes.pairingClaimRoute
 import app.skerry.server.routes.pairingStartRoute
@@ -75,6 +76,7 @@ object RateLimits {
     val CHANGE_PASSWORD = RateLimitName("auth-change-password")
     val WEB_LOGIN = RateLimitName("auth-web-login")
     val ADMIN = RateLimitName("admin")
+    val INVITE_REDEEM = RateLimitName("invite-redeem")
     val TEAM_SESSION_EVENTS = RateLimitName("team-session-events")
     val METRICS = RateLimitName("metrics")
 }
@@ -174,6 +176,7 @@ fun Application.configureServer(services: Services) {
             }
         }
         perIp(RateLimits.REGISTER, limit = 5)
+        perIp(RateLimits.INVITE_REDEEM, limit = 5)
         perIp(RateLimits.SRP_CHALLENGE, limit = 10)
         perIp(RateLimits.SRP_VERIFY, limit = 10)
         perIp(RateLimits.PAIRING_CLAIM, limit = 10)
@@ -303,6 +306,7 @@ fun Application.configureServer(services: Services) {
         webFrontendRoutes()
 
         authRoutes(services)
+        inviteRoutes(services)        // fork: public invite list + redeem, no JWT
         pairingClaimRoute(services)   // no JWT: the new device hasn't logged in yet
         adminHealthRoute(services)    // open, and outside the admin bucket: the front page reads it
         rateLimit(RateLimits.ADMIN) {

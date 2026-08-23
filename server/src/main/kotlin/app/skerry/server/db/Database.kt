@@ -47,6 +47,7 @@ object Db {
         val tables = arrayOf(
             Accounts, Devices, Records, Pairing, ActivityLog,
             AccountKeys, Teams, TeamMembers, TeamRecords, TeamScopes, TeamScopeGrants,
+            InviteCodes, Preregistrations,
         )
         transaction(database) {
             val isSqlite = currentDialect is SQLiteDialect

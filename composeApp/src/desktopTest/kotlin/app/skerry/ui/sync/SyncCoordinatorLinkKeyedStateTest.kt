@@ -77,6 +77,7 @@ class SyncCoordinatorLinkKeyedStateTest {
 
             sut.connect(homeUrl, account, password.toCharArray())
             sut.status.awaitStatus("the home session to come up") { it is SyncStatus.Online }
+            awaitSync("home to pull") { while (home.pulledSince.isEmpty()) delay(20) }
             assertEquals(
                 0L,
                 home.pulledSince.first(),
