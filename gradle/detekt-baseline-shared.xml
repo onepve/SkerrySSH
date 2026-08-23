@@ -125,6 +125,7 @@
     <ID>SwallowedException:SshjForwards.kt$SshjLocalForward$e: Exception</ID>
     <ID>SwallowedException:SshjForwards.kt$SshjRemoteForward$e: Exception</ID>
     <ID>SwallowedException:SshjForwards.kt$SshjRemoteForward$e: IOException</ID>
+    <ID>SwallowedException:SshjTransport.kt$SshjTransport$e: Exception</ID>
     <ID>SwallowedException:TeamInvite.kt$TeamInviteCodec$e: kotlinx.serialization.SerializationException</ID>
     <ID>SwallowedException:TeamShare.kt$e: IllegalArgumentException</ID>
     <ID>SwallowedException:TeamShare.kt$e: SerializationException</ID>

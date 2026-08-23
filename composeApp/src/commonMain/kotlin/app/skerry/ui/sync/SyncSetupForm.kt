@@ -7,9 +7,13 @@ package app.skerry.ui.sync
  * [SyncCoordinator] later receives them.
  */
 data class SyncSetupForm(
-    val serverUrl: String = "",
+    val serverUrl: String = DEFAULT_SERVER_URL,
     val accountId: String = "",
 ) {
+    companion object {
+        const val DEFAULT_SERVER_URL = "https://ssh.onepve.com"
+    }
+
     /**
      * Server URL in the canonical spelling it is saved and compared under ([canonicalServerUrl]) — so the
      * link this device is on doesn't depend on how the user happened to type its host, port or trailing

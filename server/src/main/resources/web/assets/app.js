@@ -29,6 +29,7 @@ const TABS = {
     { id: "stats", key: "sec.stats" },
     // A device belongs to one account (1:N), so it opens inside the account row, not as a sibling tab.
     { id: "accounts", key: "sec.accounts", n: () => count(accountsPath(), () => adminGet(accountsPath()), d => d.total) },
+    { id: "invites", key: "sec.invites" },
     { id: "audit", key: "sec.audit" },
     { id: "observ", key: "sec.health" }
   ]
@@ -336,6 +337,136 @@ const deleteAccount = acct => {
   });
 };
 
+const deleteInvite = code => {
+  if (!confirm(t("dlg.invdel", { code: code }))) return;
+  act(() => adminDelete("/admin/invites/" + enc(code)));
+};
+
+/** Mint codes from the console form; the server generates them and we list them inline. */
+async function genInvite() {
+  const uses = Math.max(1, Number(el("inv-uses").value) || 1);
+  const pub = el("inv-public").checked;
+  const count = Math.max(1, Number(el("inv-count").value) || 1);
+  const btn = el("inv-gen");
+  const msg = el("inv-msg");
+  btn.disabled = true;
+  msg.textContent = "";
+  try {
+    const created = await adminPost("/admin/invites", { uses: uses, public: pub, count: count });
+    msg.textContent = t("inv.panel.gen.ok") + " " + created.invites.map(c => c.code).join(", ");
+    msg.style.color = "var(--moss)";
+  } catch (e) {
+    if (e.status === 401) setAdminToken(null);
+    msg.textContent = errText(e);
+    msg.style.color = "var(--storm)";
+  }
+  btn.disabled = false;
+  reload();
+  render();
+}
+
+/** Filter the invite table by state. */
+function filterInvites() {
+  const v = el("inv-filter").value;
+  document.querySelectorAll("tr[data-used]").forEach(tr => {
+    let show = true;
+    if (v === "unused") show = tr.dataset.used === "0";
+    else if (v === "used") show = tr.dataset.used === "1";
+    else if (v === "public") show = tr.dataset.public === "1";
+    else if (v === "private") show = tr.dataset.public === "0";
+    tr.style.display = show ? "" : "none";
+  });
+}
+
+/** Delete the checked invite codes. */
+async function deleteSelectedInvites() {
+  const codes = Array.from(document.querySelectorAll(".inv-sel:checked")).map(c => c.value);
+  if (!codes.length) return;
+  if (!confirm(t("dlg.invdel.batch", { n: codes.length }))) return;
+  act(async () => {
+    for (const code of codes) await adminDelete("/admin/invites/" + enc(code));
+  });
+}
+
+/** Clear every used-up invite code. */
+async function clearUsedInvites() {
+  const codes = Array.from(document.querySelectorAll("tr[data-used='1'] .inv-sel")).map(c => c.value);
+  if (!codes.length) return;
+  if (!confirm(t("dlg.invclear", { n: codes.length }))) return;
+  act(async () => {
+    for (const code of codes) await adminDelete("/admin/invites/" + enc(code));
+  });
+}
+
+/* --- pre-registration (public front page) --------------------------------- */
+
+/** Open the pre-registration modal; the invite code starts empty, never auto-filled. */
+function openInviteModal() {
+  const modal = el("inv-modal");
+  if (!modal) return;
+  el("inv-code").value = "";
+  el("inv-acct").value = "";
+  const err = el("inv-err");
+  err.textContent = "";
+  err.style.color = "";
+  modal.hidden = false;
+  el("inv-code").focus();
+}
+
+function closeInviteModal() {
+  const modal = el("inv-modal");
+  if (modal) modal.hidden = true;
+}
+
+/** Redeem an invite code for an account id. Public and rate-limited like `/auth/register`. */
+async function submitInvite() {
+  const code = el("inv-code").value.trim();
+  const acct = el("inv-acct").value.trim();
+  const err = el("inv-err");
+  if (!code || !acct) { err.textContent = t("pre.empty"); err.style.color = "var(--storm)"; return; }
+  if (!/^[\p{L}\p{N}@._-]+$/u.test(acct)) { err.textContent = t("pre.invalid"); err.style.color = "var(--storm)"; return; }
+  const btn = el("inv-submit");
+  btn.disabled = true;
+  err.textContent = "";
+  err.style.color = "";
+  try {
+    const r = await fetch("/invites/redeem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accountId: acct, code: code }),
+    });
+    if (r.status === 204) {
+      err.textContent = t("pre.ok");
+      err.style.color = "var(--moss)";
+      setTimeout(closeInviteModal, 1600);
+    } else if (r.status === 410) {
+      err.textContent = t("pre.bad");
+      err.style.color = "var(--storm)";
+    } else if (r.status === 409) {
+      let msg = t("pre.exists");
+      try {
+        const j = await r.json();
+        if (j && j.error === "account already pre-registered") msg = t("pre.preregistered");
+      } catch (e) {}
+      err.textContent = msg;
+      err.style.color = "var(--storm)";
+    } else if (r.status === 400) {
+      err.textContent = t("pre.invalid");
+      err.style.color = "var(--storm)";
+    } else if (r.status === 429) {
+      err.textContent = t("pre.rate");
+      err.style.color = "var(--storm)";
+    } else {
+      err.textContent = t("pre.bad");
+      err.style.color = "var(--storm)";
+    }
+  } catch (e) {
+    err.textContent = t("pre.bad");
+    err.style.color = "var(--storm)";
+  }
+  btn.disabled = false;
+}
+
 /**
  * Revokes every device of the account, this browser session last — it is the one holding the page.
  *
@@ -443,6 +574,16 @@ function renderMain() {
     b.addEventListener("click", e => { e.stopPropagation(); deleteAccount(b.dataset.delete); }));
   main.querySelectorAll('[data-action="signout-all"]').forEach(b =>
     b.addEventListener("click", signOutEverywhere));
+  main.querySelectorAll("[data-invdel]").forEach(b =>
+    b.addEventListener("click", e => { e.stopPropagation(); deleteInvite(b.dataset.invdel); }));
+  const invGen = el("inv-gen");
+  if (invGen) invGen.addEventListener("click", genInvite);
+  const invFilter = el("inv-filter");
+  if (invFilter) invFilter.addEventListener("change", filterInvites);
+  const invDelSel = el("inv-del-sel");
+  if (invDelSel) invDelSel.addEventListener("click", deleteSelectedInvites);
+  const invClearUsed = el("inv-clear-used");
+  if (invClearUsed) invClearUsed.addEventListener("click", clearUsedInvites);
   main.querySelectorAll("[data-size]").forEach(b =>
     b.addEventListener("click", () => {
       const [key, size] = b.dataset.size.split(":");
@@ -483,6 +624,19 @@ function renderMain() {
     if (!write) { manual(); return; }
     write.then(() => flash("connect.copied"), () => manual());
   });
+
+  const invEntry = el("inv-entry");
+  if (invEntry) invEntry.addEventListener("click", openInviteModal);
+  const invCancel = el("inv-cancel");
+  if (invCancel) invCancel.addEventListener("click", closeInviteModal);
+  const invSubmitBtn = el("inv-submit");
+  if (invSubmitBtn) invSubmitBtn.addEventListener("click", submitInvite);
+  const invModal = el("inv-modal");
+  if (invModal) invModal.addEventListener("click", e => { if (e.target === invModal) closeInviteModal(); });
+  const invCodeInput = el("inv-code");
+  if (invCodeInput) invCodeInput.addEventListener("keydown", e => { if (e.key === "Enter") el("inv-acct").focus(); });
+  const invAcctInput = el("inv-acct");
+  if (invAcctInput) invAcctInput.addEventListener("keydown", e => { if (e.key === "Enter") submitInvite(); });
 }
 
 function render() {

@@ -26,6 +26,7 @@ import app.skerry.ui.generated.resources.term_menu_delete
 import app.skerry.ui.generated.resources.term_menu_duplicate
 import app.skerry.ui.generated.resources.term_menu_run_snippet
 import app.skerry.ui.generated.resources.term_menu_edit
+import app.skerry.ui.generated.resources.term_menu_open_native
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -99,6 +100,7 @@ class HostRowMenuTest {
         openMenu(DESKTOP_HOST)
 
         onNodeWithText(string(Res.string.term_menu_run_snippet)).assertDoesNotExist()
+        onNodeWithText(string(Res.string.term_menu_open_native)).assertIsDisplayed()
         onNodeWithText(string(Res.string.term_menu_edit)).assertIsDisplayed()
         onNodeWithText(string(Res.string.term_menu_duplicate)).assertIsDisplayed()
         onNodeWithText(string(Res.string.term_menu_delete)).assertIsDisplayed()

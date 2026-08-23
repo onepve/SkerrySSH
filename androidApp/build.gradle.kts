@@ -28,7 +28,7 @@ android {
     buildToolsVersion = libs.versions.android.buildTools.get()
 
     defaultConfig {
-        applicationId = "app.skerry"
+        applicationId = "app.skerry.onepve"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         // Version from the single source (gradle.properties). A workflow_dispatch input can

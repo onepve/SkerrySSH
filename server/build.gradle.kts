@@ -5,7 +5,11 @@ plugins {
 }
 
 group = "app.skerry"
-version = "0.4.2"
+// Single source of truth: skerry.versionName in gradle.properties (kept in sync with the client).
+// The server-image CI rewrites that property on server-v* tags, so /admin/health reports the tag
+// version instead of a stale hard-coded one.
+val versionName = providers.gradleProperty("skerry.versionName").get()
+version = versionName
 
 // Second launcher in the same distribution: `bin/skerry-admin` (the administration CLI) ships next
 // to `bin/server`, so the Docker image gets it for free — the Dockerfile copies the whole install

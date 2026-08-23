@@ -160,7 +160,7 @@
     <string name="settings_security_2fa">Two-factor authentication</string>
     <string name="settings_security_2fa_desc">TOTP via an authenticator app.</string>
     <string name="settings_security_report_team_sessions">Report sessions on shared hosts</string>
-    <string name="settings_security_report_team_sessions_desc">Tell the team when you open a session on a host shared with it. Your own hosts are never reported.</string>
+    <string name="settings_security_report_team_sessions_desc">Notify the team when you open a session on a host shared with it. Your own hosts are never reported.</string>
     <string name="settings_recent_security_events">RECENT SECURITY EVENTS</string>
     <string name="settings_security_no_events">No security events yet.</string>
     <string name="settings_event_vault_created">Vault created</string>
@@ -263,4 +263,26 @@
     <string name="settings_terminal_prod_warnings_desc">On hosts tagged #prod also confirm warnings (kill, stopping a service, uninstalling a package), not only dangerous commands. A root session drops the sudo rule — it says nothing there — and confirms destructive warnings either way.</string>
     <string name="settings_kb_remote_group">REMOTE DESKTOP</string>
     <string name="settings_kb_release_keyboard">Release the keyboard (back to the app)</string>
+    <string name="settings_backup_title">Data backup</string>
+    <string name="settings_backup_desc">Export or import everything the account syncs (hosts, snippets, runbooks, keys).</string>
+    <string name="settings_backup_export">Export data…</string>
+    <string name="settings_backup_import">Import data…</string>
+    <string name="settings_backup_pw_label">Master password</string>
+    <string name="settings_backup_pw_hint">Confirm your master password to unlock the backup.</string>
+    <string name="settings_backup_export_encrypted">Encrypted export (default)</string>
+    <string name="settings_backup_export_encrypted_sub">Each record is sealed with a key derived from your master password; the file opens with the password only.</string>
+    <string name="settings_backup_export_plain">Plaintext export</string>
+    <string name="settings_backup_export_plain_sub">Every record fully decrypted into readable JSON — inspect or edit it directly.</string>
+    <string name="settings_backup_export_plain_warning">Warning: the plaintext file holds all your passwords and private keys. Store it safely, never share it.</string>
+    <string name="settings_backup_export_action">Export</string>
+    <string name="settings_backup_import_action">Import</string>
+    <string name="settings_backup_import_records">%1$d record(s) in this backup</string>
+    <string name="settings_backup_encrypted_note">This backup is encrypted — enter your master password to read it.</string>
+    <string name="settings_backup_merge">Merge</string>
+    <string name="settings_backup_merge_sub">Existing data stays; the backup wins where it is newer.</string>
+    <string name="settings_backup_replace">Replace</string>
+    <string name="settings_backup_replace_sub">Deletes ALL current synced data first.</string>
+    <string name="settings_backup_import_confirm">Confirm replace</string>
+    <string name="settings_backup_err_password">Wrong master password</string>
+    <string name="settings_backup_err_corrupted">This file is not a valid backup</string>
 </resources>

@@ -4,7 +4,9 @@ plugins {
 }
 
 group = "app.skerry"
-version = "0.4.2"
+// Same single source of truth as :server — skerry.versionName in gradle.properties.
+val versionName = providers.gradleProperty("skerry.versionName").get()
+version = versionName
 
 kotlin {
     jvmToolchain(21)

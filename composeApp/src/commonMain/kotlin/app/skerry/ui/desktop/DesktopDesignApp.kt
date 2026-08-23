@@ -85,6 +85,8 @@ import app.skerry.ui.app.LocalTestTransport
 import app.skerry.ui.app.LocalTunnels
 import app.skerry.ui.app.LocalUpdates
 import app.skerry.ui.app.LocalVault
+import app.skerry.shared.vault.IonspinVaultCrypto
+import app.skerry.ui.app.LocalVaultCrypto
 import app.skerry.ui.app.LocalVaultBiometrics
 import app.skerry.ui.app.SftpPrefs
 import app.skerry.ui.sync.SyncOnboardingScreen
@@ -362,6 +364,7 @@ fun DesktopDesignApp(
         // The open vault + biometrics behind the gate — needed for re-authentication before copying
         // a password from the keychain (desktop has no biometrics, so the path reduces to the master password).
         LocalVault provides vault,
+        LocalVaultCrypto provides remember { IonspinVaultCrypto() },
         LocalVaultBiometrics provides biometrics,
         LocalSecurityLog provides securityLog,
         LocalSync provides sync,
