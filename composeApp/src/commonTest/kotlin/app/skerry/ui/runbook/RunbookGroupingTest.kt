@@ -9,11 +9,12 @@ import kotlin.test.assertTrue
 
 class RunbookGroupingTest {
 
-    private fun entry(label: String, group: String? = null) = RunbookEntry(
+    private fun entry(label: String, group: String? = null, tags: List<String> = emptyList()) = RunbookEntry(
         Runbook(
             id = label,
             label = label,
             steps = listOf(RunbookStep.Command(id = "s1", command = "uptime")),
+            tags = tags,
             group = group,
         ),
     )
@@ -30,5 +31,33 @@ class RunbookGroupingTest {
         val all = listOf(entry("A", "staging"), entry("B"), entry("C", "Prod"), entry("D", "staging"))
 
         assertEquals(listOf("Prod", "staging"), runbookFolders(all))
+    }
+
+    @Test
+    fun groups_runbooks_by_tag() {
+        val all = listOf(
+            entry("Backup", tags = listOf("ops", "db")),
+            entry("Deploy", tags = listOf("ops")),
+            entry("Unfiled"),
+        )
+        val groups = groupRunbooksByCategory(all)
+        assertEquals(3, groups.size)
+        assertEquals("db", groups[0].name)
+        assertEquals(1, groups[0].runbooks.size)
+        assertEquals("ops", groups[1].name)
+        assertEquals(2, groups[1].runbooks.size)
+        assertEquals("Uncategorized", groups[2].name)
+        assertEquals(1, groups[2].runbooks.size)
+    }
+
+    @Test
+    fun filter_runbooks_by_chip_and_query() {
+        val all = listOf(
+            entry("Backup", tags = listOf("ops")),
+            entry("Deploy", tags = listOf("release")),
+        )
+        assertEquals(1, filterRunbooks(all, activeChip = "ops").size)
+        assertEquals("Backup", filterRunbooks(all, activeChip = "ops")[0].runbook.label)
+        assertEquals(1, filterRunbooks(all, query = "deploy").size)
     }
 }
