@@ -4,6 +4,32 @@ import app.skerry.shared.runbook.Runbook
 import app.skerry.shared.text.normalizeGroup
 
 /**
+ * Move runbooks [movingIds] into group [targetGroup] at [targetIndexInGroup] among its runbooks.
+ * Preserves the original relative order among [movingIds].
+ */
+fun moveRunbooksToGroup(
+    runbooks: List<Runbook>,
+    movingIds: Set<String>,
+    targetGroup: String?,
+    targetIndexInGroup: Int,
+): List<Runbook> {
+    if (movingIds.isEmpty()) return runbooks
+    val moving = runbooks.filter { it.id in movingIds }
+    if (moving.isEmpty()) return runbooks
+    val canonicalTarget = normalizeGroup(targetGroup)
+    val buckets = LinkedHashMap<String?, MutableList<Runbook>>()
+    for (r in runbooks) {
+        if (r.id in movingIds) continue
+        buckets.getOrPut(normalizeGroup(r.group)) { mutableListOf() }.add(r)
+    }
+    val target = buckets.getOrPut(canonicalTarget) { mutableListOf() }
+    val insertionIndex = targetIndexInGroup.coerceIn(0, target.size)
+    val updatedMoving = moving.map { it.copy(group = canonicalTarget) }
+    target.addAll(insertionIndex, updatedMoving)
+    return buckets.values.flatten()
+}
+
+/**
  * Move runbook [runbookId] into group [targetGroup] at [targetIndexInGroup] among its runbooks.
  * Covers both drag scenarios: reordering within a folder ([targetGroup] == current group) and
  * moving to another (rewriting [Runbook.group]).
@@ -13,18 +39,7 @@ fun moveRunbookToGroup(
     runbookId: String,
     targetGroup: String?,
     targetIndexInGroup: Int,
-): List<Runbook> {
-    val moving = runbooks.firstOrNull { it.id == runbookId } ?: return runbooks
-    val canonicalTarget = normalizeGroup(targetGroup)
-    val buckets = LinkedHashMap<String?, MutableList<Runbook>>()
-    for (r in runbooks) {
-        if (r.id == runbookId) continue
-        buckets.getOrPut(normalizeGroup(r.group)) { mutableListOf() }.add(r)
-    }
-    val target = buckets.getOrPut(canonicalTarget) { mutableListOf() }
-    target.add(targetIndexInGroup.coerceIn(0, target.size), moving.copy(group = canonicalTarget))
-    return buckets.values.flatten()
-}
+): List<Runbook> = moveRunbooksToGroup(runbooks, setOf(runbookId), targetGroup, targetIndexInGroup)
 
 /**
  * Rename group [oldName] to [newName] across all runbooks.

@@ -14,10 +14,12 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.PointerType
@@ -26,12 +28,14 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.skerry.ui.host.FolderBounds
 import app.skerry.ui.host.HostDrop
-import app.skerry.ui.host.hostDropTarget
 import app.skerry.ui.theme.Skerry
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 
 private val MOUSE_DRAG_DEAD_ZONE = 6.dp
 
@@ -95,26 +99,35 @@ suspend fun PointerInputScope.detectDeadZoneDragGestures(
 
 /**
  * Drag state for item lists partitioned into folders (Snippets, Runbooks, Keychain).
+ * Supports single-item and multi-selection batch dragging, hover auto-expansion, and magnet boundaries.
  */
 @Stable
 class ListDragState {
-    var draggingId by mutableStateOf<String?>(null)
+    var draggingIds by mutableStateOf<Set<String>>(emptySet())
+        private set
+
+    var anchorId by mutableStateOf<String?>(null)
         private set
 
     var activeDrop by mutableStateOf<HostDrop?>(null)
         private set
 
+    val draggingId: String? get() = anchorId ?: draggingIds.firstOrNull()
+
     private var pointerY = 0f
     private val itemBounds = HashMap<String, Rect>()
     private val folderRange = HashMap<String, Rect>()
 
-    val isDragging: Boolean get() = draggingId != null
+    val isDragging: Boolean get() = draggingIds.isNotEmpty()
+
+    fun isItemDragging(id: String): Boolean = id in draggingIds
 
     fun setItemBounds(id: String, rect: Rect) { itemBounds[id] = rect }
     fun setFolderRange(name: String, rect: Rect) { folderRange[name] = rect }
 
-    fun startDrag(id: String, localOffsetY: Float) {
-        draggingId = id
+    fun startDrag(id: String, localOffsetY: Float, selectedIds: Set<String> = emptySet()) {
+        anchorId = id
+        draggingIds = if (id in selectedIds) selectedIds else setOf(id)
         pointerY = (itemBounds[id]?.top ?: 0f) + localOffsetY
     }
 
@@ -130,21 +143,37 @@ class ListDragState {
                 top = range.top,
                 bottom = range.bottom,
                 otherHostCentersY = folder.items
-                    .filter { keyOf(it) != draggingId }
+                    .filter { keyOf(it) !in draggingIds }
                     .mapNotNull { itemBounds[keyOf(it)]?.let { b -> (b.top + b.bottom) / 2f } }
             )
         }
 
     fun <T> refreshDrop(folders: List<Folder<T>>, keyOf: (T) -> String) {
-        val next = hostDropTarget(folderBounds(folders, keyOf), pointerY)
+        val next = currentDrop(folders, keyOf)
         if (next != activeDrop) activeDrop = next
     }
 
-    fun <T> currentDrop(folders: List<Folder<T>>, keyOf: (T) -> String): HostDrop? =
-        hostDropTarget(folderBounds(folders, keyOf), pointerY)
+    fun <T> currentDrop(folders: List<Folder<T>>, keyOf: (T) -> String): HostDrop? {
+        val bounds = folderBounds(folders, keyOf)
+        if (bounds.isEmpty()) return null
+        val matchingFolder = bounds.firstOrNull { pointerY >= it.top - 16f && pointerY <= it.bottom + 16f }
+            ?: if (pointerY < bounds.first().top) bounds.first() else bounds.last()
+        val index = matchingFolder.otherHostCentersY.count { it < pointerY }
+        return HostDrop(matchingFolder.group, index)
+    }
+
+    fun findHoveredFolderName(): String? {
+        for ((name, rect) in folderRange) {
+            if (name != UNGROUPED_FOLDER && pointerY >= rect.top - 8f && pointerY <= rect.top + 48f) {
+                return name
+            }
+        }
+        return null
+    }
 
     fun endDrag() {
-        draggingId = null
+        draggingIds = emptySet()
+        anchorId = null
         activeDrop = null
     }
 }
@@ -160,13 +189,15 @@ fun <T> Modifier.draggableItemRow(
     id: String,
     folders: () -> List<Folder<T>>,
     keyOf: (T) -> String,
+    selectedIds: () -> Set<String> = { emptySet() },
     longPress: Boolean = false,
-    onDrop: (HostDrop) -> Unit,
+    onHoverFolder: ((String) -> Unit)? = null,
+    onDrop: (drop: HostDrop, movingIds: Set<String>) -> Unit,
 ): Modifier = pointerInput(id, longPress) {
     var moved = false
     val onStart = { offset: Offset ->
         moved = false
-        state.startDrag(id, offset.y)
+        state.startDrag(id, offset.y, selectedIds())
         state.refreshDrop(folders(), keyOf)
     }
     val onMove = { change: PointerInputChange, amount: Offset ->
@@ -174,9 +205,19 @@ fun <T> Modifier.draggableItemRow(
         moved = true
         state.dragBy(amount.y)
         state.refreshDrop(folders(), keyOf)
+        state.findHoveredFolderName()?.let { folderName ->
+            onHoverFolder?.invoke(folderName)
+        }
+        Unit
     }
     val onEnd = {
-        if (moved) state.currentDrop(folders(), keyOf)?.let(onDrop)
+        if (moved) {
+            val drop = state.currentDrop(folders(), keyOf)
+            val moving = state.draggingIds
+            if (drop != null && moving.isNotEmpty()) {
+                onDrop(drop, moving)
+            }
+        }
         state.endDrag()
     }
     val onCancel = { state.endDrag() }
@@ -197,4 +238,22 @@ fun ListDropLine(modifier: Modifier = Modifier) {
             .clip(RoundedCornerShape(1.dp))
             .background(Skerry.colors.cyan),
     )
+}
+
+@Composable
+fun DragBatchBadge(count: Int, modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(Skerry.colors.cyanBright)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Txt(
+            text = "+$count",
+            color = Color.Black,
+            size = 10.5.sp,
+            weight = FontWeight.Bold,
+        )
+    }
 }

@@ -102,6 +102,7 @@ private fun LiveSnippetsView(
     mono: FontFamily,
 ) {
     var selectedId by remember { mutableStateOf<String?>(null) }
+    var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var mode by remember { mutableStateOf<PanelMode>(PanelMode.Run) }
     var helpOpen by remember { mutableStateOf(false) }
     var editingGroup by remember { mutableStateOf<String?>(null) }
@@ -150,14 +151,22 @@ private fun LiveSnippetsView(
                             collapse = collapse,
                             group = { it.snippet.group },
                             itemKey = { it.id },
+                            selectedIds = selectedIds,
                             onEditGroup = { editingGroup = it },
-                            onMoveItem = { id, targetGroup, targetIndex ->
-                                manager.moveSnippet(id, targetGroup, targetIndex)
+                            onMoveItems = { ids, targetGroup, targetIndex ->
+                                manager.moveSnippets(ids, targetGroup, targetIndex)
                             },
                         ) { entry ->
                             // Keyed by id so selecting a row doesn't recreate every row's lambda.
-                            val onClick = remember(entry.id) { { selectedId = entry.id; mode = PanelMode.Run } }
-                            SnippetListRow(entry = entry, selected = entry.id == selected?.id, onClick = onClick)
+                            val isSelected = entry.id in selectedIds || entry.id == selected?.id
+                            val onClick = remember(entry.id) {
+                                {
+                                    selectedId = entry.id
+                                    selectedIds = setOf(entry.id)
+                                    mode = PanelMode.Run
+                                }
+                            }
+                            SnippetListRow(entry = entry, selected = isSelected, onClick = onClick)
                             HLine()
                         }
                     }

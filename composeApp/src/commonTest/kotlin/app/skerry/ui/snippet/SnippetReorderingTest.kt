@@ -48,6 +48,27 @@ class SnippetReorderingTest {
     }
 
     @Test
+    fun `moveSnippetsToGroup batch moves multiple items preserving order`() {
+        val snippets = listOf(
+            snippet("s1", "Ops"),
+            snippet("s2", "Ops"),
+            snippet("s3", "Dev"),
+            snippet("s4", "Dev"),
+            snippet("s5", "Dev"),
+        )
+        val result = moveSnippetsToGroup(
+            snippets,
+            movingIds = setOf("s3", "s5"),
+            targetGroup = "Ops",
+            targetIndexInGroup = 1,
+        )
+        assertEquals(listOf("s1", "s3", "s5", "s2", "s4"), result.map { it.id })
+        assertEquals("Ops", result.first { it.id == "s3" }.group)
+        assertEquals("Ops", result.first { it.id == "s5" }.group)
+        assertEquals("Dev", result.first { it.id == "s4" }.group)
+    }
+
+    @Test
     fun `renameSnippetGroup renames group across snippets`() {
         val snippets = listOf(
             snippet("s1", "Ops"),

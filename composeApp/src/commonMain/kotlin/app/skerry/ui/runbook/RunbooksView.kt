@@ -115,6 +115,7 @@ private sealed interface RunbookPanelMode {
 @Composable
 private fun LiveRunbooksView(manager: RunbookManager, state: DesktopDesignState, mono: FontFamily) {
     var selectedId by remember { mutableStateOf<String?>(null) }
+    var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var mode by remember { mutableStateOf<RunbookPanelMode>(RunbookPanelMode.Run) }
     var query by remember { mutableStateOf("") }
     var helpOpen by remember { mutableStateOf(false) }
@@ -157,16 +158,22 @@ private fun LiveRunbooksView(manager: RunbookManager, state: DesktopDesignState,
                             collapse = state,
                             group = { it.runbook.group },
                             itemKey = { it.id },
+                            selectedIds = selectedIds,
                             onEditGroup = { editingGroup = it },
-                            onMoveItem = { id, targetGroup, targetIndex ->
-                                manager.moveRunbook(id, targetGroup, targetIndex)
+                            onMoveItems = { ids, targetGroup, targetIndex ->
+                                manager.moveRunbooks(ids, targetGroup, targetIndex)
                             },
                         ) { entry ->
                             // Keyed by id so selecting a row doesn't recreate every row's lambda.
+                            val isSelected = entry.id in selectedIds || entry.id == selected?.id
                             val onClick = remember(entry.id) {
-                                { selectedId = entry.id; mode = RunbookPanelMode.Run }
+                                {
+                                    selectedId = entry.id
+                                    selectedIds = setOf(entry.id)
+                                    mode = RunbookPanelMode.Run
+                                }
                             }
-                            RunbookListRow(entry, entry.id == selected?.id, mono, onClick)
+                            RunbookListRow(entry, isSelected, mono, onClick)
                             HLine()
                         }
                     }

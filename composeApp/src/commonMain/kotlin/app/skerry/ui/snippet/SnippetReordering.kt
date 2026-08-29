@@ -4,6 +4,32 @@ import app.skerry.shared.snippet.Snippet
 import app.skerry.shared.text.normalizeGroup
 
 /**
+ * Move snippets [movingIds] into group [targetGroup] at [targetIndexInGroup] among its snippets.
+ * Preserves the original relative order among [movingIds].
+ */
+fun moveSnippetsToGroup(
+    snippets: List<Snippet>,
+    movingIds: Set<String>,
+    targetGroup: String?,
+    targetIndexInGroup: Int,
+): List<Snippet> {
+    if (movingIds.isEmpty()) return snippets
+    val moving = snippets.filter { it.id in movingIds }
+    if (moving.isEmpty()) return snippets
+    val canonicalTarget = normalizeGroup(targetGroup)
+    val buckets = LinkedHashMap<String?, MutableList<Snippet>>()
+    for (s in snippets) {
+        if (s.id in movingIds) continue
+        buckets.getOrPut(normalizeGroup(s.group)) { mutableListOf() }.add(s)
+    }
+    val target = buckets.getOrPut(canonicalTarget) { mutableListOf() }
+    val insertionIndex = targetIndexInGroup.coerceIn(0, target.size)
+    val updatedMoving = moving.map { it.copy(group = canonicalTarget) }
+    target.addAll(insertionIndex, updatedMoving)
+    return buckets.values.flatten()
+}
+
+/**
  * Move snippet [snippetId] into group [targetGroup] at [targetIndexInGroup] among its snippets.
  * Covers both drag scenarios: reordering within a folder ([targetGroup] == current group) and
  * moving to another (rewriting [Snippet.group]).
@@ -13,18 +39,7 @@ fun moveSnippetToGroup(
     snippetId: String,
     targetGroup: String?,
     targetIndexInGroup: Int,
-): List<Snippet> {
-    val moving = snippets.firstOrNull { it.id == snippetId } ?: return snippets
-    val canonicalTarget = normalizeGroup(targetGroup)
-    val buckets = LinkedHashMap<String?, MutableList<Snippet>>()
-    for (s in snippets) {
-        if (s.id == snippetId) continue
-        buckets.getOrPut(normalizeGroup(s.group)) { mutableListOf() }.add(s)
-    }
-    val target = buckets.getOrPut(canonicalTarget) { mutableListOf() }
-    target.add(targetIndexInGroup.coerceIn(0, target.size), moving.copy(group = canonicalTarget))
-    return buckets.values.flatten()
-}
+): List<Snippet> = moveSnippetsToGroup(snippets, setOf(snippetId), targetGroup, targetIndexInGroup)
 
 /**
  * Rename group [oldName] to [newName] across all snippets.

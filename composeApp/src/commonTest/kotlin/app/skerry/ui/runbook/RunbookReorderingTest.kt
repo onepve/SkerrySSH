@@ -47,6 +47,27 @@ class RunbookReorderingTest {
     }
 
     @Test
+    fun `moveRunbooksToGroup batch moves multiple items preserving order`() {
+        val runbooks = listOf(
+            runbook("r1", "Deploy"),
+            runbook("r2", "Deploy"),
+            runbook("r3", "Backup"),
+            runbook("r4", "Backup"),
+            runbook("r5", "Backup"),
+        )
+        val result = moveRunbooksToGroup(
+            runbooks,
+            movingIds = setOf("r3", "r5"),
+            targetGroup = "Deploy",
+            targetIndexInGroup = 1,
+        )
+        assertEquals(listOf("r1", "r3", "r5", "r2", "r4"), result.map { it.id })
+        assertEquals("Deploy", result.first { it.id == "r3" }.group)
+        assertEquals("Deploy", result.first { it.id == "r5" }.group)
+        assertEquals("Backup", result.first { it.id == "r4" }.group)
+    }
+
+    @Test
     fun `renameRunbookGroup renames group across runbooks`() {
         val runbooks = listOf(
             runbook("r1", "Deploy"),

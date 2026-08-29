@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -106,4 +107,15 @@ jobs:
             **/build/reports/tests/
             **/build/test-results/
             **/build/reports/detekt/
-          retention-days: 7
+          retention-days: 1
+
+      - name: Auto Clean Old Caches and Artifacts
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Cleaning old GitHub Actions caches..."
+          gh cache list --repo "${{ github.repository }}" --limit 100 2>/dev/null | awk '{print $1}' | while read cid; do
+            [ -n "$cid" ] && gh cache delete "$cid" --repo "${{ github.repository }}" 2>/dev/null || true
+          done || true
+          echo "Cache clean completed."

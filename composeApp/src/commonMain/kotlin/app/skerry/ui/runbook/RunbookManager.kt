@@ -94,7 +94,12 @@ class RunbookManager(
 
     /** Move runbook [runbookId] to [targetGroup] at [targetIndexInGroup]. */
     fun moveRunbook(runbookId: String, targetGroup: String?, targetIndexInGroup: Int) {
-        store.reorder { moveRunbookToGroup(it, runbookId, targetGroup, targetIndexInGroup) }
+        moveRunbooks(setOf(runbookId), targetGroup, targetIndexInGroup)
+    }
+
+    /** Move multiple runbooks [runbookIds] to [targetGroup] at [targetIndexInGroup]. */
+    fun moveRunbooks(runbookIds: Set<String>, targetGroup: String?, targetIndexInGroup: Int) {
+        store.reorder { moveRunbooksToGroup(it, runbookIds, targetGroup, targetIndexInGroup) }
         runbooks = store.all().map { RunbookEntry(it.canonical()) }
     }
 

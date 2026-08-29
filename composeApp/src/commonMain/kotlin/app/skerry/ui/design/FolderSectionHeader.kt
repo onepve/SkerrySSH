@@ -114,25 +114,38 @@ fun <T> FolderSections(
     collapse: FolderCollapse,
     group: (T) -> String?,
     itemKey: (T) -> String,
+    selectedIds: Set<String> = emptySet(),
     headerPadding: PaddingValues = PaddingValues(horizontal = 18.dp, vertical = 8.dp),
     onEditGroup: ((String) -> Unit)? = null,
     onMoveItem: ((itemId: String, targetGroup: String?, targetIndexInGroup: Int) -> Unit)? = null,
+    onMoveItems: ((itemIds: Set<String>, targetGroup: String?, targetIndexInGroup: Int) -> Unit)? = null,
     item: @Composable (T) -> Unit,
 ) {
     val groupList = items.map { group(it) }
     val folders = remember(items, groupList) { foldersOf(items, group) }
     val hasAnyFolders = hasFolders(items, group)
 
-    if (!hasAnyFolders && onMoveItem == null) {
+    val canMove = onMoveItems != null || onMoveItem != null
+    if (!hasAnyFolders && !canMove) {
         items.forEach { row -> key(itemKey(row)) { item(row) } }
         return
+    }
+
+    val performMove: (Set<String>, String?, Int) -> Unit = { ids, targetGroup, targetIndex ->
+        if (onMoveItems != null) {
+            onMoveItems(ids, targetGroup, targetIndex)
+        } else if (onMoveItem != null) {
+            ids.forEachIndexed { i, id ->
+                onMoveItem(id, targetGroup, targetIndex + i)
+            }
+        }
     }
 
     val dragState = remember { ListDragState() }
 
     if (!hasAnyFolders) {
         val singleFolder = Folder(UNGROUPED_FOLDER, items)
-        val others = items.filter { itemKey(it) != dragState.draggingId }
+        val others = items.filter { !dragState.isItemDragging(itemKey(it)) }
         val isDropTarget = dragState.isDragging && dragState.activeDrop?.group == null
         val dropIndex = if (isDropTarget) dragState.activeDrop?.index?.coerceIn(0, others.size) else null
         val lineBeforeId = dropIndex?.takeIf { it < others.size }?.let { itemKey(others[it]) }
@@ -146,21 +159,36 @@ fun <T> FolderSections(
                 val key = itemKey(row)
                 key(key) {
                     if (key == lineBeforeId) ListDropLine()
-                    val isRowDragging = dragState.draggingId == key
+                    val isRowDragging = dragState.isItemDragging(key)
+                    val isAnchor = dragState.anchorId == key
                     Box(
                         Modifier
                             .fillMaxWidth()
                             .itemBoundsAnchor(dragState, key)
                             .alpha(if (isRowDragging) 0.4f else 1f)
-                            .draggableItemRow(
-                                state = dragState,
-                                id = key,
-                                folders = { listOf(singleFolder) },
-                                keyOf = itemKey,
-                                onDrop = { drop -> onMoveItem?.invoke(key, drop.group, drop.index) },
+                            .then(
+                                if (canMove) {
+                                    Modifier.draggableItemRow(
+                                        state = dragState,
+                                        id = key,
+                                        folders = { listOf(singleFolder) },
+                                        keyOf = itemKey,
+                                        selectedIds = { selectedIds },
+                                        onDrop = { drop, movingIds -> performMove(movingIds, drop.group, drop.index) },
+                                    )
+                                } else Modifier
                             )
                     ) {
                         item(row)
+                        if (isAnchor && dragState.draggingIds.size > 1) {
+                            Box(
+                                Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .padding(end = 24.dp)
+                            ) {
+                                DragBatchBadge(dragState.draggingIds.size)
+                            }
+                        }
                     }
                 }
             }
@@ -179,7 +207,7 @@ fun <T> FolderSections(
                 { onEditGroup(folder.name) }
             } else null
 
-            val others = folder.items.filter { itemKey(it) != dragState.draggingId }
+            val others = folder.items.filter { !dragState.isItemDragging(itemKey(it)) }
             val dropIndex = if (isDropTarget) dragState.activeDrop?.index?.coerceIn(0, others.size) else null
             val lineBeforeId = dropIndex?.takeIf { it < others.size }?.let { itemKey(others[it]) }
 
@@ -203,8 +231,9 @@ fun <T> FolderSections(
                         val key = itemKey(row)
                         key(key) {
                             if (key == lineBeforeId) ListDropLine()
-                            val isRowDragging = dragState.draggingId == key
-                            val rowModifier = if (onMoveItem != null) {
+                            val isRowDragging = dragState.isItemDragging(key)
+                            val isAnchor = dragState.anchorId == key
+                            val rowModifier = if (canMove) {
                                 Modifier
                                     .fillMaxWidth()
                                     .itemBoundsAnchor(dragState, key)
@@ -214,12 +243,26 @@ fun <T> FolderSections(
                                         id = key,
                                         folders = { folders },
                                         keyOf = itemKey,
-                                        onDrop = { drop -> onMoveItem(key, drop.group, drop.index) },
+                                        selectedIds = { selectedIds },
+                                        onHoverFolder = { name ->
+                                            val cKey = folderCollapseKey(scope, name)
+                                            collapse.expandGroup(cKey)
+                                        },
+                                        onDrop = { drop, movingIds -> performMove(movingIds, drop.group, drop.index) },
                                     )
                             } else Modifier.fillMaxWidth()
 
                             Box(rowModifier) {
                                 item(row)
+                                if (isAnchor && dragState.draggingIds.size > 1) {
+                                    Box(
+                                        Modifier
+                                            .align(Alignment.CenterEnd)
+                                            .padding(end = 24.dp)
+                                    ) {
+                                        DragBatchBadge(dragState.draggingIds.size)
+                                    }
+                                }
                             }
                         }
                     }

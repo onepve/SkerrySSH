@@ -352,3 +352,10 @@ val LocalUpdates: ProvidableCompositionLocal<UpdateNoticeController?> = staticCo
  */
 val LocalCastPicker: ProvidableCompositionLocal<suspend () -> CastOpenResult> =
     staticCompositionLocalOf { ::openCastFile }
+
+/**
+ * Mobile session keep-alive bridge for battery optimization exemption and autostart settings.
+ */
+val LocalKeepAliveBridge: ProvidableCompositionLocal<app.skerry.ui.keepalive.SessionKeepAliveBridge?> =
+    staticCompositionLocalOf { null }
+

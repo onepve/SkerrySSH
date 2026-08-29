@@ -152,7 +152,12 @@ class SnippetManager(
 
     /** Move snippet [snippetId] to [targetGroup] at [targetIndexInGroup]. */
     fun moveSnippet(snippetId: String, targetGroup: String?, targetIndexInGroup: Int) {
-        store.reorder { moveSnippetToGroup(it, snippetId, targetGroup, targetIndexInGroup) }
+        moveSnippets(setOf(snippetId), targetGroup, targetIndexInGroup)
+    }
+
+    /** Move multiple snippets [snippetIds] to [targetGroup] at [targetIndexInGroup]. */
+    fun moveSnippets(snippetIds: Set<String>, targetGroup: String?, targetIndexInGroup: Int) {
+        store.reorder { moveSnippetsToGroup(it, snippetIds, targetGroup, targetIndexInGroup) }
         snippets = store.all().map { SnippetEntry(it.canonical()) }
     }
 

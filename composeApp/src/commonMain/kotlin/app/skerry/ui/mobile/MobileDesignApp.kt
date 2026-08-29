@@ -281,6 +281,7 @@ fun MobileDesignApp(
         LocalTeams provides deps.teams,
         app.skerry.ui.app.LocalSessionShare provides deps.sessionShare,
         app.skerry.ui.app.LocalSharedSessions provides deps.sharedSessions,
+        app.skerry.ui.app.LocalKeepAliveBridge provides deps.keepAliveBridge,
     ) {
         Box(Modifier.fillMaxSize().background(Skerry.colors.bg)) {
             val vault = deps.vault

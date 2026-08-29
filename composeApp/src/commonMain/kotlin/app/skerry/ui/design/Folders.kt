@@ -151,4 +151,7 @@ private const val HEX = 16
 interface FolderCollapse {
     fun isGroupCollapsed(name: String): Boolean
     fun toggleGroupCollapsed(name: String)
+    fun expandGroup(name: String) {
+        if (isGroupCollapsed(name)) toggleGroupCollapsed(name)
+    }
 }

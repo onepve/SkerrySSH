@@ -1,6 +1,8 @@
 package app.skerry.ui.mobile
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -57,6 +59,11 @@ import app.skerry.ui.generated.resources.term_record_stop
 import app.skerry.ui.generated.resources.term_palette_title
 import app.skerry.ui.generated.resources.term_no_active_session
 import app.skerry.ui.generated.resources.term_mobile_open_host_connect
+import app.skerry.ui.generated.resources.keepalive_banner_warning
+import app.skerry.ui.generated.resources.keepalive_banner_setup
+import app.skerry.ui.app.LocalKeepAliveBridge
+import app.skerry.ui.design.Sym
+import app.skerry.ui.design.Txt
 import app.skerry.ui.generated.resources.term_connecting
 import app.skerry.ui.generated.resources.term_connection_failed
 import app.skerry.ui.generated.resources.term_ai_dismiss
@@ -226,6 +233,43 @@ fun MobileTerminalScreen(state: MobileDesignState) {
                 // A blank terminal is useless on a phone, so "+" leads to where a session starts.
                 onNew = { state.select(MobileTab.Hosts) },
             )
+            val keepAliveBridge = LocalKeepAliveBridge.current
+            var keepAliveDismissed by remember { mutableStateOf(false) }
+            val showKeepAlivePrompt = keepAliveBridge?.isKeepAliveConfigSupported == true &&
+                !keepAliveBridge.isOptimizedForKeepAlive() &&
+                !keepAliveDismissed &&
+                active?.controller?.uiState is ConnectionUiState.Connected
+            if (showKeepAlivePrompt) {
+                Row(
+                    Modifier.fillMaxWidth()
+                        .background(Skerry.colors.amber.copy(alpha = 0.15f))
+                        .padding(horizontal = 12.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Sym("warning", size = 15.sp, color = Skerry.colors.amber)
+                    Txt(
+                        stringResource(Res.string.keepalive_banner_warning),
+                        color = Skerry.colors.text,
+                        size = 11.5.sp,
+                        lineHeight = 15.sp,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Txt(
+                        stringResource(Res.string.keepalive_banner_setup),
+                        color = Skerry.colors.cyanBright,
+                        size = 12.sp,
+                        weight = FontWeight.SemiBold,
+                        modifier = Modifier.clickable { state.push(MobileRoute.KeepAlive) },
+                    )
+                    Txt(
+                        "✕",
+                        color = Skerry.colors.dim,
+                        size = 12.sp,
+                        modifier = Modifier.clickable { keepAliveDismissed = true }.padding(horizontal = 4.dp),
+                    )
+                }
+            }
             when (val st = active?.controller?.uiState) {
                 null, ConnectionUiState.Form ->
                     MobileTerminalNotice("terminal", stringResource(Res.string.term_no_active_session), stringResource(Res.string.term_mobile_open_host_connect))

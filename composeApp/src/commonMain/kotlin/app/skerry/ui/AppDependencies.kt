@@ -85,4 +85,6 @@ data class AppDependencies(
     val securityLog: SecurityLog? = null,
     /** Local AI: model store + downloader + runtime; `null` for preview/mock without the subsystem. */
     val localAi: LocalAiDeps? = null,
+    /** Session keep-alive bridge (Android foreground service / wake lock / battery optimization). */
+    val keepAliveBridge: app.skerry.ui.keepalive.SessionKeepAliveBridge? = null,
 )

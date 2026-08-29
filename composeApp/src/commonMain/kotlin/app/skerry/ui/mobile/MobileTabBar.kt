@@ -48,16 +48,18 @@ import androidx.compose.ui.semantics.semantics
  */
 @Composable
 internal fun MobileTabBar(state: MobileDesignState, modifier: Modifier = Modifier) {
+    val barInteraction = remember { MutableInteractionSource() }
     Column(
         modifier
             .fillMaxWidth()
-            .background(Skerry.colors.railBg.copy(alpha = 0.92f)),
+            .background(Skerry.colors.railBg.copy(alpha = 0.92f))
+            .clickable(interactionSource = barInteraction, indication = null) {},
     ) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(Skerry.colors.cyan08))
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 9.dp)
+                .padding(vertical = 9.dp)
                 // *IgnoringVisibility (see hiddenSystemBarsPadding): in immersive mode the live
                 // navigation-bar inset is zero, and a swipe that transiently brings the bar back
                 // would otherwise land on the tab labels.
@@ -66,18 +68,27 @@ internal fun MobileTabBar(state: MobileDesignState, modifier: Modifier = Modifie
         ) {
             val activeTab = mobileActiveTab(state.tab, state.route)
             MobileTab.entries.forEach { tab ->
-                MobileTabItem(tab, active = tab == activeTab) { state.select(tab) }
+                MobileTabItem(
+                    tab = tab,
+                    active = tab == activeTab,
+                    modifier = Modifier.weight(1f),
+                ) { state.select(tab) }
             }
         }
     }
 }
 
 @Composable
-private fun MobileTabItem(tab: MobileTab, active: Boolean, onClick: () -> Unit) {
+private fun MobileTabItem(
+    tab: MobileTab,
+    active: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
     val color = if (active) Skerry.colors.cyanBright else Skerry.colors.faint
     val interaction = remember { MutableInteractionSource() }
     Column(
-        Modifier
+        modifier
             .testTag(UiTags.mobileTab(tab))
             // Which tab is open is otherwise only a colour and a weight — desktop parity with the
             // rail (see DesktopRail.RailButton).
