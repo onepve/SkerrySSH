@@ -211,11 +211,11 @@ internal fun RunbookPalette(manager: RunbookManager, onPick: (RunbookEntry) -> U
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 FilterChipRow(
-                    chips = remember(all) { runbookCategoryChips(all) },
+                    chips = remember(all) { runbookGroupChips(all) },
                     activeChip = activeChip,
                     onSelect = { activeChip = it },
                     modifier = Modifier.weight(1f),
-                    label = { runbookChipLabel(it) },
+                    label = { runbookGroupChipLabel(it) },
                 )
                 if (hasTemporaryLayout) {
                     IconBtn(
@@ -277,7 +277,6 @@ internal fun RunbookPalette(manager: RunbookManager, onPick: (RunbookEntry) -> U
                                         collapsedCategories + category.name
                                     }
                                 },
-                                label = runbookChipLabel(category.name),
                             )
                             if (!isCollapsed) {
                                 category.runbooks.forEach { entry -> key(entry.id) { PaletteRow(entry, mono) { onPick(entry) } } }

@@ -38,8 +38,8 @@ import app.skerry.ui.runbook.RunbookManager
 import app.skerry.ui.runbook.filterRunbooks
 import app.skerry.ui.runbook.groupRunbooksByCategory
 import app.skerry.ui.runbook.hasRunbookCategories
-import app.skerry.ui.runbook.runbookCategoryChips
-import app.skerry.ui.runbook.runbookChipLabel
+import app.skerry.ui.runbook.runbookGroupChipLabel
+import app.skerry.ui.runbook.runbookGroupChips
 import app.skerry.ui.snippet.SnippetCategoryHeader
 import app.skerry.ui.theme.Skerry
 import org.jetbrains.compose.resources.stringResource
@@ -83,11 +83,11 @@ internal fun MobileRunbookRunSheet(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     FilterChipRow(
-                        chips = remember(all) { runbookCategoryChips(all) },
+                        chips = remember(all) { runbookGroupChips(all) },
                         activeChip = activeChip,
                         onSelect = { activeChip = it },
                         modifier = Modifier.weight(1f),
-                        label = { runbookChipLabel(it) },
+                        label = { runbookGroupChipLabel(it) },
                     )
                     if (activeChip == ALL_RUNBOOKS_CHIP && allCategoryNames.isNotEmpty()) {
                         IconBtn(
@@ -125,7 +125,6 @@ internal fun MobileRunbookRunSheet(
                                     collapsedCategories + category.name
                                 }
                             },
-                            label = runbookChipLabel(category.name),
                         )
                         if (!isCollapsed) {
                             category.runbooks.forEach { entry ->

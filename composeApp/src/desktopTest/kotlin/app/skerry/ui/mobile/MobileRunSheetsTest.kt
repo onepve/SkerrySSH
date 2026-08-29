@@ -32,8 +32,8 @@ class MobileRunSheetsTest {
     @Test
     fun `mobile snippet run sheet renders tags and category headers`() = runComposeUiTest {
         val snippets = seededSnippets()
-        snippets.save(SnippetDraft(label = "Disk Check", command = "df -h", tags = listOf("ops", "disk")))
-        snippets.save(SnippetDraft(label = "Mem Check", command = "free -m", tags = listOf("ops", "memory")))
+        snippets.save(SnippetDraft(label = "Disk Check", command = "df -h", group = "ops"))
+        snippets.save(SnippetDraft(label = "Mem Check", command = "free -m", group = "ops"))
 
         var pickedId: String? = null
         var dismissed = false
@@ -52,8 +52,8 @@ class MobileRunSheetsTest {
 
         onNodeWithText(string(Res.string.lib_snippets_run_title)).assertExists()
         onNodeWithText(string(Res.string.lib_snippets_chip_all)).assertExists()
-        onAllNodesWithText("#ops").onFirst().assertExists()
-        onAllNodesWithText("#ops").onFirst().performClick()
+        onAllNodesWithText("ops").onFirst().assertExists()
+        onAllNodesWithText("ops").onFirst().performClick()
 
         onNodeWithText("Disk Check").assertExists()
         onNodeWithText("Disk Check").performClick()
@@ -67,7 +67,7 @@ class MobileRunSheetsTest {
             RunbookDraft(
                 label = "Deploy Service",
                 description = "Steps to deploy",
-                tags = listOf("deploy", "prod"),
+                group = "deploy",
                 steps = listOf(RunbookStep.Command(id = "s1", title = "Pull", command = "git pull", confirm = false)),
             )
         )
@@ -89,8 +89,8 @@ class MobileRunSheetsTest {
 
         onNodeWithText(string(Res.string.runbook_section)).assertExists()
         onNodeWithText(string(Res.string.lib_snippets_chip_all)).assertExists()
-        onAllNodesWithText("#deploy").onFirst().assertExists()
-        onAllNodesWithText("#deploy").onFirst().performClick()
+        onAllNodesWithText("deploy").onFirst().assertExists()
+        onAllNodesWithText("deploy").onFirst().performClick()
 
         onNodeWithText("Deploy Service").assertExists()
         onNodeWithText("Deploy Service").performClick()

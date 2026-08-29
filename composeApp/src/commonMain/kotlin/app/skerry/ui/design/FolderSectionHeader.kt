@@ -19,9 +19,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.isSecondaryPressed
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -62,24 +59,9 @@ fun FolderSectionHeader(
         if (collapsed) Res.string.shtail_group_state_collapsed else Res.string.shtail_group_state_expanded,
     )
 
-    val rightClickModifier = if (onEdit != null) {
-        Modifier.pointerInput(onEdit) {
-            awaitPointerEventScope {
-                while (true) {
-                    val event = awaitPointerEvent()
-                    if (event.type == PointerEventType.Press && event.buttons.isSecondaryPressed) {
-                        event.changes.forEach { it.consume() }
-                        onEdit()
-                    }
-                }
-            }
-        }
-    } else Modifier
-
     Row(
         modifier
             .fillMaxWidth()
-            .then(rightClickModifier)
             .clickable(onClickLabel = action, role = Role.Button, onClick = onToggle)
             .semantics { stateDescription = state }
             .padding(padding),
@@ -95,7 +77,7 @@ fun FolderSectionHeader(
             weight = FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f, fill = false),
+            modifier = Modifier.weight(1f),
         )
         if (onEdit != null) {
             IconBtn(

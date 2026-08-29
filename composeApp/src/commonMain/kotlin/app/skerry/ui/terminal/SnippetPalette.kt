@@ -73,8 +73,8 @@ import app.skerry.ui.snippet.filterSnippets
 import app.skerry.ui.snippet.groupSnippetsByCategory
 import app.skerry.ui.snippet.hasCategories
 import app.skerry.ui.snippet.matches
-import app.skerry.ui.snippet.snippetCategoryChips
-import app.skerry.ui.snippet.snippetChipLabel
+import app.skerry.ui.snippet.snippetGroupChipLabel
+import app.skerry.ui.snippet.snippetGroupChips
 import app.skerry.ui.theme.Skerry
 import org.jetbrains.compose.resources.stringResource
 
@@ -163,11 +163,11 @@ internal fun SnippetPalette(manager: SnippetManager, onPick: (SnippetEntry) -> U
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 FilterChipRow(
-                    chips = remember(all) { snippetCategoryChips(all) },
+                    chips = remember(all) { snippetGroupChips(all) },
                     activeChip = activeChip,
                     onSelect = { activeChip = it },
                     modifier = Modifier.weight(1f),
-                    label = { snippetChipLabel(it) },
+                    label = { snippetGroupChipLabel(it) },
                 )
                 if (hasTemporaryLayout) {
                     IconBtn(

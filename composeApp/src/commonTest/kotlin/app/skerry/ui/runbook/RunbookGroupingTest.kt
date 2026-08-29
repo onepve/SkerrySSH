@@ -2,6 +2,8 @@ package app.skerry.ui.runbook
 
 import app.skerry.shared.runbook.Runbook
 import app.skerry.shared.runbook.RunbookStep
+import app.skerry.ui.design.UNGROUPED_FOLDER
+import app.skerry.ui.snippet.UNCATEGORIZED_KEY
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -34,10 +36,10 @@ class RunbookGroupingTest {
     }
 
     @Test
-    fun groups_runbooks_by_tag() {
+    fun groups_runbooks_by_folder() {
         val all = listOf(
-            entry("Backup", tags = listOf("ops", "db")),
-            entry("Deploy", tags = listOf("ops")),
+            entry("Backup", group = "db"),
+            entry("Deploy", group = "ops"),
             entry("Unfiled"),
         )
         val groups = groupRunbooksByCategory(all)
@@ -45,16 +47,34 @@ class RunbookGroupingTest {
         assertEquals("db", groups[0].name)
         assertEquals(1, groups[0].runbooks.size)
         assertEquals("ops", groups[1].name)
-        assertEquals(2, groups[1].runbooks.size)
-        assertEquals("Uncategorized", groups[2].name)
+        assertEquals(1, groups[1].runbooks.size)
+        assertEquals(UNGROUPED_FOLDER, groups[2].name)
         assertEquals(1, groups[2].runbooks.size)
+    }
+
+    @Test
+    fun chips_are_all_plus_sorted_unique_tags() {
+        val chips = runbookCategoryChips(
+            listOf(entry("a", tags = listOf("net", "disk")), entry("b", tags = listOf("disk")), entry("c")),
+        )
+
+        assertEquals(listOf(ALL_RUNBOOKS_CHIP, "disk", "net", UNCATEGORIZED_KEY), chips)
+    }
+
+    @Test
+    fun group_chips_are_all_plus_sorted_unique_folders() {
+        val chips = runbookGroupChips(
+            listOf(entry("a", group = "net"), entry("b", group = "disk"), entry("c")),
+        )
+
+        assertEquals(listOf(ALL_RUNBOOKS_CHIP, "disk", "net", UNGROUPED_FOLDER), chips)
     }
 
     @Test
     fun filter_runbooks_by_chip_and_query() {
         val all = listOf(
-            entry("Backup", tags = listOf("ops")),
-            entry("Deploy", tags = listOf("release")),
+            entry("Backup", group = "ops"),
+            entry("Deploy", group = "release"),
         )
         assertEquals(1, filterRunbooks(all, activeChip = "ops").size)
         assertEquals("Backup", filterRunbooks(all, activeChip = "ops")[0].runbook.label)

@@ -18,11 +18,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.skerry.ui.design.Sym
 import app.skerry.ui.design.Txt
+import app.skerry.ui.design.folderLabel
 import app.skerry.ui.theme.Skerry
 
 /**
- * Collapsible category header in snippet and runbook palettes and lists:
- * chevron + tag icon + chip label (`#tag`, or the localized "Uncategorized" label) + count badge.
+ * Collapsible category/group header in snippet and runbook palettes and lists:
+ * chevron + folder icon + folder label + count badge.
  */
 @Composable
 internal fun SnippetCategoryHeader(
@@ -31,7 +32,7 @@ internal fun SnippetCategoryHeader(
     collapsed: Boolean,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
-    label: String = snippetChipLabel(category),
+    label: String = folderLabel(category),
 ) {
     Row(
         modifier
@@ -43,7 +44,7 @@ internal fun SnippetCategoryHeader(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Sym(if (collapsed) "chevron_right" else "expand_more", size = 16.sp, color = Skerry.colors.faint)
-        Sym("label", size = 14.sp, color = Skerry.colors.cyanBright)
+        Sym("folder_open", size = 14.sp, color = Skerry.colors.cyanBright)
         Txt(
             label,
             color = Skerry.colors.dim,

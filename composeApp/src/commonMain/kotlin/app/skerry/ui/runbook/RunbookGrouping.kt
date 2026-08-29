@@ -2,7 +2,11 @@ package app.skerry.ui.runbook
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import app.skerry.ui.design.UNGROUPED_FOLDER
+import app.skerry.ui.design.folderLabel
 import app.skerry.ui.design.folderNames
+import app.skerry.ui.design.foldersOf
+import app.skerry.ui.design.hasFolders
 import app.skerry.ui.design.tagChipLabel
 import app.skerry.ui.generated.resources.Res
 import app.skerry.ui.generated.resources.lib_snippets_chip_all
@@ -20,7 +24,7 @@ const val RUNBOOK_FOLDER_SCOPE = "runbook"
 /** Technical key of the "all runbooks" chip at the start of the filter row. */
 const val ALL_RUNBOOKS_CHIP = "All"
 
-/** A runbook section: category name plus its runbooks. */
+/** A runbook section: group name plus its runbooks. */
 @Immutable
 data class RunbookCategory(val name: String, val runbooks: List<RunbookEntry>)
 
@@ -28,40 +32,59 @@ data class RunbookCategory(val name: String, val runbooks: List<RunbookEntry>)
 fun runbookFolders(runbooks: List<RunbookEntry>): List<String> =
     folderNames(runbooks.map { it.runbook.group })
 
-/** Chip label for display: localized for the two technical keys, `#tag` for a real category. */
+/** Chip label for display in library (tags): localized for the two technical keys, otherwise tag label (#tag). */
 @Composable
 fun runbookChipLabel(chip: String): String = when (chip) {
     ALL_RUNBOOKS_CHIP -> stringResource(Res.string.lib_snippets_chip_all)
-    UNCATEGORIZED_KEY -> uncategorizedSnippetsLabel()
+    UNGROUPED_FOLDER -> uncategorizedSnippetsLabel()
     else -> tagChipLabel(chip)
 }
 
+/** Chip label for display in palettes/drawers (group folders): localized for the two technical keys, otherwise folder label. */
+@Composable
+fun runbookGroupChipLabel(chip: String): String = when (chip) {
+    ALL_RUNBOOKS_CHIP -> stringResource(Res.string.lib_snippets_chip_all)
+    UNGROUPED_FOLDER -> uncategorizedSnippetsLabel()
+    else -> folderLabel(chip)
+}
+
 /**
- * Group runbooks into sections by tag. Untagged runbooks land in [UNCATEGORIZED_KEY].
+ * Group runbooks into sections by folder/group ([foldersOf]).
  */
 fun groupRunbooksByCategory(runbooks: List<RunbookEntry>): List<RunbookCategory> {
-    val buckets = sortedMapOf<String, MutableList<RunbookEntry>>()
-    val uncategorized = mutableListOf<RunbookEntry>()
-    for (entry in runbooks) {
-        val tags = entry.runbook.tags
-        if (tags.isEmpty()) uncategorized += entry
-        else for (tag in tags) buckets.getOrPut(tag) { mutableListOf() }.add(entry)
-    }
+    val folders = foldersOf(runbooks) { it.runbook.group }
+    return folders.map { RunbookCategory(it.name, it.items) }
+}
+
+/**
+ * Whether anything is filed in a folder at all in the runbooks.
+ */
+fun hasRunbookCategories(runbooks: List<RunbookEntry>): Boolean =
+    hasFolders(runbooks) { it.runbook.group }
+
+/**
+ * Unique tags present in [runbooks] in alphabetical order.
+ */
+fun runbookTags(runbooks: List<RunbookEntry>): List<String> =
+    runbooks.flatMap { it.runbook.tags }.distinct().sorted()
+
+/**
+ * Filter chips for runbook group folders.
+ */
+fun runbookCategoryChips(runbooks: List<RunbookEntry>): List<String> {
+    val tags = runbookTags(runbooks)
+    val hasUntagged = runbooks.any { it.runbook.tags.isEmpty() }
     return buildList {
-        buckets.forEach { (name, list) -> add(RunbookCategory(name, list)) }
-        if (uncategorized.isNotEmpty()) add(RunbookCategory(UNCATEGORIZED_KEY, uncategorized))
+        add(ALL_RUNBOOKS_CHIP)
+        addAll(tags)
+        if (hasUntagged) add(UNCATEGORIZED_KEY)
     }
 }
 
 /**
- * Whether anything is tagged at all in the runbooks.
+ * Group chips for the palette/drawer: `All`, plus the group folders in [groupRunbooksByCategory] order.
  */
-fun hasRunbookCategories(runbooks: List<RunbookEntry>): Boolean = runbooks.any { it.runbook.tags.isNotEmpty() }
-
-/**
- * Filter chips for runbook categories.
- */
-fun runbookCategoryChips(runbooks: List<RunbookEntry>): List<String> =
+fun runbookGroupChips(runbooks: List<RunbookEntry>): List<String> =
     listOf(ALL_RUNBOOKS_CHIP) + groupRunbooksByCategory(runbooks).map { it.name }
 
 /**
@@ -77,8 +100,8 @@ fun filterRunbooks(
         val matchesQuery = q.isEmpty() || entry.matches(q)
         val matchesChip = when (activeChip) {
             ALL_RUNBOOKS_CHIP -> true
-            UNCATEGORIZED_KEY -> entry.runbook.tags.isEmpty()
-            else -> entry.runbook.tags.any { it.equals(activeChip, ignoreCase = true) }
+            UNGROUPED_FOLDER -> entry.runbook.group.isNullOrBlank()
+            else -> entry.runbook.group?.equals(activeChip, ignoreCase = true) == true || activeChip in entry.runbook.tags
         }
         matchesQuery && matchesChip
     }
