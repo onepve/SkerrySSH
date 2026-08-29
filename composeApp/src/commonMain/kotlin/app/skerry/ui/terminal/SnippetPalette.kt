@@ -46,6 +46,7 @@ import app.skerry.ui.design.LocalFonts
 import app.skerry.ui.design.NOTE_PEEK_LINES
 import app.skerry.ui.design.NoteBlock
 import app.skerry.ui.design.RowNoteTooltip
+import app.skerry.ui.design.SkerryVerticalScrollbar
 import app.skerry.ui.design.Sym
 import app.skerry.ui.design.Txt
 import app.skerry.ui.design.fieldName
@@ -200,33 +201,40 @@ internal fun SnippetPalette(manager: SnippetManager, onPick: (SnippetEntry) -> U
                 }
             }
         }
-        Column(Modifier.heightIn(max = 300.dp).verticalScroll(rememberScrollState()).padding(top = 6.dp)) {
-            if (filtered.isEmpty()) {
-                Txt(if (all.isEmpty()) stringResource(Res.string.term_no_snippets_yet) else stringResource(Res.string.term_no_matches), color = Skerry.colors.faint, size = 11.5.sp, font = mono, modifier = Modifier.padding(8.dp))
-            } else if (hasCategories(filtered) && activeChip == ALL_SNIPPETS_CHIP) {
-                groupSnippetsByCategory(filtered).forEach { category ->
-                    val isCollapsed = if (query.isNotBlank()) false else category.name in collapsedCategories
-                    key(category.name) {
-                        SnippetCategoryHeader(
-                            category = category.name,
-                            count = category.snippets.size,
-                            collapsed = isCollapsed,
-                            onToggle = {
-                                collapsedCategories = if (category.name in collapsedCategories) {
-                                    collapsedCategories - category.name
-                                } else {
-                                    collapsedCategories + category.name
-                                }
-                            },
-                        )
-                        if (!isCollapsed) {
-                            category.snippets.forEach { entry -> key(entry.id) { PaletteRow(entry, mono) { onPick(entry) } } }
+        val scrollState = rememberScrollState()
+        Box(Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
+            Column(Modifier.fillMaxWidth().verticalScroll(scrollState).padding(top = 6.dp, end = 8.dp)) {
+                if (filtered.isEmpty()) {
+                    Txt(if (all.isEmpty()) stringResource(Res.string.term_no_snippets_yet) else stringResource(Res.string.term_no_matches), color = Skerry.colors.faint, size = 11.5.sp, font = mono, modifier = Modifier.padding(8.dp))
+                } else if (hasCategories(filtered) && activeChip == ALL_SNIPPETS_CHIP) {
+                    groupSnippetsByCategory(filtered).forEach { category ->
+                        val isCollapsed = if (query.isNotBlank()) false else category.name in collapsedCategories
+                        key(category.name) {
+                            SnippetCategoryHeader(
+                                category = category.name,
+                                count = category.snippets.size,
+                                collapsed = isCollapsed,
+                                onToggle = {
+                                    collapsedCategories = if (category.name in collapsedCategories) {
+                                        collapsedCategories - category.name
+                                    } else {
+                                        collapsedCategories + category.name
+                                    }
+                                },
+                            )
+                            if (!isCollapsed) {
+                                category.snippets.forEach { entry -> key(entry.id) { PaletteRow(entry, mono) { onPick(entry) } } }
+                            }
                         }
                     }
+                } else {
+                    filtered.forEach { entry -> key(entry.id) { PaletteRow(entry, mono) { onPick(entry) } } }
                 }
-            } else {
-                filtered.forEach { entry -> key(entry.id) { PaletteRow(entry, mono) { onPick(entry) } } }
             }
+            SkerryVerticalScrollbar(
+                scrollState = scrollState,
+                modifier = Modifier.align(Alignment.CenterEnd).matchParentSize().padding(top = 4.dp, bottom = 4.dp, end = 1.dp),
+            )
         }
     }
 }

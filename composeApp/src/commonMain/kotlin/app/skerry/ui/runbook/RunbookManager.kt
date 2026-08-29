@@ -83,8 +83,31 @@ class RunbookManager(
         )
         store.put(runbook)
         val existing = find(id)
-        if (existing != null) existing.runbook = runbook else runbooks = runbooks + RunbookEntry(runbook)
+        if (existing != null) {
+            existing.runbook = runbook
+            runbooks = runbooks.map { if (it.id == id) RunbookEntry(runbook) else it }
+        } else {
+            runbooks = runbooks + RunbookEntry(runbook)
+        }
         return id
+    }
+
+    /** Move runbook [runbookId] to [targetGroup] at [targetIndexInGroup]. */
+    fun moveRunbook(runbookId: String, targetGroup: String?, targetIndexInGroup: Int) {
+        store.reorder { moveRunbookToGroup(it, runbookId, targetGroup, targetIndexInGroup) }
+        runbooks = store.all().map { RunbookEntry(it.canonical()) }
+    }
+
+    /** Rename group [oldName] to [newName] across all runbooks. */
+    fun renameGroup(oldName: String, newName: String) {
+        store.reorder { renameRunbookGroup(it, oldName, newName) }
+        runbooks = store.all().map { RunbookEntry(it.canonical()) }
+    }
+
+    /** Delete group [name]: ungroups its runbooks, setting group to null (items are kept). */
+    fun deleteGroup(name: String) {
+        store.reorder { renameRunbookGroup(it, name, null) }
+        runbooks = store.all().map { RunbookEntry(it.canonical()) }
     }
 
     /** Delete a runbook: remove it from the store and the list. */

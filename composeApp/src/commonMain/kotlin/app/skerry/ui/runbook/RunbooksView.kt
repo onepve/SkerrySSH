@@ -46,6 +46,7 @@ import app.skerry.ui.design.NoteBlock
 import app.skerry.ui.design.Sym
 import app.skerry.ui.design.Txt
 import app.skerry.ui.design.VLine
+import app.skerry.ui.host.GroupDialog
 import app.skerry.ui.generated.resources.Res
 import app.skerry.ui.generated.resources.runbook_count
 import app.skerry.ui.generated.resources.runbook_delete
@@ -118,6 +119,7 @@ private fun LiveRunbooksView(manager: RunbookManager, state: DesktopDesignState,
     var query by remember { mutableStateOf("") }
     var helpOpen by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<RunbookEntry?>(null) }
+    var editingGroup by remember { mutableStateOf<String?>(null) }
     val history = LocalRunbookHistory.current
 
     val all = manager.runbooks
@@ -155,6 +157,10 @@ private fun LiveRunbooksView(manager: RunbookManager, state: DesktopDesignState,
                             collapse = state,
                             group = { it.runbook.group },
                             itemKey = { it.id },
+                            onEditGroup = { editingGroup = it },
+                            onMoveItem = { id, targetGroup, targetIndex ->
+                                manager.moveRunbook(id, targetGroup, targetIndex)
+                            },
                         ) { entry ->
                             // Keyed by id so selecting a row doesn't recreate every row's lambda.
                             val onClick = remember(entry.id) {
@@ -220,6 +226,20 @@ private fun LiveRunbooksView(manager: RunbookManager, state: DesktopDesignState,
                 pendingDelete = null
             },
             onDismiss = { pendingDelete = null },
+        )
+    }
+    if (editingGroup != null) {
+        GroupDialog(
+            initialName = editingGroup!!,
+            onDismiss = { editingGroup = null },
+            onSave = { newName ->
+                manager.renameGroup(editingGroup!!, newName)
+                editingGroup = null
+            },
+            onDelete = {
+                manager.deleteGroup(editingGroup!!)
+                editingGroup = null
+            },
         )
     }
 }

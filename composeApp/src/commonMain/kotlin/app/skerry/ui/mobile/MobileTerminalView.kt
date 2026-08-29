@@ -67,6 +67,7 @@ import app.skerry.ui.design.CloseWhenUnavailable
 import app.skerry.ui.design.NoticeDialog
 import app.skerry.ui.app.LocalAi
 import app.skerry.ui.app.LocalHosts
+import app.skerry.ui.app.LocalRunbookRunner
 import app.skerry.ui.app.LocalRunbooks
 import app.skerry.ui.app.LocalSessions
 import app.skerry.ui.app.LocalTeams
@@ -77,6 +78,7 @@ import app.skerry.ui.app.MobileRoute
 import app.skerry.ui.app.MobileTab
 import app.skerry.ui.app.mobileTabBarUnderRoute
 import app.skerry.ui.design.Txt
+import app.skerry.ui.runbook.runbookTarget
 import app.skerry.ui.terminal.filePathFromSelection
 import app.skerry.ui.session.broadcastTargets
 import kotlinx.coroutines.launch
@@ -150,6 +152,8 @@ fun MobileTerminalScreen(state: MobileDesignState) {
     // otherwise the inline sheet would take part in the Row layout and break it. Available only when
     // connected and a snippet library is attached.
     var paletteOpen by remember(active?.id) { mutableStateOf(false) }
+    // Runbook run sheet, raised from the terminal menu when runbooks are available.
+    var runbookOpen by remember(active?.id) { mutableStateOf(false) }
     // The more_horiz menu (Disconnect) is an inline sheet at the screen's root Box, not a focusable
     // [MobileActionSheet] Popup: over an open soft keyboard a Popup measures against the shrunk window and
     // hangs at the old keyboard line with a gap below. Inline lives in the same window with live insets.
@@ -168,6 +172,8 @@ fun MobileTerminalScreen(state: MobileDesignState) {
     // Command history palette (desktop ⌘K parity) — same menu, connected only.
     var historyOpen by remember(active?.id) { mutableStateOf(false) }
     val snippets = LocalSnippets.current
+    val runbooks = LocalRunbooks.current
+    val runner = LocalRunbookRunner.current
     val activeTerminal = (active?.controller?.uiState as? ConnectionUiState.Connected)?.terminal
     val canRunSnippet = snippets != null && activeTerminal != null
     // Same rule as the desktop toolbar's popups: the pane id survives a drop (the controller
@@ -175,6 +181,7 @@ fun MobileTerminalScreen(state: MobileDesignState) {
     // be back over the terminal the moment auto-reconnect lands.
     CloseWhenUnavailable(activeTerminal != null) {
         paletteOpen = false
+        runbookOpen = false
         monitorOpen = false
         historyOpen = false
     }
@@ -308,6 +315,23 @@ fun MobileTerminalScreen(state: MobileDesignState) {
                 onDismiss = { paletteOpen = false },
             )
         }
+        if (runbookOpen && runbooks != null && active != null) {
+            val term = activeTerminal
+            if (term != null) {
+                MobileRunbookRunSheet(
+                    manager = runbooks,
+                    onRun = { entry ->
+                        runner?.requestStart(
+                            entry.runbook,
+                            runbookTarget(active.id, term, active.controller),
+                            recording = term.recording,
+                        )
+                        runbookOpen = false
+                    },
+                    onDismiss = { runbookOpen = false },
+                )
+            }
+        }
         if (monitorOpen && active?.controller != null && activeTerminal != null) {
             MobileHostMonitorSheet(active.controller, onDismiss = { monitorOpen = false })
         }
@@ -360,13 +384,10 @@ fun MobileTerminalScreen(state: MobileDesignState) {
                             filled = false,
                         )
                     }
-                    if (activeTerminal != null && LocalRunbooks.current != null) {
-                        // No popup picker here (the phone has no room for one over the terminal):
-                        // the row opens the library, whose Run comes straight back with the start
-                        // confirmation and the progress panel over this screen.
+                    if (activeTerminal != null && runbooks != null) {
                         MobileSheetButton(
                             label = stringResource(Res.string.runbook_section),
-                            onClick = { menuOpen = false; state.push(MobileRoute.Runbooks) },
+                            onClick = { menuOpen = false; runbookOpen = true },
                             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                             icon = "checklist",
                             filled = false,

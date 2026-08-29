@@ -1,0 +1,72 @@
+package app.skerry.ui.snippet
+
+import app.skerry.shared.snippet.Snippet
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class SnippetReorderingTest {
+
+    private fun snippet(id: String, group: String? = null) = Snippet(
+        id = id,
+        label = "Label $id",
+        command = "echo $id",
+        group = group,
+    )
+
+    @Test
+    fun `moveSnippetToGroup reorders within the same group`() {
+        val snippets = listOf(
+            snippet("s1", "Ops"),
+            snippet("s2", "Ops"),
+            snippet("s3", "Ops"),
+        )
+        val result = moveSnippetToGroup(snippets, snippetId = "s3", targetGroup = "Ops", targetIndexInGroup = 0)
+        assertEquals(listOf("s3", "s1", "s2"), result.map { it.id })
+    }
+
+    @Test
+    fun `moveSnippetToGroup moves item to another group`() {
+        val snippets = listOf(
+            snippet("s1", "Ops"),
+            snippet("s2", "Ops"),
+            snippet("s3", "Dev"),
+        )
+        val result = moveSnippetToGroup(snippets, snippetId = "s3", targetGroup = "Ops", targetIndexInGroup = 1)
+        assertEquals(listOf("s1", "s3", "s2"), result.map { it.id })
+        assertEquals("Ops", result.first { it.id == "s3" }.group)
+    }
+
+    @Test
+    fun `moveSnippetToGroup moves item to ungrouped`() {
+        val snippets = listOf(
+            snippet("s1", "Ops"),
+            snippet("s2", "Ops"),
+        )
+        val result = moveSnippetToGroup(snippets, snippetId = "s1", targetGroup = null, targetIndexInGroup = 0)
+        assertEquals(listOf("s2", "s1"), result.map { it.id })
+        assertEquals(null, result.first { it.id == "s1" }.group)
+    }
+
+    @Test
+    fun `renameSnippetGroup renames group across snippets`() {
+        val snippets = listOf(
+            snippet("s1", "Ops"),
+            snippet("s2", "Ops"),
+            snippet("s3", "Dev"),
+        )
+        val result = renameSnippetGroup(snippets, oldName = "Ops", newName = "Operations")
+        assertEquals(listOf("Operations", "Operations", "Dev"), result.map { it.group })
+        assertEquals(listOf("s1", "s2", "s3"), result.map { it.id })
+    }
+
+    @Test
+    fun `renameSnippetGroup ungroups when newName is blank`() {
+        val snippets = listOf(
+            snippet("s1", "Ops"),
+            snippet("s2", "Dev"),
+        )
+        val result = renameSnippetGroup(snippets, oldName = "Ops", newName = "")
+        assertEquals(null, result.first { it.id == "s1" }.group)
+        assertEquals("Dev", result.first { it.id == "s2" }.group)
+    }
+}

@@ -44,6 +44,7 @@ import app.skerry.ui.design.CloseWhenUnavailable
 import app.skerry.ui.design.FilterChipRow
 import app.skerry.ui.design.IconBtn
 import app.skerry.ui.design.LocalFonts
+import app.skerry.ui.design.SkerryVerticalScrollbar
 import app.skerry.ui.design.Sym
 import app.skerry.ui.design.Txt
 import app.skerry.ui.design.fieldName
@@ -248,42 +249,49 @@ internal fun RunbookPalette(manager: RunbookManager, onPick: (RunbookEntry) -> U
                 }
             }
         }
-        Column(Modifier.heightIn(max = 300.dp).verticalScroll(rememberScrollState()).padding(top = 6.dp)) {
-            if (filtered.isEmpty()) {
-                Txt(
-                    // Three different facts: nothing saved, nothing runnable, nothing matching.
-                    when {
-                        saved.isEmpty() -> stringResource(Res.string.runbook_empty)
-                        all.isEmpty() -> stringResource(Res.string.runbook_none_runnable)
-                        else -> stringResource(Res.string.runbook_no_matches)
-                    },
-                    color = Skerry.colors.faint, size = 11.5.sp, font = mono, modifier = Modifier.padding(8.dp),
-                )
-            } else if (hasRunbookCategories(filtered) && activeChip == ALL_RUNBOOKS_CHIP) {
-                groupRunbooksByCategory(filtered).forEach { category ->
-                    val isCollapsed = if (query.isNotBlank()) false else category.name in collapsedCategories
-                    key(category.name) {
-                        SnippetCategoryHeader(
-                            category = category.name,
-                            count = category.runbooks.size,
-                            collapsed = isCollapsed,
-                            onToggle = {
-                                collapsedCategories = if (category.name in collapsedCategories) {
-                                    collapsedCategories - category.name
-                                } else {
-                                    collapsedCategories + category.name
-                                }
-                            },
-                            label = runbookChipLabel(category.name),
-                        )
-                        if (!isCollapsed) {
-                            category.runbooks.forEach { entry -> key(entry.id) { PaletteRow(entry, mono) { onPick(entry) } } }
+        val scrollState = rememberScrollState()
+        Box(Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
+            Column(Modifier.fillMaxWidth().verticalScroll(scrollState).padding(top = 6.dp, end = 8.dp)) {
+                if (filtered.isEmpty()) {
+                    Txt(
+                        // Three different facts: nothing saved, nothing runnable, nothing matching.
+                        when {
+                            saved.isEmpty() -> stringResource(Res.string.runbook_empty)
+                            all.isEmpty() -> stringResource(Res.string.runbook_none_runnable)
+                            else -> stringResource(Res.string.runbook_no_matches)
+                        },
+                        color = Skerry.colors.faint, size = 11.5.sp, font = mono, modifier = Modifier.padding(8.dp),
+                    )
+                } else if (hasRunbookCategories(filtered) && activeChip == ALL_RUNBOOKS_CHIP) {
+                    groupRunbooksByCategory(filtered).forEach { category ->
+                        val isCollapsed = if (query.isNotBlank()) false else category.name in collapsedCategories
+                        key(category.name) {
+                            SnippetCategoryHeader(
+                                category = category.name,
+                                count = category.runbooks.size,
+                                collapsed = isCollapsed,
+                                onToggle = {
+                                    collapsedCategories = if (category.name in collapsedCategories) {
+                                        collapsedCategories - category.name
+                                    } else {
+                                        collapsedCategories + category.name
+                                    }
+                                },
+                                label = runbookChipLabel(category.name),
+                            )
+                            if (!isCollapsed) {
+                                category.runbooks.forEach { entry -> key(entry.id) { PaletteRow(entry, mono) { onPick(entry) } } }
+                            }
                         }
                     }
+                } else {
+                    filtered.forEach { entry -> key(entry.id) { PaletteRow(entry, mono) { onPick(entry) } } }
                 }
-            } else {
-                filtered.forEach { entry -> key(entry.id) { PaletteRow(entry, mono) { onPick(entry) } } }
             }
+            SkerryVerticalScrollbar(
+                scrollState = scrollState,
+                modifier = Modifier.align(Alignment.CenterEnd).matchParentSize().padding(top = 4.dp, bottom = 4.dp, end = 1.dp),
+            )
         }
     }
 }

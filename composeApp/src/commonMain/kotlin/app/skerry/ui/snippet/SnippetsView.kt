@@ -37,6 +37,7 @@ import app.skerry.ui.design.PrimaryButton
 import app.skerry.ui.design.SectionHeader
 import app.skerry.ui.design.SidebarSearchField
 import app.skerry.ui.design.VLine
+import app.skerry.ui.host.GroupDialog
 import app.skerry.ui.generated.resources.Res
 import app.skerry.ui.generated.resources.lib_snippets_command_count
 import app.skerry.ui.generated.resources.lib_snippets_empty
@@ -103,6 +104,7 @@ private fun LiveSnippetsView(
     var selectedId by remember { mutableStateOf<String?>(null) }
     var mode by remember { mutableStateOf<PanelMode>(PanelMode.Run) }
     var helpOpen by remember { mutableStateOf(false) }
+    var editingGroup by remember { mutableStateOf<String?>(null) }
 
     val all = manager.snippets
     val visible = library.visible(all)
@@ -148,6 +150,10 @@ private fun LiveSnippetsView(
                             collapse = collapse,
                             group = { it.snippet.group },
                             itemKey = { it.id },
+                            onEditGroup = { editingGroup = it },
+                            onMoveItem = { id, targetGroup, targetIndex ->
+                                manager.moveSnippet(id, targetGroup, targetIndex)
+                            },
                         ) { entry ->
                             // Keyed by id so selecting a row doesn't recreate every row's lambda.
                             val onClick = remember(entry.id) { { selectedId = entry.id; mode = PanelMode.Run } }
@@ -193,6 +199,20 @@ private fun LiveSnippetsView(
                 }
             }
         }
+    }
+    if (editingGroup != null) {
+        GroupDialog(
+            initialName = editingGroup!!,
+            onDismiss = { editingGroup = null },
+            onSave = { newName ->
+                manager.renameGroup(editingGroup!!, newName)
+                editingGroup = null
+            },
+            onDelete = {
+                manager.deleteGroup(editingGroup!!)
+                editingGroup = null
+            },
+        )
     }
     if (helpOpen) SnippetHelpDialog(manager, onDismiss = { helpOpen = false })
 }
