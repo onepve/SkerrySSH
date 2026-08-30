@@ -258,7 +258,6 @@ fun <T> FolderSections(
                             name = folder.name,
                             folders = { folders },
                             longPress = longPress,
-                            onToggle = { collapse.toggleGroupCollapsed(collapseKey) },
                             onDrop = { targetIndex ->
                                 onMoveGroup?.invoke(targetGroup, targetIndex)
                             },

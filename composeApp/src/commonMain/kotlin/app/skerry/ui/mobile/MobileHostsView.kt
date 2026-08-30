@@ -188,7 +188,12 @@ private fun MobileHostFolder(
             Modifier
                 .folderHeaderAnchor(dragState, folder.name)
                 // Section-aware, like desktop: the index counts only the folders on screen.
-                .draggableFolderHeader(dragState, folder.name, foldersProvider, longPress = true) { index ->
+                .draggableFolderHeader(
+                    state = dragState,
+                    name = folder.name,
+                    folders = foldersProvider,
+                    longPress = true,
+                ) { index ->
                     controller.moveFolderInSection(group, index, section)
                 }
         } else {

@@ -75,7 +75,6 @@ suspend fun PointerInputScope.detectDeadZoneDragGestures(
     onMove: (PointerInputChange, Offset) -> Unit,
     onEnd: () -> Unit,
     onCancel: () -> Unit,
-    onClick: (() -> Unit)? = null,
 ) = awaitEachGesture {
     val down = awaitFirstDown(requireUnconsumed = false)
     val threshold =
@@ -85,16 +84,12 @@ suspend fun PointerInputScope.detectDeadZoneDragGestures(
         while (true) {
             val event = awaitPointerEvent()
             val change = event.changes.firstOrNull { it.id == down.id }
-            if (change == null || (change.isConsumed && !change.changedToUpIgnoreConsumed())) {
+            if (change == null) {
                 if (tracker.dragging) onCancel()
                 break
             }
             if (change.changedToUpIgnoreConsumed()) {
-                if (tracker.dragging) {
-                    onEnd()
-                } else {
-                    onClick?.invoke()
-                }
+                if (tracker.dragging) onEnd()
                 break
             }
             tracker.onDelta(change, threshold, onStart, onMove)
@@ -221,7 +216,6 @@ fun <T> Modifier.draggableFolderHeader(
     name: String,
     folders: () -> List<Folder<T>>,
     longPress: Boolean = false,
-    onToggle: (() -> Unit)? = null,
     onDrop: (Int) -> Unit,
 ): Modifier = pointerInput(name, longPress) {
     var moved = false
@@ -237,7 +231,10 @@ fun <T> Modifier.draggableFolderHeader(
         state.refreshFolderDrop(folders())
     }
     val onEnd = {
-        if (moved) onDrop(state.currentFolderDropIndex(folders()))
+        if (moved) {
+            val dropIndex = state.activeFolderDropIndex ?: state.currentFolderDropIndex(folders())
+            onDrop(dropIndex)
+        }
         state.endDrag()
     }
     val onCancel = { state.endDrag() }
@@ -254,7 +251,6 @@ fun <T> Modifier.draggableFolderHeader(
             onMove = onMove,
             onEnd = onEnd,
             onCancel = onCancel,
-            onClick = onToggle,
         )
     }
 }
@@ -282,7 +278,7 @@ fun <T> Modifier.draggableItemRow(
     }
     val onEnd = {
         if (moved) {
-            val drop = state.currentDrop(folders(), keyOf)
+            val drop = state.activeDrop ?: state.currentDrop(folders(), keyOf)
             val moving = state.draggingIds
             if (drop != null && moving.isNotEmpty()) {
                 onDrop(drop, moving)

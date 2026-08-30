@@ -340,7 +340,11 @@ internal fun LiveHostFolder(
                 .folderHeaderAnchor(dragState, folder.name)
                 // Section-aware: the drop index counts the folders this sidebar shows, not the
                 // catalog's (a folder of the other section is invisible here and keeps its place).
-                .draggableFolderHeader(dragState, folder.name, foldersProvider) { index ->
+                .draggableFolderHeader(
+                    state = dragState,
+                    name = folder.name,
+                    folders = foldersProvider,
+                ) { index ->
                     controller.moveFolderInSection(group, index, section)
                 },
         ) {
