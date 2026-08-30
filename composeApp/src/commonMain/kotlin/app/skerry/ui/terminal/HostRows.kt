@@ -55,6 +55,10 @@ import app.skerry.ui.generated.resources.term_menu_delete
 import app.skerry.ui.generated.resources.term_menu_duplicate
 import app.skerry.ui.generated.resources.term_menu_edit
 import app.skerry.ui.generated.resources.term_menu_run_snippet
+import app.skerry.ui.generated.resources.term_menu_open_native
+import app.skerry.ui.remote.canLaunchNativeClient
+import app.skerry.ui.remote.launchNativeRemoteClient
+import app.skerry.shared.ssh.isRemoteDesktop
 import app.skerry.ui.host.HostDragState
 import app.skerry.ui.host.HostFolder
 import app.skerry.ui.host.HostManagerController
@@ -208,14 +212,32 @@ internal fun HostRow(
 /** Cyan indicator line marking where a dragged host/folder will be inserted. */
 @Composable
 internal fun DropLine() {
-    Box(
+    Row(
         Modifier
             .fillMaxWidth()
-            .padding(end = 8.dp, top = 2.dp, bottom = 2.dp)
-            .height(2.dp)
-            .clip(RoundedCornerShape(1.dp))
-            .background(Skerry.colors.cyan),
-    )
+            .padding(end = 8.dp, top = 2.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier
+                .size(5.dp)
+                .clip(RoundedCornerShape(2.5.dp))
+                .background(Skerry.colors.cyanBright)
+        )
+        Box(
+            Modifier
+                .weight(1f)
+                .height(3.dp)
+                .clip(RoundedCornerShape(1.5.dp))
+                .background(Skerry.colors.cyan)
+        )
+        Box(
+            Modifier
+                .size(5.dp)
+                .clip(RoundedCornerShape(2.5.dp))
+                .background(Skerry.colors.cyanBright)
+        )
+    }
 }
 
 @Composable
@@ -271,7 +293,8 @@ internal fun HostEntryRow(
     // Not on a remote desktop: a snippet is a line typed into a shell, and a framebuffer has none —
     // the row would open the desktop and the command would have nowhere to go.
     val canRunSnippet = host != null && snippets != null && host.connectionType.hasShell
-    val hasMenu = onEdit != null || onDuplicate != null || onDelete != null || canRunSnippet
+    val canLaunchNative = host != null && host.connectionType.isRemoteDesktop && canLaunchNativeClient(host)
+    val hasMenu = onEdit != null || onDuplicate != null || onDelete != null || canRunSnippet || canLaunchNative
     var menuOpen by remember { mutableStateOf(false) }
     var snippetPickerOpen by remember { mutableStateOf(false) }
     // The profile's note is shown on hover — mouse-only by nature; on Android the same code simply
@@ -330,6 +353,12 @@ internal fun HostEntryRow(
                     if (menuOpen) {
                         Popup(alignment = Alignment.TopEnd, onDismissRequest = { menuOpen = false }) {
                             MenuPanel {
+                                if (canLaunchNative && host != null) {
+                                    MenuItem(stringResource(Res.string.term_menu_open_native)) {
+                                        menuOpen = false
+                                        launchNativeRemoteClient(host)
+                                    }
+                                }
                                 if (canRunSnippet) {
                                     MenuItem(stringResource(Res.string.term_menu_run_snippet)) { menuOpen = false; snippetPickerOpen = true }
                                 }

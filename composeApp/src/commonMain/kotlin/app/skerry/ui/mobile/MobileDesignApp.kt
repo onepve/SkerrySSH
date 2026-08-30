@@ -58,6 +58,8 @@ import app.skerry.ui.app.LocalTeams
 import app.skerry.ui.app.LocalTunnels
 import app.skerry.ui.app.LocalUpdates
 import app.skerry.ui.app.LocalVault
+import app.skerry.shared.vault.IonspinVaultCrypto
+import app.skerry.ui.app.LocalVaultCrypto
 import app.skerry.ui.app.LocalVaultBiometrics
 import app.skerry.ui.app.MobileDesignState
 import app.skerry.ui.design.rememberMaterialSymbols
@@ -270,6 +272,7 @@ fun MobileDesignApp(
         LocalTerminalHistory provides termHistory,
         // Vault + biometrics — for the More screen's "unlock with biometrics" toggle (enable/reconfigure).
         LocalVault provides deps.vault,
+        LocalVaultCrypto provides remember { IonspinVaultCrypto() },
         LocalVaultBiometrics provides deps.biometrics,
         LocalSecurityLog provides deps.securityLog,
         // Self-hosted sync coordinator — More → "Sync" push screen.
@@ -278,6 +281,7 @@ fun MobileDesignApp(
         LocalTeams provides deps.teams,
         app.skerry.ui.app.LocalSessionShare provides deps.sessionShare,
         app.skerry.ui.app.LocalSharedSessions provides deps.sharedSessions,
+        app.skerry.ui.app.LocalKeepAliveBridge provides deps.keepAliveBridge,
     ) {
         Box(Modifier.fillMaxSize().background(Skerry.colors.bg)) {
             val vault = deps.vault

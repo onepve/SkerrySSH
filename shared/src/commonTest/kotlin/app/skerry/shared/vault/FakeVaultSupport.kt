@@ -99,6 +99,14 @@ internal class FakeVault : Vault {
     override fun exportDataKey(): DataKey? = null
     override fun adoptDataKey(newDataKey: DataKey, password: CharArray): Boolean = false
 
+    /** Drops every record of the given types, live and tombstoned — the replace-import path. */
+    override fun clearRecords(types: Set<RecordType>, keep: (VaultRecord) -> Boolean) {
+        entries.keys.removeIf { id ->
+            val r = entries[id]!!.record
+            r.type in types && !keep(r)
+        }
+    }
+
     private companion object {
         val SEALED = "sealed".encodeToByteArray()
     }

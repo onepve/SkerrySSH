@@ -197,7 +197,7 @@ class AccountProjectionRoutesTest {
         val client = createClient { install(ContentNegotiation) { json() } }
 
         val health: HealthResponse = client.get("/admin/health").body()
-        assertFalse(health.registrationOpen)
+        assertEquals("closed", health.registration)
     }
 
     @Test
@@ -210,6 +210,6 @@ class AccountProjectionRoutesTest {
         // and report `true` for a response that never carried the field at all. The open case is the
         // default case, so it is exactly the one that disappears — read the bytes.
         val raw = client.get("/admin/health").bodyAsText()
-        assertTrue("\"registrationOpen\":true" in raw, raw)
+        assertTrue("\"registration\":\"open\"" in raw, raw)
     }
 }

@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -66,19 +67,36 @@ import app.skerry.ui.generated.resources.settings_security_biometric_desc
 import app.skerry.ui.generated.resources.settings_security_biometric_recheck
 import app.skerry.ui.generated.resources.settings_security_biometric_unsupported
 import app.skerry.ui.generated.resources.settings_security_biometric_weak_binding
+import app.skerry.ui.generated.resources.settings_backup_desc
+import app.skerry.ui.generated.resources.settings_backup_err_corrupted
+import app.skerry.ui.generated.resources.settings_backup_err_password
+import app.skerry.ui.generated.resources.settings_backup_export
+import app.skerry.ui.generated.resources.settings_backup_import
+import app.skerry.ui.generated.resources.settings_backup_title
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.stringResource
 import app.skerry.ui.design.Badge
+import app.skerry.ui.design.HLine
 import app.skerry.ui.settings.ChangeAccountPasswordDialog
 import app.skerry.ui.settings.ChangeMasterPasswordDialog
-import app.skerry.ui.design.HLine
+import app.skerry.ui.app.LocalVaultCrypto
 import app.skerry.ui.app.LocalSecurityLog
 import app.skerry.ui.app.LocalSync
 import app.skerry.ui.app.LocalVault
 import app.skerry.ui.app.LocalVaultBiometrics
 import app.skerry.ui.app.MobileDesignState
+import app.skerry.shared.vault.BackupImportMode
+import app.skerry.shared.vault.BackupLoadResult
+import app.skerry.shared.vault.VaultBackupCodec
+import app.skerry.shared.vault.applyBackup
+import app.skerry.ui.sync.nowMillis
+import app.skerry.ui.vault.BackupExportDialog
+import app.skerry.ui.vault.BackupImportDialog
+import app.skerry.ui.vault.ExportOutcome
+import app.skerry.ui.vault.exportTextFile
+import app.skerry.ui.vault.importTextFile
 import app.skerry.ui.design.Toggle
 import app.skerry.ui.design.Txt
 import app.skerry.ui.settings.masterPasswordSubtitle
@@ -112,6 +130,17 @@ fun MobileSecurityScreen(state: MobileDesignState) {
     var changePwOpen by remember { mutableStateOf(false) }
     var changeAccountPwOpen by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    // Data backup: export/import everything the account syncs, gated on the master password.
+    val vaultCrypto = LocalVaultCrypto.current
+    var backupError by remember { mutableStateOf<String?>(null) }
+    var backupBusy by remember { mutableStateOf(false) }
+    var showExport by remember { mutableStateOf(false) }
+    var showImport by remember { mutableStateOf(false) }
+    var importFile by remember { mutableStateOf<String?>(null) }
+    var importPreview by remember { mutableStateOf<BackupLoadResult.Ok?>(null) }
+    val errPassword = stringResource(Res.string.settings_backup_err_password)
+    val errCorrupted = stringResource(Res.string.settings_backup_err_corrupted)
+    val importTitle = stringResource(Res.string.settings_backup_import)
 
     Box(Modifier.fillMaxSize().background(Skerry.colors.bg)) {
         Column(Modifier.fillMaxSize()) {
@@ -246,6 +275,28 @@ fun MobileSecurityScreen(state: MobileDesignState) {
                     )
                 }
 
+                HLine()
+
+                // Data backup section: export/import the synced vault records (desktop parity,
+                // shared dialogs + Android SAF file pickers underneath).
+                if (vault != null && vaultCrypto != null) {
+                    HLine()
+                    Txt(stringResource(Res.string.settings_backup_title), color = Skerry.colors.text, size = 14.5.sp, modifier = Modifier.padding(top = 14.dp))
+                    Txt(stringResource(Res.string.settings_backup_desc), color = Skerry.colors.faint, size = 11.5.sp, lineHeight = 16.sp, modifier = Modifier.padding(top = 3.dp))
+                    Column(Modifier.fillMaxWidth().padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        MobileSheetButton(
+                            stringResource(Res.string.settings_backup_export),
+                            onClick = { backupError = null; showExport = true },
+                            icon = "download", filled = false, modifier = Modifier.fillMaxWidth(),
+                        )
+                        MobileSheetButton(
+                            stringResource(Res.string.settings_backup_import),
+                            onClick = { backupError = null; importFile = null; importPreview = null; showImport = true },
+                            icon = "upload", filled = false, modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+
                 // Recent security events from the real log (or "no events yet").
                 Txt(stringResource(Res.string.settings_recent_security_events), color = Skerry.colors.faint, size = 10.sp, weight = FontWeight.SemiBold, letterSpacing = 0.5.sp, modifier = Modifier.padding(top = 18.dp, bottom = 8.dp))
                 val events by produceState(emptyList<SecurityEvent>(), controller, reload) {
@@ -281,6 +332,84 @@ fun MobileSecurityScreen(state: MobileDesignState) {
                 onClose = { changeAccountPwOpen = false },
                 onChanged = { reload++ },
             )
+        }
+
+        if (showExport && vault != null && vaultCrypto != null) {
+            PlatformBackHandler(enabled = true) { showExport = false }
+            BackupExportDialog(
+                busy = backupBusy,
+                error = backupError,
+                onDismiss = { showExport = false },
+                onExport = { password, encrypt ->
+                    backupBusy = true
+                    backupError = null
+                    scope.launch {
+                        val done = withContext(Dispatchers.Default) {
+                            if (!vault.verifyPassword(password)) {
+                                false
+                            } else {
+                                val text = VaultBackupCodec.export(vault, vaultCrypto, password, encrypt = encrypt) { nowMillis().toString() }
+                                val name = if (encrypt) {
+                                    "skerry-backup-" + nowMillis() + ".skerryvault"
+                                } else {
+                                    "skerry-backup-" + nowMillis() + ".json"
+                                }
+                                exportTextFile(name, text) == ExportOutcome.Saved
+                            }
+                        }
+                        backupBusy = false
+                        if (done) showExport = false else backupError = errPassword
+                    }
+                },
+            )
+        }
+
+        if (showImport && vault != null && vaultCrypto != null) {
+            // Pick the file on first open; plain files parse immediately, sealed ones wait for the password.
+            if (importFile == null && importPreview == null) {
+                LaunchedEffect(Unit) {
+                    val picked = importTextFile(importTitle)
+                    if (picked != null) {
+                        when (val result = VaultBackupCodec.load(picked.text, vaultCrypto, password = null)) {
+                            is BackupLoadResult.Ok -> { importFile = picked.text; importPreview = result }
+                            is BackupLoadResult.WrongPassword -> importFile = picked.text
+                            is BackupLoadResult.Corrupted -> {
+                                backupError = errCorrupted
+                                showImport = false
+                            }
+                        }
+                    } else {
+                        showImport = false
+                    }
+                }
+            }
+            if (importFile != null) {
+                val preview = importPreview
+                BackupImportDialog(
+                    records = preview?.backup?.records?.size,
+                    encrypted = preview == null,
+                    busy = backupBusy,
+                    error = backupError,
+                    onDismiss = { showImport = false },
+                    onImport = { password, mode ->
+                        backupBusy = true
+                        backupError = null
+                        scope.launch {
+                            val applied = withContext(Dispatchers.Default) {
+                                val text = importFile!!
+                                val loaded = preview ?: when (val result = VaultBackupCodec.load(text, vaultCrypto, password)) {
+                                    is BackupLoadResult.Ok -> result
+                                    is BackupLoadResult.WrongPassword -> { backupError = errPassword; null }
+                                    is BackupLoadResult.Corrupted -> { backupError = errCorrupted; null }
+                                }
+                                loaded?.let { applyBackup(vault, it.backup, mode) } ?: -1
+                            }
+                            backupBusy = false
+                            if (applied >= 0) showImport = false
+                        }
+                    },
+                )
+            }
         }
     }
 }

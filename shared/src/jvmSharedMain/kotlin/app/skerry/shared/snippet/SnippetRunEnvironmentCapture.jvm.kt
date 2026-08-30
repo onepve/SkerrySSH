@@ -23,6 +23,9 @@ actual fun captureSnippetRunEnvironment(): SnippetRunEnvironment {
             epochSeconds = instant.epochSecond,
         ),
         newUuid = { UUID.randomUUID().toString() },
-        randomChars = { n, alphabet -> buildString(n) { repeat(n) { append(alphabet[secureRandom.nextInt(alphabet.length)]) } } },
+        randomChars = { length, alphabet ->
+            require(alphabet.isNotEmpty()) { "random alphabet must not be empty" }
+            buildString(length) { repeat(length) { append(alphabet[secureRandom.nextInt(alphabet.length)]) } }
+        },
     )
 }

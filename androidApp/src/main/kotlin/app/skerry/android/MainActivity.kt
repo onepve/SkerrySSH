@@ -949,6 +949,7 @@ class MainActivity : FragmentActivity() {
             sharedSessions = sharedSessions,
             securityLog = securityLog,
             localAi = localAi,
+            keepAliveBridge = KeepAliveRuntime.bridge,
         )
     }
 
