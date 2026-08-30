@@ -303,6 +303,7 @@ internal fun LiveHostFolder(
     // Edit pencil in the header, except for the synthetic "Ungrouped" bucket (not renameable).
     val onEditGroup = if (folder.name == UNGROUPED_LABEL) null
         else remember(state, folder.name) { { state.openRenameGroup(folder.name) } }
+    val isAnyFolderDragging = dragState.draggingFolderName != null
     val isThisFolderDragging = dragState.draggingFolderName == folder.name
     // Highlights the target folder while a host is dragged over it.
     val isDropTarget = dragState.draggingHostId != null && dragState.activeHostDrop?.group == group
@@ -352,8 +353,9 @@ internal fun LiveHostFolder(
             val headerName = if (folder.name == UNGROUPED_LABEL) ungroupedLabel() else folder.name
             FolderHeader(headerName, folder.hosts.size, collapsed, onToggleCollapsed, onEditGroup)
         }
-        // A collapsed folder shows only the header; also hide host list while dragging this folder.
-        if (!collapsed && !isThisFolderDragging) Column(Modifier.padding(start = 22.dp)) {
+        // A collapsed folder shows only the header; when any folder is dragged, all folders
+        // temporarily collapse to allow fast, compact and predictable folder reordering.
+        if (!collapsed && !isAnyFolderDragging) Column(Modifier.padding(start = 22.dp)) {
             if (folder.name == UNGROUPED_LABEL) {
                 // No-group bucket: sub-group by connection type with a small header per transport.
                 // Reorder insertion lines are dropped here (ordering a typeless bucket is moot); a

@@ -240,6 +240,7 @@ fun <T> FolderSections(
             val dropIndex = if (isDropTarget) dragState.activeDrop?.index?.coerceIn(0, others.size) else null
             val lineBeforeId = dropIndex?.takeIf { it < others.size }?.let { itemKey(others[it]) }
 
+            val isAnyFolderDragging = dragState.draggingFolderName != null
             val isThisFolderDragging = dragState.isFolderDragging(folder.name)
             val folderAlpha = if (isThisFolderDragging) 0.6f else 1f
 
@@ -276,7 +277,9 @@ fun <T> FolderSections(
                         isDropTarget = isDropTarget,
                     )
                 }
-                if (!collapsed && !isThisFolderDragging) {
+                // When any folder is being dragged, temporarily collapse all folders into compact headers
+                // so the user can easily reorder between groups without list jumping.
+                if (!collapsed && !isAnyFolderDragging) {
                     folder.items.forEach { row ->
                         val key = itemKey(row)
                         key(key) {

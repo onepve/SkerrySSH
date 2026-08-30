@@ -171,6 +171,7 @@ private fun MobileHostFolder(
     // (stable slot-table position); takeIf controls pencil visibility.
     val onEdit = remember(state, folder.name) { { state.openRenameGroup(folder.name) } }
         .takeIf { controller != null && folder.name != UNGROUPED_LABEL }
+    val isAnyFolderDragging = dragState.draggingFolderName != null
     val isThisFolderDragging = dragState.draggingFolderName == folder.name
     // Highlights the target folder while a host is dragged over it.
     val isDropTarget = dragState.draggingHostId != null && dragState.activeHostDrop?.group == group
@@ -205,8 +206,9 @@ private fun MobileHostFolder(
             val folderTitle = if (folder.name == UNGROUPED_LABEL) ungroupedLabel() else folder.name
             MobileFolderHeader(folderTitle, folder.hosts.size, collapsed, isDropTarget, onToggle, onEdit, isDragging = isThisFolderDragging)
         }
-        // A collapsed folder shows only its header; also hide hosts while dragging this folder.
-        if (!collapsed && !isThisFolderDragging) {
+        // A collapsed folder shows only its header; when any folder is dragged, all folders
+        // temporarily collapse to allow fast, compact and predictable folder reordering.
+        if (!collapsed && !isAnyFolderDragging) {
             Column(Modifier.padding(horizontal = 22.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 folder.hosts.forEach { host ->
                     key(host.id) {
