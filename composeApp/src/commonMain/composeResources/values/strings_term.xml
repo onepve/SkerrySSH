@@ -5,6 +5,7 @@
     <string name="term_new_connection">New connection</string>
     <string name="term_search_hosts_placeholder">Search hosts, tags, IPs…</string>
     <string name="term_menu_run_snippet">Run snippet…</string>
+    <string name="term_menu_open_native">Open externally</string>
     <string name="term_menu_edit">Edit</string>
     <string name="term_menu_duplicate">Duplicate</string>
     <string name="term_menu_delete">Delete</string>

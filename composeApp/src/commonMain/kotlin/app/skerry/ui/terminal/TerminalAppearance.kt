@@ -43,8 +43,22 @@ enum class TerminalFont(val displayName: String, val id: String) {
 
         /** Parses a persisted [id] back into a value; unknown/`null` → [DEFAULT]. */
         fun fromId(id: String?): TerminalFont = entries.firstOrNull { it.id == id } ?: DEFAULT
+
+        /**
+         * Locale-aware first-run default: a Chinese system UI gets the CJK-aligned font (2:1
+         * Chinese/ASCII metrics), everyone else stays on Hack. Used only where the user has never
+         * picked a font (no persisted id) — an explicit choice always wins.
+         */
+        fun defaultForLocale(tag: String?): TerminalFont =
+            if (tag != null && tag.lowercase().startsWith("zh")) MapleMono else DEFAULT
     }
 }
+
+/** [TerminalFont.defaultForLocale] from the current system locale tag (e.g. "zh-CN"). */
+fun terminalFontDefaultForLocale(): TerminalFont = TerminalFont.defaultForLocale(currentLocaleTag())
+
+/** System UI locale tag (BCP 47, e.g. "zh-CN", "en-US"); null when unavailable. */
+expect fun currentLocaleTag(): String?
 
 /**
  * Default terminal font size. Applied as `.sp` (see [TerminalAppearance.fontSizeSp]); the slider

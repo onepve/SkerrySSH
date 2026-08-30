@@ -1,6 +1,8 @@
 package app.skerry.ui.mobile
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -57,6 +59,11 @@ import app.skerry.ui.generated.resources.term_record_stop
 import app.skerry.ui.generated.resources.term_palette_title
 import app.skerry.ui.generated.resources.term_no_active_session
 import app.skerry.ui.generated.resources.term_mobile_open_host_connect
+import app.skerry.ui.generated.resources.keepalive_banner_warning
+import app.skerry.ui.generated.resources.keepalive_banner_setup
+import app.skerry.ui.app.LocalKeepAliveBridge
+import app.skerry.ui.design.Sym
+import app.skerry.ui.design.Txt
 import app.skerry.ui.generated.resources.term_connecting
 import app.skerry.ui.generated.resources.term_connection_failed
 import app.skerry.ui.generated.resources.term_ai_dismiss
@@ -67,6 +74,7 @@ import app.skerry.ui.design.CloseWhenUnavailable
 import app.skerry.ui.design.NoticeDialog
 import app.skerry.ui.app.LocalAi
 import app.skerry.ui.app.LocalHosts
+import app.skerry.ui.app.LocalRunbookRunner
 import app.skerry.ui.app.LocalRunbooks
 import app.skerry.ui.app.LocalSessions
 import app.skerry.ui.app.LocalTeams
@@ -77,6 +85,7 @@ import app.skerry.ui.app.MobileRoute
 import app.skerry.ui.app.MobileTab
 import app.skerry.ui.app.mobileTabBarUnderRoute
 import app.skerry.ui.design.Txt
+import app.skerry.ui.runbook.runbookTarget
 import app.skerry.ui.terminal.filePathFromSelection
 import app.skerry.ui.session.broadcastTargets
 import kotlinx.coroutines.launch
@@ -138,6 +147,8 @@ fun MobileTerminalScreen(state: MobileDesignState) {
     // otherwise the inline sheet would take part in the Row layout and break it. Available only when
     // connected and a snippet library is attached.
     var paletteOpen by remember(active?.id) { mutableStateOf(false) }
+    // Runbook run sheet, raised from the terminal menu when runbooks are available.
+    var runbookOpen by remember(active?.id) { mutableStateOf(false) }
     // The more_horiz menu (Disconnect) is an inline sheet at the screen's root Box, not a focusable
     // [MobileActionSheet] Popup: over an open soft keyboard a Popup measures against the shrunk window and
     // hangs at the old keyboard line with a gap below. Inline lives in the same window with live insets.
@@ -156,6 +167,8 @@ fun MobileTerminalScreen(state: MobileDesignState) {
     // Command history palette (desktop ⌘K parity) — same menu, connected only.
     var historyOpen by remember(active?.id) { mutableStateOf(false) }
     val snippets = LocalSnippets.current
+    val runbooks = LocalRunbooks.current
+    val runner = LocalRunbookRunner.current
     val activeTerminal = (active?.controller?.uiState as? ConnectionUiState.Connected)?.terminal
     val canRunSnippet = snippets != null && activeTerminal != null
     // Same rule as the desktop toolbar's popups: the pane id survives a drop (the controller
@@ -163,6 +176,7 @@ fun MobileTerminalScreen(state: MobileDesignState) {
     // be back over the terminal the moment auto-reconnect lands.
     CloseWhenUnavailable(activeTerminal != null) {
         paletteOpen = false
+        runbookOpen = false
         monitorOpen = false
         historyOpen = false
     }
@@ -207,6 +221,43 @@ fun MobileTerminalScreen(state: MobileDesignState) {
                 // A blank terminal is useless on a phone, so "+" leads to where a session starts.
                 onNew = { state.select(MobileTab.Hosts) },
             )
+            val keepAliveBridge = LocalKeepAliveBridge.current
+            var keepAliveDismissed by remember { mutableStateOf(false) }
+            val showKeepAlivePrompt = keepAliveBridge?.isKeepAliveConfigSupported == true &&
+                !keepAliveBridge.isOptimizedForKeepAlive() &&
+                !keepAliveDismissed &&
+                active?.controller?.uiState is ConnectionUiState.Connected
+            if (showKeepAlivePrompt) {
+                Row(
+                    Modifier.fillMaxWidth()
+                        .background(Skerry.colors.amber.copy(alpha = 0.15f))
+                        .padding(horizontal = 12.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Sym("warning", size = 15.sp, color = Skerry.colors.amber)
+                    Txt(
+                        stringResource(Res.string.keepalive_banner_warning),
+                        color = Skerry.colors.text,
+                        size = 11.5.sp,
+                        lineHeight = 15.sp,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Txt(
+                        stringResource(Res.string.keepalive_banner_setup),
+                        color = Skerry.colors.cyanBright,
+                        size = 12.sp,
+                        weight = FontWeight.SemiBold,
+                        modifier = Modifier.clickable { state.push(MobileRoute.KeepAlive) },
+                    )
+                    Txt(
+                        "✕",
+                        color = Skerry.colors.dim,
+                        size = 12.sp,
+                        modifier = Modifier.clickable { keepAliveDismissed = true }.padding(horizontal = 4.dp),
+                    )
+                }
+            }
             when (val st = active?.controller?.uiState) {
                 null, ConnectionUiState.Form ->
                     MobileTerminalNotice("terminal", stringResource(Res.string.term_no_active_session), stringResource(Res.string.term_mobile_open_host_connect))
@@ -321,6 +372,23 @@ fun MobileTerminalScreen(state: MobileDesignState) {
                 onDismiss = { paletteOpen = false },
             )
         }
+        if (runbookOpen && runbooks != null && active != null) {
+            val term = activeTerminal
+            if (term != null) {
+                MobileRunbookRunSheet(
+                    manager = runbooks,
+                    onRun = { entry ->
+                        runner?.requestStart(
+                            entry.runbook,
+                            runbookTarget(active.id, term, active.controller),
+                            recording = term.recording,
+                        )
+                        runbookOpen = false
+                    },
+                    onDismiss = { runbookOpen = false },
+                )
+            }
+        }
         if (monitorOpen && active?.controller != null && activeTerminal != null) {
             MobileHostMonitorSheet(active.controller, onDismiss = { monitorOpen = false })
         }
@@ -373,13 +441,10 @@ fun MobileTerminalScreen(state: MobileDesignState) {
                             filled = false,
                         )
                     }
-                    if (activeTerminal != null && LocalRunbooks.current != null) {
-                        // No popup picker here (the phone has no room for one over the terminal):
-                        // the row opens the library, whose Run comes straight back with the start
-                        // confirmation and the progress panel over this screen.
+                    if (activeTerminal != null && runbooks != null) {
                         MobileSheetButton(
                             label = stringResource(Res.string.runbook_section),
-                            onClick = { menuOpen = false; state.push(MobileRoute.Runbooks) },
+                            onClick = { menuOpen = false; runbookOpen = true },
                             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                             icon = "checklist",
                             filled = false,

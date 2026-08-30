@@ -31,6 +31,25 @@ enum class MetricsExposure {
 }
 
 /**
+ * Who may register a new account. [INVITE] is the fork's addition: only an account id that was
+ * pre-registered with a valid invite code may register (see `InviteRepository` / `InviteRoutes`).
+ * An unrecognized value falls back to [CLOSED], matching the author's fail-closed rule: only an
+ * explicit "open" ever opens registration, so a typo can't open it. The env default itself is
+ * "open" (see `fromEnv`), preserved for backward compatibility.
+ */
+enum class RegistrationMode {
+    OPEN,
+    CLOSED,
+    INVITE,
+    ;
+
+    companion object {
+        fun parse(raw: String): RegistrationMode =
+            entries.firstOrNull { it.name.equals(raw.trim(), ignoreCase = true) } ?: CLOSED
+    }
+}
+
+/**
  * Server config from environment variables (single-.env model). All values have sane defaults for local runs; production only requires a stable [jwtSecret]
  * — otherwise a restart invalidates every issued token.
  *
@@ -64,10 +83,12 @@ data class ServerConfig(
      * direct connection.
      */
     val trustedProxies: List<String>,
-    /** Whether `POST /auth/register` accepts new accounts (Vaultwarden's SIGNUPS_ALLOWED). Closed ⇒ 403. */
-    val registrationOpen: Boolean,
+    /** Registration policy: OPEN (anyone), CLOSED (nobody), INVITE (only pre-registered ids). */
+    val registration: RegistrationMode,
     /** Hard cap on total accounts (backstop for an instance left open). 0 ⇒ unlimited. */
     val maxAccounts: Int,
+    /** Lifetime of an invite pre-registration before it expires (seconds). */
+    val preregTtlSeconds: Long,
     /** Who may scrape `/metrics`. Default [MetricsExposure.OFF]. */
     val metrics: MetricsExposure,
     /** Bearer token for [MetricsExposure.TOKEN]. Deliberately separate from [adminToken]. */
@@ -118,9 +139,10 @@ data class ServerConfig(
                 maxRequestBodyBytes = long("SKERRY_MAX_BODY_BYTES", 4L * 1024 * 1024), // 4 MiB
                 trustedProxies = str("SKERRY_TRUSTED_PROXIES", "")
                     .split(",").map { it.trim() }.filter { it.isNotEmpty() },
-                // Default open for backward compatibility; anything other than "open" (case-insensitive) closes it.
-                registrationOpen = str("SKERRY_REGISTRATION", "open").equals("open", ignoreCase = true),
+                // Default open for backward compatibility; "invite" is the fork's gated mode.
+                registration = RegistrationMode.parse(str("SKERRY_REGISTRATION", "open")),
                 maxAccounts = int("SKERRY_MAX_ACCOUNTS", 0).coerceAtLeast(0),
+                preregTtlSeconds = long("SKERRY_PREREG_TTL", 1800),
                 metrics = MetricsExposure.parse(str("SKERRY_METRICS", "off")),
                 metricsToken = str("SKERRY_METRICS_TOKEN", ""),
                 // Floor of 15s: below that the collector scans `records` more often than the numbers

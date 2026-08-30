@@ -5,6 +5,7 @@
     <string name="term_new_connection">新建连接</string>
     <string name="term_search_hosts_placeholder">搜索主机、标签、IP…</string>
     <string name="term_menu_run_snippet">运行片段…</string>
+    <string name="term_menu_open_native">外部打开</string>
     <string name="term_menu_edit">编辑</string>
     <string name="term_menu_duplicate">创建副本</string>
     <string name="term_menu_delete">删除</string>
