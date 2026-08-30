@@ -5,9 +5,11 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -29,6 +31,7 @@ import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.skerry.ui.host.FolderBounds
@@ -72,6 +75,7 @@ suspend fun PointerInputScope.detectDeadZoneDragGestures(
     onMove: (PointerInputChange, Offset) -> Unit,
     onEnd: () -> Unit,
     onCancel: () -> Unit,
+    onClick: (() -> Unit)? = null,
 ) = awaitEachGesture {
     val down = awaitFirstDown(requireUnconsumed = false)
     val threshold =
@@ -86,7 +90,11 @@ suspend fun PointerInputScope.detectDeadZoneDragGestures(
                 break
             }
             if (change.changedToUpIgnoreConsumed()) {
-                if (tracker.dragging) onEnd()
+                if (tracker.dragging) {
+                    onEnd()
+                } else {
+                    onClick?.invoke()
+                }
                 break
             }
             tracker.onDelta(change, threshold, onStart, onMove)
@@ -213,6 +221,7 @@ fun <T> Modifier.draggableFolderHeader(
     name: String,
     folders: () -> List<Folder<T>>,
     longPress: Boolean = false,
+    onToggle: (() -> Unit)? = null,
     onDrop: (Int) -> Unit,
 ): Modifier = pointerInput(name, longPress) {
     var moved = false
@@ -233,9 +242,20 @@ fun <T> Modifier.draggableFolderHeader(
     }
     val onCancel = { state.endDrag() }
     if (longPress) {
-        detectDragGesturesAfterLongPress(onDragStart = onStart, onDrag = onMove, onDragEnd = onEnd, onDragCancel = onCancel)
+        detectDragGesturesAfterLongPress(
+            onDragStart = onStart,
+            onDrag = onMove,
+            onDragEnd = onEnd,
+            onDragCancel = onCancel,
+        )
     } else {
-        detectDeadZoneDragGestures(onStart, onMove, onEnd, onCancel)
+        detectDeadZoneDragGestures(
+            onStart = onStart,
+            onMove = onMove,
+            onEnd = onEnd,
+            onCancel = onCancel,
+            onClick = onToggle,
+        )
     }
 }
 
@@ -279,15 +299,36 @@ fun <T> Modifier.draggableItemRow(
 }
 
 @Composable
-fun ListDropLine(modifier: Modifier = Modifier) {
-    Box(
-        modifier
+fun ListDropLine(
+    modifier: Modifier = Modifier,
+    horizontal: Dp = 18.dp,
+) {
+    Row(
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 18.dp, vertical = 2.dp)
-            .height(2.dp)
-            .clip(RoundedCornerShape(1.dp))
-            .background(Skerry.colors.cyan),
-    )
+            .padding(horizontal = horizontal, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier
+                .size(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(Skerry.colors.cyanBright)
+        )
+        Box(
+            Modifier
+                .weight(1f)
+                .height(3.dp)
+                .clip(RoundedCornerShape(1.5.dp))
+                .background(Skerry.colors.cyan)
+        )
+        Box(
+            Modifier
+                .size(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(Skerry.colors.cyanBright)
+        )
+    }
 }
 
 @Composable

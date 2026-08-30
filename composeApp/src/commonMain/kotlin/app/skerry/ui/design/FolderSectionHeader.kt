@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
@@ -37,8 +38,8 @@ import app.skerry.ui.theme.Skerry
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Folder header of a list section: chevron + folder icon + name + count, the whole row folding the
- * section on a click.
+ * Folder header of a list section: chevron + folder icon + name + count.
+ * The chevron toggles collapsed state; the header body acts as a drag surface.
  */
 @Composable
 fun FolderSectionHeader(
@@ -49,6 +50,8 @@ fun FolderSectionHeader(
     modifier: Modifier = Modifier,
     padding: PaddingValues = PaddingValues(horizontal = 18.dp, vertical = 8.dp),
     onEdit: (() -> Unit)? = null,
+    isDragging: Boolean = false,
+    isDropTarget: Boolean = false,
 ) {
     val label = folderLabel(name)
     val action = stringResource(
@@ -62,6 +65,23 @@ fun FolderSectionHeader(
     Row(
         modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(6.dp))
+            .background(
+                when {
+                    isDragging -> Skerry.colors.card
+                    isDropTarget -> Skerry.colors.cyan.copy(alpha = 0.12f)
+                    else -> Color.Transparent
+                }
+            )
+            .border(
+                1.dp,
+                when {
+                    isDragging -> Skerry.colors.cyan
+                    isDropTarget -> Skerry.colors.cyanBright
+                    else -> Color.Transparent
+                },
+                RoundedCornerShape(6.dp)
+            )
             .clickable(onClickLabel = action, role = Role.Button, onClick = onToggle)
             .semantics { stateDescription = state }
             .padding(padding),
@@ -69,10 +89,10 @@ fun FolderSectionHeader(
         horizontalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         Sym(if (collapsed) "chevron_right" else "expand_more", size = 16.sp, color = Skerry.colors.faint)
-        Sym("folder_open", size = 15.sp, color = Skerry.colors.cyanBright)
+        Sym("folder_open", size = 15.sp, color = if (isDragging || isDropTarget) Skerry.colors.cyanBright else Skerry.colors.cyanBright)
         Txt(
             label,
-            color = Skerry.colors.dim,
+            color = if (isDragging || isDropTarget) Skerry.colors.cyanBright else Skerry.colors.dim,
             size = 12.5.sp,
             weight = FontWeight.Medium,
             maxLines = 1,
@@ -220,15 +240,14 @@ fun <T> FolderSections(
             val dropIndex = if (isDropTarget) dragState.activeDrop?.index?.coerceIn(0, others.size) else null
             val lineBeforeId = dropIndex?.takeIf { it < others.size }?.let { itemKey(others[it]) }
 
-            val folderAlpha = if (dragState.isFolderDragging(folder.name)) 0.4f else 1f
+            val isThisFolderDragging = dragState.isFolderDragging(folder.name)
+            val folderAlpha = if (isThisFolderDragging) 0.6f else 1f
 
             Column(
                 Modifier
                     .fillMaxWidth()
                     .alpha(folderAlpha)
                     .folderRangeAnchor(dragState, folder.name)
-                    .clip(RoundedCornerShape(6.dp))
-                    .border(1.dp, if (isDropTarget) Skerry.colors.cyan else Color.Transparent, RoundedCornerShape(6.dp))
             ) {
                 val headerModifier = if (canMoveGroup && folder.name != UNGROUPED_FOLDER) {
                     Modifier
@@ -239,6 +258,7 @@ fun <T> FolderSections(
                             name = folder.name,
                             folders = { folders },
                             longPress = longPress,
+                            onToggle = { collapse.toggleGroupCollapsed(collapseKey) },
                             onDrop = { targetIndex ->
                                 onMoveGroup?.invoke(targetGroup, targetIndex)
                             },
@@ -253,9 +273,11 @@ fun <T> FolderSections(
                         onToggle = { collapse.toggleGroupCollapsed(collapseKey) },
                         padding = headerPadding,
                         onEdit = onEdit,
+                        isDragging = isThisFolderDragging,
+                        isDropTarget = isDropTarget,
                     )
                 }
-                if (!collapsed) {
+                if (!collapsed && !isThisFolderDragging) {
                     folder.items.forEach { row ->
                         val key = itemKey(row)
                         key(key) {
