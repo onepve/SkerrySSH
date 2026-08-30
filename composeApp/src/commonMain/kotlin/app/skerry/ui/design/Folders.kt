@@ -154,4 +154,7 @@ interface FolderCollapse {
     fun expandGroup(name: String) {
         if (isGroupCollapsed(name)) toggleGroupCollapsed(name)
     }
+    fun collapseGroup(name: String) {
+        if (!isGroupCollapsed(name)) toggleGroupCollapsed(name)
+    }
 }

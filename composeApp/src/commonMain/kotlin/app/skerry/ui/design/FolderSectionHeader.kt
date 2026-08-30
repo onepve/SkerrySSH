@@ -116,6 +116,7 @@ fun <T> FolderSections(
     itemKey: (T) -> String,
     selectedIds: Set<String> = emptySet(),
     headerPadding: PaddingValues = PaddingValues(horizontal = 18.dp, vertical = 8.dp),
+    longPress: Boolean = false,
     onEditGroup: ((String) -> Unit)? = null,
     onMoveItem: ((itemId: String, targetGroup: String?, targetIndexInGroup: Int) -> Unit)? = null,
     onMoveItems: ((itemIds: Set<String>, targetGroup: String?, targetIndexInGroup: Int) -> Unit)? = null,
@@ -174,6 +175,7 @@ fun <T> FolderSections(
                                         folders = { listOf(singleFolder) },
                                         keyOf = itemKey,
                                         selectedIds = { selectedIds },
+                                        longPress = longPress,
                                         onDrop = { drop, movingIds -> performMove(movingIds, drop.group, drop.index) },
                                     )
                                 } else Modifier
@@ -244,10 +246,7 @@ fun <T> FolderSections(
                                         folders = { folders },
                                         keyOf = itemKey,
                                         selectedIds = { selectedIds },
-                                        onHoverFolder = { name ->
-                                            val cKey = folderCollapseKey(scope, name)
-                                            collapse.expandGroup(cKey)
-                                        },
+                                        longPress = longPress,
                                         onDrop = { drop, movingIds -> performMove(movingIds, drop.group, drop.index) },
                                     )
                             } else Modifier.fillMaxWidth()

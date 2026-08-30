@@ -54,6 +54,7 @@ internal fun MobileSnippetLibrary(
     collapse: FolderCollapse,
     onEdit: (SnippetEntry) -> Unit,
     onRenameCategory: (String) -> Unit,
+    onMoveItems: ((itemIds: Set<String>, targetGroup: String?, targetIndexInGroup: Int) -> Unit)? = null,
 ) {
     val tagged = hasCategories(all)
     val visible = library.visible(all)
@@ -91,6 +92,8 @@ internal fun MobileSnippetLibrary(
             group = { it.snippet.group },
             itemKey = { it.id },
             headerPadding = mobileFolderHeaderPadding(),
+            longPress = true,
+            onMoveItems = onMoveItems,
         ) { entry ->
             val onClick = remember(entry.id) { { onEdit(entry) } }
             MobileSnippetCard(entry.snippet, onClick)

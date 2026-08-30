@@ -168,6 +168,9 @@ private fun MobileSnippetsLive(state: MobileDesignState, manager: SnippetManager
                     collapse = state,
                     onEdit = { entry -> editing = entry; adding = false },
                     onRenameCategory = { tag -> renamingTag = tag },
+                    onMoveItems = { ids, targetGroup, targetIndex ->
+                        manager.moveSnippets(ids, targetGroup, targetIndex)
+                    },
                 )
             }
             // Clears the tab bar and the FAB above it (bottom 104dp + 56dp size + 16dp margin), so the last

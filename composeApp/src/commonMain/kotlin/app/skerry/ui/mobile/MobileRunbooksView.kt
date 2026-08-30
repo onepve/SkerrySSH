@@ -148,6 +148,10 @@ fun MobileRunbooksScreen(state: MobileDesignState) {
                         group = { it.runbook.group },
                         itemKey = { it.id },
                         headerPadding = mobileFolderHeaderPadding(),
+                        longPress = true,
+                        onMoveItems = { ids, targetGroup, targetIndex ->
+                            manager.moveRunbooks(ids, targetGroup, targetIndex)
+                        },
                     ) { entry ->
                         RunbookCard(entry, mono) { editing = entry; adding = false }
                     }

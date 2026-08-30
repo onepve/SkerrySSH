@@ -35,7 +35,6 @@ import app.skerry.ui.host.FolderBounds
 import app.skerry.ui.host.HostDrop
 import app.skerry.ui.theme.Skerry
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
 
 private val MOUSE_DRAG_DEAD_ZONE = 6.dp
 
@@ -99,7 +98,7 @@ suspend fun PointerInputScope.detectDeadZoneDragGestures(
 
 /**
  * Drag state for item lists partitioned into folders (Snippets, Runbooks, Keychain).
- * Supports single-item and multi-selection batch dragging, hover auto-expansion, and magnet boundaries.
+ * Supports single-item and multi-selection batch dragging and folder drop targeting.
  */
 @Stable
 class ListDragState {
@@ -123,6 +122,7 @@ class ListDragState {
     fun isItemDragging(id: String): Boolean = id in draggingIds
 
     fun setItemBounds(id: String, rect: Rect) { itemBounds[id] = rect }
+    fun clearItemBounds(id: String) { itemBounds.remove(id) }
     fun setFolderRange(name: String, rect: Rect) { folderRange[name] = rect }
 
     fun startDrag(id: String, localOffsetY: Float, selectedIds: Set<String> = emptySet()) {
@@ -144,7 +144,7 @@ class ListDragState {
                 bottom = range.bottom,
                 otherHostCentersY = folder.items
                     .filter { keyOf(it) !in draggingIds }
-                    .mapNotNull { itemBounds[keyOf(it)]?.let { b -> (b.top + b.bottom) / 2f } }
+                    .mapNotNull { itemBounds[keyOf(it)]?.let { b -> (b.top + b.bottom) / 2f } },
             )
         }
 
@@ -160,15 +160,6 @@ class ListDragState {
             ?: if (pointerY < bounds.first().top) bounds.first() else bounds.last()
         val index = matchingFolder.otherHostCentersY.count { it < pointerY }
         return HostDrop(matchingFolder.group, index)
-    }
-
-    fun findHoveredFolderName(): String? {
-        for ((name, rect) in folderRange) {
-            if (name != UNGROUPED_FOLDER && pointerY >= rect.top - 8f && pointerY <= rect.top + 48f) {
-                return name
-            }
-        }
-        return null
     }
 
     fun endDrag() {
@@ -191,7 +182,6 @@ fun <T> Modifier.draggableItemRow(
     keyOf: (T) -> String,
     selectedIds: () -> Set<String> = { emptySet() },
     longPress: Boolean = false,
-    onHoverFolder: ((String) -> Unit)? = null,
     onDrop: (drop: HostDrop, movingIds: Set<String>) -> Unit,
 ): Modifier = pointerInput(id, longPress) {
     var moved = false
@@ -205,10 +195,6 @@ fun <T> Modifier.draggableItemRow(
         moved = true
         state.dragBy(amount.y)
         state.refreshDrop(folders(), keyOf)
-        state.findHoveredFolderName()?.let { folderName ->
-            onHoverFolder?.invoke(folderName)
-        }
-        Unit
     }
     val onEnd = {
         if (moved) {
