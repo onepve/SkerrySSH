@@ -120,6 +120,7 @@ fun <T> FolderSections(
     onEditGroup: ((String) -> Unit)? = null,
     onMoveItem: ((itemId: String, targetGroup: String?, targetIndexInGroup: Int) -> Unit)? = null,
     onMoveItems: ((itemIds: Set<String>, targetGroup: String?, targetIndexInGroup: Int) -> Unit)? = null,
+    onMoveGroup: ((group: String?, targetGroupIndex: Int) -> Unit)? = null,
     item: @Composable (T) -> Unit,
 ) {
     val groupList = items.map { group(it) }
@@ -127,7 +128,8 @@ fun <T> FolderSections(
     val hasAnyFolders = hasFolders(items, group)
 
     val canMove = onMoveItems != null || onMoveItem != null
-    if (!hasAnyFolders && !canMove) {
+    val canMoveGroup = onMoveGroup != null
+    if (!hasAnyFolders && !canMove && !canMoveGroup) {
         items.forEach { row -> key(itemKey(row)) { item(row) } }
         return
     }
@@ -199,8 +201,13 @@ fun <T> FolderSections(
         return
     }
 
+    val otherFolders = folders.filter { it.name != dragState.draggingFolderName }
+    val folderLineIndex = dragState.draggingFolderName?.let { dragState.activeFolderDropIndex }
+    val folderLineBefore = folderLineIndex?.takeIf { it < otherFolders.size }?.let { otherFolders[it].name }
+
     folders.forEach { folder ->
         key(folder.name) {
+            if (folder.name == folderLineBefore) ListDropLine()
             val collapseKey = folderCollapseKey(scope, folder.name)
             val collapsed = collapse.isGroupCollapsed(collapseKey)
             val targetGroup = if (folder.name == UNGROUPED_FOLDER) null else folder.name
@@ -213,21 +220,41 @@ fun <T> FolderSections(
             val dropIndex = if (isDropTarget) dragState.activeDrop?.index?.coerceIn(0, others.size) else null
             val lineBeforeId = dropIndex?.takeIf { it < others.size }?.let { itemKey(others[it]) }
 
+            val folderAlpha = if (dragState.isFolderDragging(folder.name)) 0.4f else 1f
+
             Column(
                 Modifier
                     .fillMaxWidth()
+                    .alpha(folderAlpha)
                     .folderRangeAnchor(dragState, folder.name)
                     .clip(RoundedCornerShape(6.dp))
                     .border(1.dp, if (isDropTarget) Skerry.colors.cyan else Color.Transparent, RoundedCornerShape(6.dp))
             ) {
-                FolderSectionHeader(
-                    name = folder.name,
-                    count = folder.items.size,
-                    collapsed = collapsed,
-                    onToggle = { collapse.toggleGroupCollapsed(collapseKey) },
-                    padding = headerPadding,
-                    onEdit = onEdit,
-                )
+                val headerModifier = if (canMoveGroup && folder.name != UNGROUPED_FOLDER) {
+                    Modifier
+                        .fillMaxWidth()
+                        .folderHeaderAnchor(dragState, folder.name)
+                        .draggableFolderHeader(
+                            state = dragState,
+                            name = folder.name,
+                            folders = { folders },
+                            longPress = longPress,
+                            onDrop = { targetIndex ->
+                                onMoveGroup?.invoke(targetGroup, targetIndex)
+                            },
+                        )
+                } else Modifier.fillMaxWidth()
+
+                Box(headerModifier) {
+                    FolderSectionHeader(
+                        name = folder.name,
+                        count = folder.items.size,
+                        collapsed = collapsed,
+                        onToggle = { collapse.toggleGroupCollapsed(collapseKey) },
+                        padding = headerPadding,
+                        onEdit = onEdit,
+                    )
+                }
                 if (!collapsed) {
                     folder.items.forEach { row ->
                         val key = itemKey(row)
@@ -270,4 +297,5 @@ fun <T> FolderSections(
             }
         }
     }
+    if (folderLineIndex != null && folderLineIndex == otherFolders.size) ListDropLine()
 }

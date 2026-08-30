@@ -42,6 +42,24 @@ fun moveSnippetToGroup(
 ): List<Snippet> = moveSnippetsToGroup(snippets, setOf(snippetId), targetGroup, targetIndexInGroup)
 
 /**
+ * Move folder [group] as a whole to [targetGroupIndex] among folders (snippet order within it is
+ * preserved). Index is clamped; unknown [group] leaves the list unchanged.
+ */
+fun moveSnippetGroup(snippets: List<Snippet>, group: String?, targetGroupIndex: Int): List<Snippet> {
+    val canonical = normalizeGroup(group)
+    val buckets = LinkedHashMap<String?, MutableList<Snippet>>()
+    for (s in snippets) {
+        buckets.getOrPut(normalizeGroup(s.group)) { mutableListOf() }.add(s)
+    }
+    val keys = buckets.keys.toMutableList()
+    val from = keys.indexOf(canonical)
+    if (from < 0) return snippets
+    keys.removeAt(from)
+    keys.add(targetGroupIndex.coerceIn(0, keys.size), canonical)
+    return keys.flatMap { buckets.getValue(it) }
+}
+
+/**
  * Rename group [oldName] to [newName] across all snippets.
  * Blank/null [newName] ungroups the snippets (`Snippet.group = null`), which is also how a group is deleted.
  */

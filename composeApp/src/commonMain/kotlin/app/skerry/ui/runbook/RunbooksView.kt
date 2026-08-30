@@ -163,6 +163,9 @@ private fun LiveRunbooksView(manager: RunbookManager, state: DesktopDesignState,
                             onMoveItems = { ids, targetGroup, targetIndex ->
                                 manager.moveRunbooks(ids, targetGroup, targetIndex)
                             },
+                            onMoveGroup = { group, targetIndex ->
+                                manager.moveGroup(group, targetIndex)
+                            },
                         ) { entry ->
                             // Keyed by id so selecting a row doesn't recreate every row's lambda.
                             val isSelected = entry.id in selectedIds || entry.id == selected?.id

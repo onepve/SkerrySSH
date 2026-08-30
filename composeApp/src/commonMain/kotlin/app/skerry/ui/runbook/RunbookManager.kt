@@ -103,6 +103,12 @@ class RunbookManager(
         runbooks = store.all().map { RunbookEntry(it.canonical()) }
     }
 
+    /** Move folder [group] to [targetGroupIndex] among folders. */
+    fun moveGroup(group: String?, targetGroupIndex: Int) {
+        store.reorder { moveRunbookGroup(it, group, targetGroupIndex) }
+        runbooks = store.all().map { RunbookEntry(it.canonical()) }
+    }
+
     /** Rename group [oldName] to [newName] across all runbooks. */
     fun renameGroup(oldName: String, newName: String) {
         store.reorder { renameRunbookGroup(it, oldName, newName) }

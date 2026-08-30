@@ -17,12 +17,12 @@ class SnippetGroupingTest {
     ) = SnippetEntry(Snippet(id = label, label = label, command = command, tags = tags, notes = notes, group = group))
 
     @Test
-    fun groups_by_folder_in_alphabetical_order() {
+    fun groups_by_folder_in_source_order() {
         val groups = groupSnippetsByCategory(
             listOf(entry("Disk", group = "disk"), entry("Ports", group = "net"), entry("Containers", group = "docker")),
         )
 
-        assertEquals(listOf("disk", "docker", "net"), groups.map { it.name })
+        assertEquals(listOf("disk", "net", "docker"), groups.map { it.name })
     }
 
     @Test
@@ -69,12 +69,12 @@ class SnippetGroupingTest {
     }
 
     @Test
-    fun group_chips_are_all_plus_sorted_unique_folders() {
+    fun group_chips_are_all_plus_unique_folders_in_source_order() {
         val chips = snippetGroupChips(
             listOf(entry("a", group = "net"), entry("b", group = "disk"), entry("c")),
         )
 
-        assertEquals(listOf(ALL_SNIPPETS_CHIP, "disk", "net", UNGROUPED_FOLDER), chips)
+        assertEquals(listOf(ALL_SNIPPETS_CHIP, "net", "disk", UNGROUPED_FOLDER), chips)
     }
 
     @Test

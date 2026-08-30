@@ -89,4 +89,19 @@ class RunbookReorderingTest {
         assertEquals(null, result.first { it.id == "r1" }.group)
         assertEquals("Backup", result.first { it.id == "r2" }.group)
     }
+
+    @Test
+    fun `moveRunbookGroup reorders whole folder blocks`() {
+        val runbooks = listOf(
+            runbook("r1", "Alpha"),
+            runbook("r2", "Alpha"),
+            runbook("r3", "Beta"),
+            runbook("r4", "Gamma"),
+        )
+        val result = moveRunbookGroup(runbooks, group = "Gamma", targetGroupIndex = 0)
+        assertEquals(listOf("r4", "r1", "r2", "r3"), result.map { it.id })
+
+        val result2 = moveRunbookGroup(runbooks, group = "Alpha", targetGroupIndex = 2)
+        assertEquals(listOf("r3", "r4", "r1", "r2"), result2.map { it.id })
+    }
 }

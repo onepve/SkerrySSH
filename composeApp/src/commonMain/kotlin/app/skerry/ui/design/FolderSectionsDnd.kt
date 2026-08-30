@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.skerry.ui.host.FolderBounds
 import app.skerry.ui.host.HostDrop
+import app.skerry.ui.host.folderDropTarget
 import app.skerry.ui.theme.Skerry
 import kotlinx.coroutines.CancellationException
 
@@ -111,19 +112,46 @@ class ListDragState {
     var activeDrop by mutableStateOf<HostDrop?>(null)
         private set
 
+    var draggingFolderName by mutableStateOf<String?>(null)
+        private set
+
+    var activeFolderDropIndex by mutableStateOf<Int?>(null)
+        private set
+
     val draggingId: String? get() = anchorId ?: draggingIds.firstOrNull()
 
     private var pointerY = 0f
     private val itemBounds = HashMap<String, Rect>()
     private val folderRange = HashMap<String, Rect>()
+    private val folderHeader = HashMap<String, Rect>()
 
-    val isDragging: Boolean get() = draggingIds.isNotEmpty()
+    val isDragging: Boolean get() = draggingIds.isNotEmpty() || draggingFolderName != null
 
     fun isItemDragging(id: String): Boolean = id in draggingIds
+    fun isFolderDragging(name: String): Boolean = name == draggingFolderName
 
     fun setItemBounds(id: String, rect: Rect) { itemBounds[id] = rect }
     fun clearItemBounds(id: String) { itemBounds.remove(id) }
     fun setFolderRange(name: String, rect: Rect) { folderRange[name] = rect }
+    fun setFolderHeader(name: String, rect: Rect) { folderHeader[name] = rect }
+    fun clearFolderHeader(name: String) { folderHeader.remove(name) }
+
+    fun startFolderDrag(name: String, localOffsetY: Float) {
+        draggingFolderName = name
+        pointerY = (folderHeader[name]?.top ?: 0f) + localOffsetY
+    }
+
+    fun <T> currentFolderDropIndex(folders: List<Folder<T>>): Int {
+        val centers = folders
+            .filter { it.name != draggingFolderName }
+            .mapNotNull { folderHeader[it.name]?.let { b -> (b.top + b.bottom) / 2f } }
+        return folderDropTarget(centers, pointerY)
+    }
+
+    fun <T> refreshFolderDrop(folders: List<Folder<T>>) {
+        val next = currentFolderDropIndex(folders)
+        if (next != activeFolderDropIndex) activeFolderDropIndex = next
+    }
 
     fun startDrag(id: String, localOffsetY: Float, selectedIds: Set<String> = emptySet()) {
         anchorId = id
@@ -166,6 +194,8 @@ class ListDragState {
         draggingIds = emptySet()
         anchorId = null
         activeDrop = null
+        draggingFolderName = null
+        activeFolderDropIndex = null
     }
 }
 
@@ -174,6 +204,40 @@ fun Modifier.itemBoundsAnchor(state: ListDragState, id: String): Modifier =
 
 fun Modifier.folderRangeAnchor(state: ListDragState, name: String): Modifier =
     onGloballyPositioned { state.setFolderRange(name, it.boundsInWindow()) }
+
+fun Modifier.folderHeaderAnchor(state: ListDragState, name: String): Modifier =
+    onGloballyPositioned { state.setFolderHeader(name, it.boundsInWindow()) }
+
+fun <T> Modifier.draggableFolderHeader(
+    state: ListDragState,
+    name: String,
+    folders: () -> List<Folder<T>>,
+    longPress: Boolean = false,
+    onDrop: (Int) -> Unit,
+): Modifier = pointerInput(name, longPress) {
+    var moved = false
+    val onStart = { offset: Offset ->
+        moved = false
+        state.startFolderDrag(name, offset.y)
+        state.refreshFolderDrop(folders())
+    }
+    val onMove = { change: PointerInputChange, amount: Offset ->
+        change.consume()
+        moved = true
+        state.dragBy(amount.y)
+        state.refreshFolderDrop(folders())
+    }
+    val onEnd = {
+        if (moved) onDrop(state.currentFolderDropIndex(folders()))
+        state.endDrag()
+    }
+    val onCancel = { state.endDrag() }
+    if (longPress) {
+        detectDragGesturesAfterLongPress(onDragStart = onStart, onDrag = onMove, onDragEnd = onEnd, onDragCancel = onCancel)
+    } else {
+        detectDeadZoneDragGestures(onStart, onMove, onEnd, onCancel)
+    }
+}
 
 fun <T> Modifier.draggableItemRow(
     state: ListDragState,

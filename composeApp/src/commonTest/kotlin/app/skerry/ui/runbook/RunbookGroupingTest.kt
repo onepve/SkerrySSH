@@ -62,12 +62,12 @@ class RunbookGroupingTest {
     }
 
     @Test
-    fun group_chips_are_all_plus_sorted_unique_folders() {
+    fun group_chips_are_all_plus_unique_folders_in_source_order() {
         val chips = runbookGroupChips(
             listOf(entry("a", group = "net"), entry("b", group = "disk"), entry("c")),
         )
 
-        assertEquals(listOf(ALL_RUNBOOKS_CHIP, "disk", "net", UNGROUPED_FOLDER), chips)
+        assertEquals(listOf(ALL_RUNBOOKS_CHIP, "net", "disk", UNGROUPED_FOLDER), chips)
     }
 
     @Test

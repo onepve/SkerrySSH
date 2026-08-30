@@ -90,4 +90,19 @@ class SnippetReorderingTest {
         assertEquals(null, result.first { it.id == "s1" }.group)
         assertEquals("Dev", result.first { it.id == "s2" }.group)
     }
+
+    @Test
+    fun `moveSnippetGroup reorders whole folder blocks`() {
+        val snippets = listOf(
+            snippet("s1", "Alpha"),
+            snippet("s2", "Alpha"),
+            snippet("s3", "Beta"),
+            snippet("s4", "Gamma"),
+        )
+        val result = moveSnippetGroup(snippets, group = "Gamma", targetGroupIndex = 0)
+        assertEquals(listOf("s4", "s1", "s2", "s3"), result.map { it.id })
+
+        val result2 = moveSnippetGroup(snippets, group = "Alpha", targetGroupIndex = 2)
+        assertEquals(listOf("s3", "s4", "s1", "s2"), result2.map { it.id })
+    }
 }

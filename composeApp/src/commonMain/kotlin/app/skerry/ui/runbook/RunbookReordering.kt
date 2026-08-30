@@ -42,6 +42,24 @@ fun moveRunbookToGroup(
 ): List<Runbook> = moveRunbooksToGroup(runbooks, setOf(runbookId), targetGroup, targetIndexInGroup)
 
 /**
+ * Move folder [group] as a whole to [targetGroupIndex] among folders (runbook order within it is
+ * preserved). Index is clamped; unknown [group] leaves the list unchanged.
+ */
+fun moveRunbookGroup(runbooks: List<Runbook>, group: String?, targetGroupIndex: Int): List<Runbook> {
+    val canonical = normalizeGroup(group)
+    val buckets = LinkedHashMap<String?, MutableList<Runbook>>()
+    for (r in runbooks) {
+        buckets.getOrPut(normalizeGroup(r.group)) { mutableListOf() }.add(r)
+    }
+    val keys = buckets.keys.toMutableList()
+    val from = keys.indexOf(canonical)
+    if (from < 0) return runbooks
+    keys.removeAt(from)
+    keys.add(targetGroupIndex.coerceIn(0, keys.size), canonical)
+    return keys.flatMap { buckets.getValue(it) }
+}
+
+/**
  * Rename group [oldName] to [newName] across all runbooks.
  * Blank/null [newName] ungroups the runbooks (`Runbook.group = null`), which is also how a group is deleted.
  */
